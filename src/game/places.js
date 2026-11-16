@@ -81,7 +81,8 @@ export function createPlaces(game, scene, camera) {
       },
       ...(ev ? cut.talkBeats(r, ev.lines) : []),
     ];
-    cut.run(beats, () => after(p, ev), !!(ev && ev.leave));
+    // if the scene is skipped before the cut inside, still end up indoors (or the door ring re-fires)
+    cut.run(beats, () => { if (!ev || !ev.leave) setInside(p, goal[0], goal[1]); after(p, ev); }, !!(ev && ev.leave));
   }
   function after(p, ev) {
     if (!ev) return;
