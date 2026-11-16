@@ -2,7 +2,7 @@
 // windows, signs, lamps, palms, pier and beach furniture. Everything is merged
 // or instanced, so the entire city is roughly a dozen draw calls.
 import * as THREE from 'three';
-import { box, cyl, tint, merge, timeU, fogU, FOG_PARS, PI, rng } from '../core/util.js';
+import { box, cyl, tint, merge, timeU, fogU, FOG_PARS, PI, rng, wetU, rainU, reflU, nightU } from '../core/util.js';
 import { HX, HZ, PIER, SIGN_NAMES } from './layout.js';
 import { paintGround, paintSigns } from './textures.js';
 import { createGlow } from './glow.js';
@@ -32,7 +32,40 @@ export function buildGround(scene, L, renderer) {
   tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   const geo = new THREE.PlaneGeometry(HX * 2, HZ * 2);
   geo.rotateX(-PI / 2);
-  scene.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: tex })));
+  // Wet roads without a second pass: darker asphalt, a fresnel sky sheen, Blinn-Phong streaks
+  // from the boulevard's street lamps (their positions are a formula, so no light list), rain speckle.
+  const mat = new THREE.MeshLambertMaterial({ map: tex });
+  mat.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, { uWet: wetU, uRain: rainU, uNight: nightU, uTime: timeU, uSkyC: reflU.sky, uSunC: reflU.sun, uSunD: reflU.dir });
+    sh.vertexShader = 'varying vec3 vWP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vWP = (modelMatrix * vec4(position, 1.0)).xyz;');
+    sh.fragmentShader = 'uniform float uWet, uRain, uNight, uTime; uniform vec3 uSkyC, uSunC, uSunD; varying vec3 vWP;\n' + sh.fragmentShader
+      .replace('#include <map_fragment>', /* glsl */`#include <map_fragment>
+        float wetK = uWet * (0.5 + 0.5 * smoothstep(0.45, 0.12, dot(diffuseColor.rgb, vec3(0.333))));
+        diffuseColor.rgb *= 1.0 - 0.4 * wetK;`)
+      .replace('#include <opaque_fragment>', /* glsl */`
+        if (uWet > 0.01) {
+          vec3 V = normalize(cameraPosition - vWP);
+          vec3 N = normalize(vec3(sin(vWP.x * 3.1 + sin(vWP.z * 2.3)) * 0.03, 1.0, cos(vWP.x * 2.2 + vWP.z * 3.3) * 0.03));
+          vec3 refl = uSkyC * pow(1.0 - max(dot(V, N), 0.0), 4.0) * 0.7;
+          vec3 lampC = vec3(1.0, 0.76, 0.46) * uNight;
+          for (int r = 0; r < 2; r++) {
+            float lz = r == 0 ? 44.05 : 61.95, lx = r == 0 ? -285.0 : -270.0;
+            float bx = floor((vWP.x - lx) / 30.0 + 0.5);
+            for (int k = -1; k <= 1; k++) {
+              vec3 Ld = vec3(lx + (bx + float(k)) * 30.0, 5.9, lz) - vWP;
+              float d2 = dot(Ld, Ld);
+              vec3 Hh = normalize(Ld * inversesqrt(d2) + V);
+              refl += lampC * pow(max(dot(N, Hh), 0.0), 240.0) * 16.0 / (1.0 + d2 * 0.012);
+            }
+          }
+          refl += uSunC * pow(max(dot(N, normalize(uSunD + V)), 0.0), 140.0);
+          vec2 cell = floor(vWP.xz * 2.5);
+          refl += vec3(0.55, 0.6, 0.7) * step(0.991, fract(sin(dot(cell, vec2(12.9898, 78.233)) + floor(uTime * 9.0) * 3.7) * 43758.5453)) * uRain * 0.5;
+          outgoingLight += refl * wetK;
+        }
+        #include <opaque_fragment>`);
+  };
+  scene.add(new THREE.Mesh(geo, mat));
   // sandy skirt so the island has an edge where it meets the water
   const skirt = new THREE.Mesh(new THREE.BoxGeometry(HX * 2, 3, HZ * 2), new THREE.MeshLambertMaterial({ color: '#c9a878' }));
   skirt.position.y = -1.52;
@@ -91,6 +124,16 @@ export function buildCity(scene, L) {
       solid.push(box(8, 0.35, 3.4, cx, 3.25, b.z1 + 1.7, b.accent));
       neon.push(box(8.2, 0.12, 0.12, cx, 3.05, b.z1 + 3.42, b.neon));
       solid.push(box(3.2, 2.7, 0.2, cx, 1.35, fz + 0.75, '#2b2440'));                            // doorway
+      if (b.bar) {
+        // The Velvet Flamingo: a neon flamingo and a velvet-rope doorway
+        const P = '#ff4fc0', nz = fz + 0.86, nx = cx + 4.6;
+        neon.push(box(0.1, 1.5, 0.1, nx, 4.6, nz, P), box(0.1, 0.9, 0.1, nx + 0.35, 4.3, nz, P, 0, 0, 0.5),
+          box(1.3, 0.75, 0.1, nx - 0.1, 5.7, nz, P, 0, 0, 0.25), box(0.1, 1.3, 0.1, nx + 0.75, 6.6, nz, P, 0, 0, -0.35),
+          box(0.42, 0.34, 0.1, nx + 1.05, 7.3, nz, P), box(0.4, 0.1, 0.1, nx + 1.4, 7.12, nz, '#ffe14a', 0, 0, -0.5));
+        neon.push(box(3.6, 0.1, 0.1, cx, 2.85, fz + 0.9, P), box(0.1, 2.8, 0.1, cx - 1.75, 1.4, fz + 0.9, P), box(0.1, 2.8, 0.1, cx + 1.75, 1.4, fz + 0.9, P));
+        solid.push(cyl(0.06, 0.08, 1, 6, cx - 2.4, 0.5, fz + 2.4, '#ffd166'), cyl(0.06, 0.08, 1, 6, cx + 2.4, 0.5, fz + 2.4, '#ffd166'));
+        glows.push([nx + 0.3, 5.8, nz + 0.5, P, 9, 0.15]);
+      }
     } else {
       solid.push(box(2.6, 2.6, 0.2, cx - w * 0.2, 1.3, b.z1 + 0.05, '#2b2440'));
       solid.push(box(3, 1.6, 3, cx + w * 0.18, h + 1.3, cz, b.accent));                         // roof plant room
@@ -293,7 +336,7 @@ export function buildCity(scene, L) {
   glow.commit();
 
   return {
-    windowCount: winM.length,
+    windowCount: winM.length, bodyMat,
     setLights(neonK, lit, glass) {
       neonMat.color.setScalar(0.5 + neonK * 0.9);
       signMat.color.setScalar(0.4 + neonK * 0.9);

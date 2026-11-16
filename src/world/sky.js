@@ -9,7 +9,7 @@ export function createSky(scene) {
     uTop: C(), uMid: C(), uHor: C(), uSunA: C(), uSunB: C(), uGlow: C(),
     uSunDir: { value: new THREE.Vector3(1, 0.1, 0.2).normalize() },
     uMoonDir: { value: new THREE.Vector3(0.55, 0.5, -0.67).normalize() },
-    uSunSize: { value: 0.16 }, uStripe: { value: 1 }, uStars: { value: 0 }, uFlash: { value: 0 },
+    uSunSize: { value: 0.16 }, uStripe: { value: 1 }, uStars: { value: 0 }, uFlash: { value: 0 }, uCloud: { value: 0 }, uVeil: { value: 0 },
     uTime: timeU,
   };
   const mat = new THREE.ShaderMaterial({
@@ -23,7 +23,10 @@ export function createSky(scene) {
       }`,
     fragmentShader: /* glsl */`
       uniform vec3 uTop, uMid, uHor, uSunA, uSunB, uGlow, uSunDir, uMoonDir;
-      uniform float uSunSize, uStripe, uStars, uFlash, uTime;
+      uniform float uSunSize, uStripe, uStars, uFlash, uTime, uCloud, uVeil;
+      float h2(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(h2(i), h2(i + vec2(1.0, 0.0)), f.x), mix(h2(i + vec2(0.0, 1.0)), h2(i + vec2(1.0, 1.0)), f.x), f.y); }
       varying vec3 vDir;
       float hash(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
       void main(){
@@ -42,18 +45,27 @@ export function createSky(scene) {
         col += vec3(st) * uStars;
         // sun: glow, then a disc sliced into bands that widen towards the bottom
         float sd = dot(d, uSunDir);
-        col += uGlow * (pow(max(sd, 0.0), 6.0) * 0.3 + pow(max(sd, 0.0), 48.0) * 0.35);
+        col += uGlow * (pow(max(sd, 0.0), 6.0) * 0.3 + pow(max(sd, 0.0), 48.0) * 0.35) * (1.0 - uVeil * 0.7);
         float ang = acos(clamp(sd, -1.0, 1.0));
         float disc = 1.0 - smoothstep(uSunSize - 0.004, uSunSize, ang);
         float sy = (d.y - uSunDir.y) / uSunSize;
         float gap = clamp((0.3 - sy) * 0.42, 0.0, 0.62);
         float cut = mix(1.0, step(gap, fract(sy * 5.5)), uStripe);
         vec3 sc = mix(uSunB, uSunA, clamp(sy * 0.5 + 0.5, 0.0, 1.0));
-        col = mix(col, sc, disc * cut);
+        col = mix(col, sc, disc * cut * (1.0 - uVeil));
         // crescent moon
         float moon = smoothstep(0.9984, 0.9988, dot(d, uMoonDir));
         float bite = smoothstep(0.9982, 0.9987, dot(d, normalize(uMoonDir + vec3(0.02, 0.012, 0.0))));
         col += vec3(0.9, 0.93, 1.0) * moon * (1.0 - bite) * uStars;
+        // drifting cloud deck: three octaves of value noise projected onto a flat ceiling
+        if (uCloud > 0.02 && h > -0.02) {
+          vec2 cp = d.xz / (h + 0.14) * 1.3 + uTime * vec2(0.014, 0.005);
+          float cl = vn(cp) * 0.55 + vn(cp * 2.3 + 7.0) * 0.3 + vn(cp * 5.1) * 0.15;
+          float th = mix(0.8, 0.12, uCloud);
+          float cv = smoothstep(th, th + 0.3, cl) * smoothstep(-0.02, 0.1, h);
+          vec3 cc = mix(uHor, uMid, 0.4) * (0.7 + 0.45 * cl) + uGlow * 0.25 * pow(max(sd, 0.0), 3.0);
+          col = mix(col, cc, cv * 0.93);
+        }
         col += vec3(0.7, 0.78, 1.0) * uFlash;
         gl_FragColor = vec4(col, 1.0);
         #include <colorspace_fragment>

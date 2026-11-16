@@ -16,10 +16,10 @@ const PASTEL = ['#f7b3c6', '#a5e6cf', '#fff0b3', '#b3d9f7', '#ffc7a0', '#d8c0f2'
 const ACCENT = ['#ff4fa3', '#19c9bd', '#ffc93f', '#7a5cff', '#ff8a3d', '#ffffff'];
 const NEON = ['#ff2bd1', '#18f0ff', '#ffe14a', '#8dff5a', '#ff6a3d', '#b388ff'];
 export const SIGN_NAMES = [
-  'Coral Palms Hotel', 'Sunset Strip Diner', 'Flamingo Arcade', 'Blue Manatee Hotel',
+  'Coral Palms Hotel', 'Sunset Strip Diner', 'The Velvet Flamingo', 'Blue Manatee Hotel',
   'Gilded Gecko Club', 'Aqua Deco Suites', 'Mango Moon Motel', 'Seahorse Cinema',
-  'Tidewater Records', 'Lucky Gull Pawn', 'Cabana Royale', 'Pink Heron Hotel',
-  'Roller Palace', 'Papaya Juice Bar', 'Hotel Lumina', 'Driftwood Pier',
+  'Tidewater Records', 'Coast Patrol Station', 'Cabana Royale', 'Pink Heron Hotel',
+  'Roller Palace', 'Seabreeze Clinic', 'Hotel Lumina', 'Driftwood Pier',
 ];
 
 export function makeLayout() {
@@ -79,10 +79,11 @@ export function makeLayout() {
 
   // Parked cars: { x, z, yaw }
   const spots = [];
-  for (let x = -270; x <= 270; x += 9) if (!nearSide(x, 14)) spots.push({ x, z: 46.8, yaw: Math.PI / 2 });
-  for (let x = -265; x <= 270; x += 13) spots.push({ x, z: 59.2, yaw: -Math.PI / 2 });
-  for (let x = -270; x <= 270; x += 17) if (!nearSide(x, 14)) spots.push({ x, z: -0.2, yaw: Math.PI / 2 });
-  for (const s of SIDE_X) spots.push({ x: s + 3.6, z: 20, yaw: 0 }, { x: s - 3.6, z: -40, yaw: Math.PI });
+  // right-hand traffic: every parked car faces the way its side of the road flows
+  for (let x = -270; x <= 270; x += 9) if (!nearSide(x, 14)) spots.push({ x, z: 46.8, yaw: -Math.PI / 2 });
+  for (let x = -265; x <= 270; x += 13) if (!nearSide(x, 14)) spots.push({ x, z: 59.2, yaw: Math.PI / 2 });
+  for (let x = -270; x <= 270; x += 17) if (!nearSide(x, 16)) spots.push({ x, z: 0.8, yaw: Math.PI / 2 });
+  for (const s of SIDE_X) spots.push({ x: s - 4.8, z: 22, yaw: 0 }, { x: s + 4.8, z: -38, yaw: Math.PI });
   parking.push({ x: 6, z: 59.2, yaw: Math.PI / 2 });         // one right next to the spawn
   const taken = new Set();
   let guard = 0;
@@ -103,7 +104,13 @@ export function makeLayout() {
   for (const h of huts) solids.push({ x0: h.x - 2, x1: h.x + 2, z0: h.z - 2, z1: h.z + 2, h: 6 });
   solids.push({ x0: 37, x1: 43, z0: 239, z1: 245, h: 5 });   // kiosk at the end of the pier
 
-  return { buildings, lamps, palms, parking, umbrellas, huts, solids };
+  // Story places hang off named buildings: the bar door, the patrol station and the clinic.
+  const door = (name, out) => { const b = buildings.find((k) => k.name === name); return { x: b.cx, z: b.z1 + out, b }; };
+  const bar = door('The Velvet Flamingo', 5.2);
+  bar.b.neon = '#ff2bd1'; bar.b.bar = true;
+  const station = door('Coast Patrol Station', 5.4), clinic = door('Seabreeze Clinic', 5.4);
+
+  return { buildings, lamps, palms, parking, umbrellas, huts, solids, bar, station, clinic };
 }
 
 // Keep something inside the walkable world (the island rectangle plus the pier).

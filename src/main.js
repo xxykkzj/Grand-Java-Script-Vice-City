@@ -1,6 +1,6 @@
 // Neon Coast: boot, world generation with a loading bar, and the main loop.
 import * as THREE from 'three';
-import { timeU, pointScaleU, pushOut, pause, reducedMotion } from './core/util.js';
+import { timeU, pointScaleU, pushOut, pause, reducedMotion, createGrid } from './core/util.js';
 import { createInput } from './core/input.js';
 import { makeLayout, clampToWorld } from './world/layout.js';
 import { createSky, createOcean } from './world/sky.js';
@@ -13,6 +13,11 @@ import { createFollowCamera } from './player/camera.js';
 import { createAudio } from './audio/audio.js';
 import { createHud } from './ui/hud.js';
 import { createCheats } from './cheats/cheats.js';
+import { makeRoads, buildSignals, signal } from './world/roads.js';
+import { createTraffic } from './actors/traffic.js';
+import { createPeds } from './actors/peds.js';
+import { createCutscene } from './game/cutscene.js';
+import { createRules } from './game/rules.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('gl');
@@ -59,19 +64,30 @@ async function boot() {
   const env = createEnvironment(scene, sky, ocean, city, camera, audio);
   const input = createInput(canvas);
   const hud = createHud(L, groundCanvas, renderer);
+  const R = makeRoads();
+  const signals = buildSignals(scene, R, city.bodyMat);
+  const grid = createGrid(14);
 
   const game = {
     mode: 'foot', vehicle: null, started: false,
-    input, hud, audio, env, vehicles, player, L, cam, renderer, scene,
+    input, hud, audio, env, vehicles, player, L, cam, renderer, scene, fx, R, wanted: 0, busy: null,
     focus: () => (game.vehicle ? game.vehicle : player.pos),
     heading: () => (game.vehicle ? game.vehicle.yaw : player.yaw),
   };
+  await progress(0.84, 'FILLING THE STREETS…');
+  const traffic = game.traffic = createTraffic(R, vehicles, grid, game);
+  const peds = game.peds = createPeds(scene, R, grid, game);
+  const cut = game.cut = createCutscene(scene, camera, game);
+  const rules = game.rules = createRules(game, scene);
   const cheats = createCheats(game);
   game.cheats = cheats;
+  const me = { x: 0, z: 0, isPed: true, isPlayer: true };
   window.__neon = game;                       // handy for poking around in devtools
+  game.signalAt = (n, h) => signal(n, h, timeU.value);
 
   function interact() {
     const v = game.vehicle;
+    if (game.busy) return;
     if (v) {
       if (v.kind === 'heli' && v.y > 0.6) { hud.toast('LAND FIRST', 'HOLD C TO DESCEND'); return; }
       v.driven = false;
@@ -85,7 +101,8 @@ async function boot() {
       audio.thud(0.25);
     } else {
       const n = vehicles.nearest(player.pos);
-      if (!n) return;
+      if (!n || n.jacking) return;
+      if (n.ai) { rules.startJack(n); return; }
       n.driven = true; game.vehicle = n; game.mode = n.kind;
       player.setHidden(true);
       audio.thud(0.3);
@@ -94,11 +111,13 @@ async function boot() {
   const fire = () => { if (game.mode === 'tank') vehicles.fire(); };
 
   input.onKey = (e) => {
+    if (game.busy === 'cut') { if (e.code === 'Space' || e.code === 'Enter' || e.code === 'NumpadEnter') cut.skip(); return; }
     switch (e.code) {
+      case 'BracketLeft': case 'BracketRight': { const sp = env.stepSpeed(e.code === 'BracketLeft' ? -1 : 1); hud.toast(sp ? `TIME ×${sp}` : 'TIME FROZEN', sp ? `ONE GAME MINUTE = ${+(1 / sp).toFixed(2)} S` : 'THE CLOCK IS STOPPED'); break; }
       case 'Backquote': case 'KeyT': e.preventDefault(); cheats.toggle(true); break;
       case 'KeyE': interact(); break;
       case 'KeyF': fire(); break;
-      case 'KeyN': env.cycle(); hud.toast('TIME SKIP', 'FAST-FORWARDING THE CLOCK'); break;
+      case 'KeyN': hud.toast('TIME SKIP', 'FAST-FORWARDING TO ' + env.cycle().replace('GOLDEN', 'GOLDEN HOUR')); break;
       case 'KeyM': hud.toast(audio.toggleMute() ? 'SOUND OFF' : 'SOUND ON'); break;
       case 'KeyP': hud.togglePerf(); break;
     }
@@ -106,16 +125,18 @@ async function boot() {
 
   await progress(0.92, 'SWITCHING ON THE NEON…');
   const ctl = { move: 0, strafe: 0, sprint: false, jump: false, throttle: 0, steer: 0, hand: false, up: false, down: false };
-  const sound = { engine: 0, engineRev: 0, heavy: false, skate: 0, rotor: 0, rain: 0 };
-  let last = performance.now(), raf = 0;
+  const sound = { engine: 0, engineRev: 0, heavy: false, skate: 0, rotor: 0, rain: 0, siren: 0, duck: false };
+  let last = performance.now(), raf = 0, frameN = 0;
 
+  const hudState = { env, game, vehicles, counts: [0, peds.count], blips: [], focus: null, heading: 0, camYaw: 0, inVehicle: null };
   function frame(now) {
     raf = requestAnimationFrame(frame);
     const dt = Math.min(Math.max((now - last) / 1000, 0), 0.05);
     last = now;
     timeU.value += dt;
 
-    const live = game.started && !cheats.open;
+    const live = game.started && !cheats.open && !game.busy;
+    frameN++;
     ctl.move = live ? input.axis(['KeyS', 'ArrowDown'], ['KeyW', 'ArrowUp']) : 0;
     ctl.strafe = live ? input.axis(['KeyA', 'ArrowLeft'], ['KeyD', 'ArrowRight']) : 0;
     ctl.sprint = live && input.isDown('ShiftLeft', 'ShiftRight');
@@ -126,27 +147,42 @@ async function boot() {
     ctl.down = live && input.isDown('KeyC', 'ControlLeft', 'ControlRight');
     if (live && input.clicked) fire();
 
-    player.update(dt, ctl, cam.yaw, vehicles, audio);
+    // neighbour grid for this frame: every car, every pedestrian, and the courier on foot
+    grid.clear();
+    for (const c of vehicles.cars) if (!c.off) grid.add(c);
+    if (vehicles.tank) grid.add(vehicles.tank);
+    for (const p of peds.peds) grid.add(p);
+    if (!game.vehicle && !player.hidden && game.busy !== 'cut') { me.x = player.pos.x; me.z = player.pos.z; grid.add(me); }
+
+    if (!game.busy) player.update(dt, ctl, cam.yaw, vehicles, audio);
+    signals.update(timeU.value);
+    traffic.update(dt, timeU.value);
     vehicles.update(dt, ctl, cam, player);
+    peds.update(dt, timeU.value, frameN, vehicles.cars);
+    if (game.started) rules.update(dt);
     fx.update(dt);
 
     const v = game.vehicle;
     const speed = v ? (v.kind === 'tank' ? v.speed : Math.hypot(v.vx, v.vz)) : player.speed;
     if (!game.started && !reducedMotion) cam.yaw += dt * 0.04;
-    cam.update(dt, input, game.mode, game.focus(), game.heading(), speed, fx, player.phase);
+    if (cut.active) cut.update(dt);
+    else cam.update(dt, input, game.mode, game.focus(), game.heading(), speed, fx, player.phase);
     pointScaleU.value = renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360));
     env.update(dt);
 
     // context hints
     if (game.started) {
-      if (!v) {
+      if (game.busy) hud.setHint(game.busy === 'cut' ? [['Space / Enter', 'skip']] : []);
+      else if (!v) {
         const n = vehicles.nearest(player.pos);
-        hud.setHint(n ? [['E', `enter ${n.label}`], ['~ / T', 'cheat console']]
+        hud.setHint(n ? [['E', n.ai ? `take the ${n.label} (heat!)` : `enter ${n.label}`], ['~ / T', 'cheat console']]
           : [['WASD', 'skate'], ['Shift', 'sprint'], ['Space', 'jump'], ['Drag', 'look'], ['~ / T', 'cheat console']]);
       } else if (v.kind === 'car') hud.setHint([['E', 'exit car'], ['WASD', 'drive'], ['Space', 'handbrake']]);
       else if (v.kind === 'tank') hud.setHint([['E', 'exit tank'], ['WASD', 'drive'], ['Drag', 'aim turret'], ['Click / F', 'fire']]);
       else hud.setHint([['W S', 'forward / back'], ['A D', 'yaw'], ['Space', 'up'], ['C / Ctrl', 'down'], ['E', v.y > 0.6 ? 'land to exit' : 'exit helicopter']]);
-      hud.update(dt, env, game.focus(), game.heading(), vehicles, v);
+      hudState.focus = game.focus(); hudState.heading = game.heading(); hudState.camYaw = cam.yaw; hudState.inVehicle = v;
+      hudState.counts[0] = traffic.count(); hudState.blips = rules.blips;
+      hud.update(dt, hudState);
     }
 
     sound.engine = v && v.kind !== 'heli' ? 1 : 0;
@@ -154,7 +190,7 @@ async function boot() {
     sound.engineRev = v ? Math.min(Math.abs(speed) / (v.kind === 'tank' ? 13 : 44), 1) : 0;
     sound.skate = !v && player.onGround ? Math.min(player.speed / 13.5, 1) : 0;
     sound.rotor = vehicles.heli ? vehicles.heli.spool * (v === vehicles.heli ? 1 : 0.35) : 0;
-    sound.rain = env.stormAmt;
+    sound.rain = env.rainAmt; sound.siren = game.siren || 0; sound.duck = cut.active;
     audio.update(sound);
 
     renderer.render(scene, camera);

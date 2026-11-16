@@ -1,11 +1,14 @@
 // Cars (one InstancedMesh for the whole fleet), the tank, the helicopter and tank shells.
 import * as THREE from 'three';
-import { clamp, damp, angleDelta, pushOut, PI, reducedMotion } from '../core/util.js';
+import { clamp, damp, angleDelta, pushOut, PI, reducedMotion, nightU, wetU } from '../core/util.js';
 import { clampToWorld } from '../world/layout.js';
-import { carGeometry, tankGeometry, heliGeometry } from './models.js';
+import { carGeometry, carGlassGeometry, patrolKitGeometry, tankGeometry, heliGeometry } from './models.js';
 import { createGlow } from '../world/glow.js';
 
-const CAP = 24;
+const CAP = 54, POLICE = 4;
+export const PATROL_TEAL = '#19b8b0';
+// A car steered by the traffic AI along its lane (not by physics).
+export const onRails = (c) => !!c.ai && !(c.ai.stun > 0) && !c.ai.pursuit;
 const PAINT = ['#ffb3d1', '#9fe8dc', '#fff0a8', '#b9d4ff', '#ffc39a', '#d6bcff', '#f6f1e7', '#ff8fb0', '#7fe0ff'];
 const HOT_PINK = '#ff1f9c';
 
@@ -21,6 +24,27 @@ export function createVehicles(scene, L, fx, audio) {
   const carMesh = new THREE.InstancedMesh(carGeometry(), carMat, CAP);
   carMesh.frustumCulled = false;
   scene.add(carMesh);
+  const glass = new THREE.InstancedMesh(carGlassGeometry(), new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.5, depthWrite: false }), CAP);
+  glass.instanceMatrix = carMesh.instanceMatrix;
+  glass.frustumCulled = false; glass.renderOrder = 3;
+  scene.add(glass);
+  const kit = new THREE.InstancedMesh(patrolKitGeometry(), new THREE.MeshLambertMaterial({ vertexColors: true }), POLICE);
+  kit.frustumCulled = false;
+  scene.add(kit);
+  // headlight pools on the road: one additive instanced quad per car, faded in by the night uniform
+  const poolGeo = new THREE.PlaneGeometry(5.5, 10); poolGeo.rotateX(-PI / 2); poolGeo.translate(0, 0.06, 7.2);
+  const pools = new THREE.InstancedMesh(poolGeo, new THREE.ShaderMaterial({
+    uniforms: { uNight: nightU, uWet: wetU }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform float uNight, uWet; varying vec2 vUv;
+      void main(){
+        float far = 1.0 - vUv.y, w = abs(vUv.x - 0.5) * 2.0;
+        float a = pow(1.0 - far, 1.4) * smoothstep(1.0, 0.15, w / (0.3 + far * 0.7)) * smoothstep(0.0, 0.06, far);
+        gl_FragColor = vec4(vec3(1.0, 0.92, 0.72) * a * uNight * (0.34 + uWet * 0.3), 1.0);
+      }`,
+  }), CAP);
+  pools.frustumCulled = false; pools.renderOrder = 2;
+  scene.add(pools);
   const shGeo = new THREE.PlaneGeometry(2.7, 5.2); shGeo.rotateX(-PI / 2);
   const shadows = new THREE.InstancedMesh(shGeo, new THREE.MeshBasicMaterial({
     color: 0x000000, transparent: true, opacity: 0.28, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
@@ -29,26 +53,28 @@ export function createVehicles(scene, L, fx, audio) {
   scene.add(shadows);
 
   // 5 sprites per car, then tank (2), heli (2), shells (4)
-  const glow = createGlow(scene, CAP * 5 + 8);
-  const G_TANK = CAP * 5, G_HELI = G_TANK + 2, G_SHELL = G_HELI + 2;
+  const glow = createGlow(scene, CAP * 5 + 8 + POLICE * 2);
+  const G_TANK = CAP * 5, G_HELI = G_TANK + 2, G_SHELL = G_HELI + 2, G_BAR = G_SHELL + 4;
 
   const partMat = new THREE.MeshLambertMaterial({ vertexColors: true });
   const cars = [];
   const col = new THREE.Color();
   let neon = false;
 
-  function addCar(x, z, yaw, color) {
+  function addCar(x, z, yaw, color, extra) {
     if (cars.length >= CAP) return null;
     const c = {
       kind: 'car', label: 'car', x, y: 0, z, yaw, vx: 0, vy: 0, vz: 0, spin: 0, tx: 0, tz: 0, tvx: 0, tvz: 0,
       radius: 1.5, mass: 1, driven: false, color, slip: 0, idx: cars.length,
     };
+    Object.assign(c, extra);
     cars.push(c);
     carMesh.setColorAt(c.idx, col.set(neon ? HOT_PINK : color));
     carMesh.instanceColor.needsUpdate = true;
     return c;
   }
   L.parking.forEach((p, i) => addCar(p.x, p.z, p.yaw, PAINT[i % PAINT.length]));
+  const PAINTS = PAINT;
 
   let tank = null, heli = null;
   const shells = [];
@@ -74,8 +100,10 @@ export function createVehicles(scene, L, fx, audio) {
     return hit;
   }
 
-  function updateCar(c, dt, inp) {
-    if (c.driven && c.y < 0.3) {
+  function updateCar(c, dt, user) {
+    if (c.off || onRails(c)) return;
+    const inp = c.driven ? user : c.ai && c.ai.pursuit && !(c.ai.stun > 0) ? c.ai.inp : null;
+    if (inp && c.y < 0.3) {
       let fx_ = Math.sin(c.yaw), fz = Math.cos(c.yaw);
       let vf = c.vx * fx_ + c.vz * fz;
       const sf = clamp(Math.abs(vf) / 6, 0, 1) * (vf >= 0 ? 1 : -1);
@@ -165,7 +193,9 @@ export function createVehicles(scene, L, fx, audio) {
       for (let j = i + 1; j < all.length; j++) {
         const b = all[j];
         if (b.y > 2.5) continue;
-        const dx = b.x - a.x, dz = b.z - a.z, rr = a.radius + b.radius;
+        const ra = onRails(a), rb = onRails(b);
+        if (ra && rb) continue;
+        const dx = b.x - a.x, dz = b.z - a.z, rr = a.radius + b.radius - (ra || rb ? 0.55 : 0);
         const d2 = dx * dx + dz * dz;
         if (d2 >= rr * rr || d2 < 1e-6) continue;
         const d = Math.sqrt(d2), nx = dx / d, nz = dz / d, ov = rr - d;
@@ -179,6 +209,8 @@ export function createVehicles(scene, L, fx, audio) {
           if (!a.driven && a.kind === 'car') a.spin += (Math.random() - 0.5) * imp * 0.25;
           if (!b.driven && b.kind === 'car') b.spin += (Math.random() - 0.5) * imp * 0.25;
           if (imp > 6) audio.thud(clamp(imp / 30, 0.2, 1));
+          if (imp > 3.5) { if (a.ai) a.ai.stun = Math.max(a.ai.stun || 0, 2.2); if (b.ai) b.ai.stun = Math.max(b.ai.stun || 0, 2.2); }
+          if (api.onCollide) api.onCollide(a, b, imp);
         }
       }
     }
@@ -187,9 +219,11 @@ export function createVehicles(scene, L, fx, audio) {
   function boom(x, y, z, player) {
     fx.explode(x, y, z);
     audio.boom();
+    if (api.onBoom) api.onBoom(x, y, z);
     for (const c of cars) {
       const dx = c.x - x, dz = c.z - z, d = Math.hypot(dx, dz);
-      if (d > 13) continue;
+      if (d > 13 || c.off) continue;
+      if (c.ai) c.ai.stun = 4;
       const k = 1 - d / 13, inv = 1 / Math.max(d, 0.5);
       c.vx += dx * inv * k * 26; c.vz += dz * inv * k * 26; c.vy += 4 + k * 10;
       c.spin += (Math.random() - 0.5) * 10 * k;
@@ -202,9 +236,10 @@ export function createVehicles(scene, L, fx, audio) {
   }
 
   const api = {
-    cars, glowU,
+    cars, glowU, addCar, PAINTS, onCollide: null, onBoom: null, onShot: null,
+    paint(c, color) { c.color = color; carMesh.setColorAt(c.idx, col.set(neon ? HOT_PINK : color)); carMesh.instanceColor.needsUpdate = true; },
     get tank() { return tank; }, get heli() { return heli; },
-    all() { const a = cars.slice(); if (tank) a.push(tank); if (heli) a.push(heli); return a; },
+    all() { const a = cars.filter((c) => !c.off); if (tank) a.push(tank); if (heli) a.push(heli); return a; },
     nearest(pos, reach = 2.4) {
       let best = null, bd = 1e9;
       for (const v of api.all()) {
@@ -261,6 +296,7 @@ export function createVehicles(scene, L, fx, audio) {
       fx.puff(s.x, s.y, s.z, dx, dy, dz);
       if (!reducedMotion) fx.shake = Math.max(fx.shake, 0.2);
       audio.shot();
+      if (api.onShot) api.onShot(tank.x, tank.z);
       return true;
     },
     update(dt, inp, cam, player) {
@@ -277,7 +313,7 @@ export function createVehicles(scene, L, fx, audio) {
             s.vy -= 12 * h; s.x += s.vx * h; s.y += s.vy * h; s.z += s.vz * h; s.life -= h;
             let hit = s.y <= 0.1 || s.life <= 0 || Math.abs(s.x) > 460 || Math.abs(s.z) > 420;
             if (!hit) for (const b of solids) if (s.y < b.h && s.x > b.x0 && s.x < b.x1 && s.z > b.z0 && s.z < b.z1) { hit = true; break; }
-            if (!hit) for (const c of cars) if (!c.driven && Math.abs(s.y - c.y - 0.8) < 1.6 && Math.hypot(s.x - c.x, s.z - c.z) < 2.3) { hit = true; break; }
+            if (!hit) for (const c of cars) if (!c.driven && !c.off && Math.abs(s.y - c.y - 0.8) < 1.6 && Math.hypot(s.x - c.x, s.z - c.z) < 2.3) { hit = true; break; }
             if (!hit && heli && !heli.driven && Math.abs(s.y - heli.y - 1.5) < 2 && Math.hypot(s.x - heli.x, s.z - heli.z) < 2.6) hit = true;
             if (hit) { s.on = false; boom(s.x, Math.max(s.y, 0.2), s.z, player); }
           }
@@ -288,22 +324,45 @@ export function createVehicles(scene, L, fx, audio) {
 
       // write instance matrices + light sprites
       carMesh.count = shadows.count = cars.length;
+      let nk = 0;
+      const blink = reducedMotion ? 0.5 : (performance.now() / 180) % 2 < 1 ? 1 : 0;
       for (const c of cars) {
+        const g = c.idx * 5;
+        if (c.off) {
+          m4.makeScale(0, 0, 0);
+          carMesh.setMatrixAt(c.idx, m4); shadows.setMatrixAt(c.idx, m4); pools.setMatrixAt(c.idx, m4);
+          for (let k = 0; k < 5; k++) glow.hide(g + k);
+          if (c.police) { kit.setMatrixAt(nk, m4); glow.hide(G_BAR + nk * 2); glow.hide(G_BAR + nk * 2 + 1); nk++; }
+          continue;
+        }
         e.set(c.tx, c.yaw, c.tz);
         m4.compose(p3.set(c.x, c.y, c.z), q.setFromEuler(e), s3);
         carMesh.setMatrixAt(c.idx, m4);
+        const fx_ = Math.sin(c.yaw), fz = Math.cos(c.yaw), y = c.y + 0.9;
+        if (c.police) {
+          kit.setMatrixAt(nk, m4);
+          const hot = c.ai && c.ai.siren ? 1 : 0;
+          glow.set(G_BAR + nk * 2, c.x - fx_ * 0.5 - fz * 0.32, c.y + 1.85, c.z - fz * 0.5 + fx_ * 0.32, '#ff2a3a', hot ? 5 * (blink || 0.15) : 1, hot);
+          glow.set(G_BAR + nk * 2 + 1, c.x - fx_ * 0.5 + fz * 0.32, c.y + 1.85, c.z - fz * 0.5 - fx_ * 0.32, '#3a7aff', hot ? 5 * (1 - blink || 0.15) : 1, hot);
+          nk++;
+        }
         e.set(0, c.yaw, 0);
-        const sk = 1 / (1 + c.y * 0.25);
-        m4.compose(p3.set(c.x, 0.03, c.z), q.setFromEuler(e), s3.set(sk, 1, sk));
+        const sk = 1 / (1 + c.y * 0.25), on = c.driven || !!c.ai;
+        q.setFromEuler(e);
+        m4.compose(p3.set(c.x, 0.03, c.z), q, s3.set(sk, 1, sk));
         shadows.setMatrixAt(c.idx, m4); s3.set(1, 1, 1);
-        const fx_ = Math.sin(c.yaw), fz = Math.cos(c.yaw), g = c.idx * 5, y = c.y + 0.9;
-        const braking = c.driven && inp.throttle < 0;
-        glow.set(g, c.x - fx_ * 2.25 + fz * 0.62, y, c.z - fz * 2.25 - fx_ * 0.62, '#ff1830', braking ? 2.6 : 1.7, braking ? 1 : 0.45);
-        glow.set(g + 1, c.x - fx_ * 2.25 - fz * 0.62, y, c.z - fz * 2.25 + fx_ * 0.62, '#ff1830', braking ? 2.6 : 1.7, braking ? 1 : 0.45);
-        glow.set(g + 2, c.x + fx_ * 2.25 + fz * 0.62, y - 0.28, c.z + fz * 2.25 - fx_ * 0.62, '#fff0c0', c.driven ? 2.6 : 1.2, c.driven ? 0.5 : 0);
-        glow.set(g + 3, c.x + fx_ * 2.25 - fz * 0.62, y - 0.28, c.z + fz * 2.25 + fx_ * 0.62, '#fff0c0', c.driven ? 2.6 : 1.2, c.driven ? 0.5 : 0);
+        if (on && c.y < 0.5) m4.compose(p3.set(c.x, 0, c.z), q, s3); else m4.makeScale(0, 0, 0);
+        pools.setMatrixAt(c.idx, m4);
+        const braking = c.driven ? inp.throttle < 0 : !!c.ai && c.ai.braking;
+        const ts = braking ? 2.6 : on ? 1.7 : 1.1, tb = braking ? 1 : on ? 0.3 : 0;
+        glow.set(g, c.x - fx_ * 2.25 + fz * 0.62, y, c.z - fz * 2.25 - fx_ * 0.62, '#ff1830', ts, tb);
+        glow.set(g + 1, c.x - fx_ * 2.25 - fz * 0.62, y, c.z - fz * 2.25 + fx_ * 0.62, '#ff1830', ts, tb);
+        glow.set(g + 2, c.x + fx_ * 2.25 + fz * 0.62, y - 0.28, c.z + fz * 2.25 - fx_ * 0.62, '#fff0c0', on ? 2.6 : 0, 0.12);
+        glow.set(g + 3, c.x + fx_ * 2.25 - fz * 0.62, y - 0.28, c.z + fz * 2.25 + fx_ * 0.62, '#fff0c0', on ? 2.6 : 0, 0.12);
         if (neon) glow.set(g + 4, c.x, c.y + 0.5, c.z, HOT_PINK, 9, 0.35); else glow.hide(g + 4);
       }
+      glass.count = pools.count = cars.length;
+      kit.count = nk; kit.instanceMatrix.needsUpdate = true; pools.instanceMatrix.needsUpdate = true;
       carMesh.instanceMatrix.needsUpdate = true; shadows.instanceMatrix.needsUpdate = true;
       if (tank) {
         const fx_ = Math.sin(tank.yaw), fz = Math.cos(tank.yaw);

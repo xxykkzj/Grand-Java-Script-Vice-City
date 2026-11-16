@@ -93,3 +93,52 @@ export function pushOut(p, r, b) {
   if (m === n) { p.z = b.z0 - r; return { nx: 0, nz: -1 }; }
   p.z = b.z1 + r; return { nx: 0, nz: 1 };
 }
+
+// Shared by the wet-road shader and anything else that wants to look rained on.
+export const wetU = { value: 0 };
+export const rainU = { value: 0 };
+export const reflU = { sky: { value: new THREE.Color() }, sun: { value: new THREE.Color() }, dir: { value: new THREE.Vector3(0, 1, 0) } };
+
+// Does the segment (x0,z0)-(x1,z1) pass through any solid box? Used for police line of sight.
+export function segBlocked(x0, z0, x1, z1, solids) {
+  const dx = x1 - x0, dz = z1 - z0;
+  for (const b of solids) {
+    let t0 = 0, t1 = 1;
+    if (Math.abs(dx) < 1e-6) { if (x0 < b.x0 || x0 > b.x1) continue; } else {
+      let a = (b.x0 - x0) / dx, c = (b.x1 - x0) / dx;
+      if (a > c) { const s = a; a = c; c = s; }
+      t0 = Math.max(t0, a); t1 = Math.min(t1, c);
+      if (t0 > t1) continue;
+    }
+    if (Math.abs(dz) < 1e-6) { if (z0 < b.z0 || z0 > b.z1) continue; } else {
+      let a = (b.z0 - z0) / dz, c = (b.z1 - z0) / dz;
+      if (a > c) { const s = a; a = c; c = s; }
+      t0 = Math.max(t0, a); t1 = Math.min(t1, c);
+      if (t0 > t1) continue;
+    }
+    return true;
+  }
+  return false;
+}
+
+// Uniform spatial hash for neighbour queries (cars, pedestrians, the player). Rebuilt every frame.
+export function createGrid(cell = 14) {
+  const map = new Map();
+  const K = (x) => Math.floor(x / cell) + 512;
+  return {
+    clear() { for (const a of map.values()) a.length = 0; },
+    add(o) {
+      const k = K(o.x) * 1024 + K(o.z);
+      let a = map.get(k);
+      if (!a) map.set(k, a = []);
+      a.push(o);
+    },
+    query(x, z, r, fn) {
+      const i0 = K(x - r), i1 = K(x + r), j0 = K(z - r), j1 = K(z + r);
+      for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
+        const a = map.get(i * 1024 + j);
+        if (a) for (let k = 0; k < a.length; k++) fn(a[k]);
+      }
+    },
+  };
+}

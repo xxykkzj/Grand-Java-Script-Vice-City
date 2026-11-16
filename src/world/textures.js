@@ -58,8 +58,18 @@ export function paintGround(L) {
   dashX(back1.z, -294, 294, 3, 5, '#f4eef7'); dashX(back2.z, -294, 294, 3, 5, '#f4eef7');
   for (const s of SIDE_X) {
     dashZ(s, sideZ0, -74, 3, 5, '#f4eef7'); dashZ(s, -62, -10, 3, 5, '#f4eef7'); dashZ(s, 2, 40, 3, 5, '#f4eef7');
-    // zebra crossings over the boulevard either side of each junction
-    for (const cx of [s - 10, s + 10]) for (let z = blvd.z - 8; z < blvd.z + 8; z += 1.6) rect(cx - 1.6, z, cx + 1.6, z + 0.8, '#f4eef7');
+  }
+  // zebra crossings + stop lines at every signalled junction (same numbers as world/roads.js)
+  const WH = '#f4eef7';
+  for (const s of SIDE_X) {
+    for (const [rz, hw, hz, off] of [[blvd.z, 9, 13.8, 2.3], [back1.z, 6, 10.2, 2], [back2.z, 6, 10.2, 2]]) {
+      for (const cx of [s - 8.8, s + 8.8]) for (let z = rz - hw + 0.4; z < rz + hw - 0.5; z += 1.6) rect(cx - 1.6, z, cx + 1.6, z + 0.8, WH);
+      rect(s - 11.4, rz, s - 11, rz + hw - (hw > 6 ? 4.6 : 0.3), WH); rect(s + 11, rz - hw + (hw > 6 ? 4.6 : 0.3), s + 11.4, rz, WH);
+      for (const zz of rz > 0 ? [rz - hz + 2.2] : [rz - hz + 2.2, rz + hz - 2.2]) {
+        for (let x = s - 5.6; x < s + 5.5; x += 1.6) rect(x, zz - 1.6, x + 0.8, zz + 1.6, WH);
+        if (zz < rz) rect(s - 5.7, zz - 2.4, s, zz - 2, WH); else rect(s, zz + 2, s + 5.7, zz + 2.4, WH);
+      }
+    }
   }
 
   // soft vignette of darker sand at the island rim

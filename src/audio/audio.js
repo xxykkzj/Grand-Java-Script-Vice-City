@@ -8,7 +8,7 @@ const BASS = [0, null, 12, 0, null, 12, 0, 7, 0, null, 12, 0, 7, 12, 0, 12];
 
 export function createAudio() {
   let ctx = null, master, music, sfx, noise, arpBus, timer = 0, nextT = 0, stepI = 0;
-  let eng, rotor, skate, rain;
+  let eng, rotor, skate, rain, siren, heyT = 0;
   const A = {
     muted: false, ready: false,
     start() {
@@ -57,6 +57,15 @@ export function createAudio() {
       o1.connect(ef); o2.connect(ef); ef.connect(eg); eg.connect(sfx); o1.start(); o2.start();
       eng = { o1, o2, f: ef, g: eg };
 
+      // patrol siren: a square wave wailing between two pitches
+      const so = ctx.createOscillator(); so.type = 'square'; so.frequency.value = 760;
+      const sl = ctx.createOscillator(); sl.type = 'triangle'; sl.frequency.value = 0.55;
+      const sd = ctx.createGain(); sd.gain.value = 230;
+      const sf = ctx.createBiquadFilter(); sf.type = 'bandpass'; sf.frequency.value = 1100; sf.Q.value = 0.8;
+      const sg = ctx.createGain(); sg.gain.value = 0;
+      sl.connect(sd); sd.connect(so.frequency); so.connect(sf); sf.connect(sg); sg.connect(sfx); so.start(); sl.start();
+      siren = sg;
+
       nextT = ctx.currentTime + 0.1;
       timer = setInterval(tick, 50);
       A.ready = true;
@@ -79,6 +88,8 @@ export function createAudio() {
       rotor.g.gain.setTargetAtTime(s.rotor * 0.55, t, 0.15);
       rotor.lfo.frequency.setTargetAtTime(3 + s.rotor * 11, t, 0.2);
       rain.g.gain.setTargetAtTime(s.rain * 0.09, t, 0.4);
+      siren.gain.setTargetAtTime((s.siren || 0) * 0.07, t, 0.15);
+      music.gain.setTargetAtTime(s.duck ? 0.3 : 0.55, t, 0.3);
     },
     step(k = 1) { hit(0.035 * k, 0.05, 'bandpass', 2400); },
     jump() { tone('sine', 300, 620, 0.12, 0.08); },
@@ -86,7 +97,20 @@ export function createAudio() {
     shot() { hit(0.5, 0.18, 'lowpass', 1400); tone('square', 160, 40, 0.16, 0.25); },
     boom() { hit(0.95, 1.1, 'lowpass', 1100, 70); tone('sine', 95, 28, 0.7, 0.8); },
     thunder() { hit(0.5, 2.4, 'lowpass', 260, 60); tone('sine', 55, 30, 1.6, 0.25); },
-    blip(ok = true) {
+    // a pedestrian's "hey!": two quick vowel-ish chirps, pitched per person
+    hey(pitch = 1, vol = 1) {
+      if (!ctx || ctx.currentTime < heyT) return;
+      heyT = ctx.currentTime + 0.18;
+      tone('sawtooth', 330 * pitch, 520 * pitch, 0.09, 0.09 * vol); tone('sawtooth', 560 * pitch, 380 * pitch, 0.2, 0.1 * vol, 0.1);
+      tone('triangle', 660 * pitch, 440 * pitch, 0.2, 0.06 * vol, 0.1);
+    },
+    horn(vol = 1) { if (vol <= 0) return; tone('square', 392, 392, 0.32, 0.05 * vol); tone('square', 494, 494, 0.32, 0.05 * vol); },
+    cash() { tone('square', 1320, 1320, 0.05, 0.05); tone('square', 1760, 1760, 0.09, 0.05, 0.05); },
+    pickup() { tone('triangle', 660, 660, 0.08, 0.14); tone('triangle', 990, 990, 0.08, 0.14, 0.07); tone('triangle', 1320, 1320, 0.2, 0.14, 0.14); },
+    win() { [0, 4, 7, 12, 16].forEach((n, i) => tone('square', mtof(69 + n), mtof(69 + n), 0.22, 0.07, i * 0.09)); },
+    lose() { [7, 4, 0, -5].forEach((n, i) => tone('sawtooth', mtof(57 + n), mtof(56 + n), 0.3, 0.08, i * 0.16)); },
+    star() { tone('square', 880, 440, 0.16, 0.08); tone('square', 880, 440, 0.16, 0.08, 0.18); },
+        blip(ok = true) {
       if (ok) { tone('square', 660, 660, 0.07, 0.07); tone('square', 990, 990, 0.12, 0.07, 0.08); tone('square', 1320, 1320, 0.2, 0.06, 0.16); }
       else tone('square', 160, 110, 0.2, 0.1);
     },

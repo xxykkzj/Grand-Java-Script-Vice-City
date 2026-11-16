@@ -95,11 +95,14 @@ export function createPlayer(scene, L) {
       let turn = 0;
       if (P.speed > 0.6) { turn = angleDelta(P.yaw, Math.atan2(P.vel.x, P.vel.z)); P.yaw += turn * (1 - Math.exp(-10 * dt)); }
 
-      // animation
+      P.animate(dt, turn, audio);
+    },
+    // pose the model from P.pos / P.yaw / P.speed (also used by cutscenes and the carjack)
+    animate(dt, turn, audio) {
       const k = clamp(P.speed / 7.5, 0, 1.5), m = model;
       const prev = P.phase;
       P.phase += dt * (2.2 + P.speed * 0.42) * (k > 0.05 ? 1 : 0.15);
-      if (P.onGround && k > 0.2 && Math.floor(prev / PI) !== Math.floor(P.phase / PI)) audio.step(k);
+      if (audio && P.onGround && k > 0.2 && Math.floor(prev / PI) !== Math.floor(P.phase / PI)) audio.step(k);
       const s = Math.sin(P.phase), c = Math.cos(P.phase);
       P.lean = damp(P.lean, clamp(turn * 0.5, -0.3, 0.3) * k, 6, dt);
       if (P.onGround) {

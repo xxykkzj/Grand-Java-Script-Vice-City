@@ -19,7 +19,9 @@ export function carGeometry() {
   const parts = [
     box(1.9, 0.42, 4.4, 0, 0.56, 0, W),
     shaped(1.9, 0.3, 4.4, 0, 0.92, 0, W, (x, y, z) => [x * (z > 0 ? 0.96 : 1), y > 0 && z > 0 ? y - 0.26 : y, z]),            // sloping bonnet
-    shaped(1.66, 0.5, 2.1, 0, 1.3, -0.35, GLASS, (x, y, z) => (y > 0 ? [x * 0.8, y, z > 0 ? z - 0.75 : z + 0.4] : [x, y, z])), // cabin glass
+    box(0.5, 0.12, 0.5, 0.42, 0.98, -0.5, TRIM), box(0.5, 0.12, 0.5, -0.42, 0.98, -0.5, TRIM),                               // seats
+    box(0.5, 0.5, 0.1, 0.42, 1.2, -0.8, TRIM), box(0.5, 0.5, 0.1, -0.42, 1.2, -0.8, TRIM),
+    box(0.06, 0.5, 0.06, -0.66, 1.3, -1.36, W), box(0.06, 0.5, 0.06, 0.66, 1.3, -1.36, W),                                    // rear pillars
     box(1.3, 0.06, 0.95, 0, 1.57, -0.52, W),                                                                                  // roof
     box(1.84, 0.07, 0.42, 0, 1.3, -2.02, W), box(0.08, 0.26, 0.2, -0.78, 1.16, -2.0, W), box(0.08, 0.26, 0.2, 0.78, 1.16, -2.0, W), // spoiler
     box(1.94, 0.16, 0.12, 0, 0.44, 2.2, TRIM), box(1.94, 0.16, 0.12, 0, 0.44, -2.2, TRIM),                                    // bumpers
@@ -33,6 +35,19 @@ export function carGeometry() {
     parts.push(cyl(0.2, 0.2, 0.32, 6, sx, 0.36, sz, '#b9b4c6', 0, PI / 2));
   }
   return merge(parts);
+}
+// The cabin glass is its own see-through instanced mesh so you can see who is driving.
+export function carGlassGeometry() {
+  return shaped(1.66, 0.5, 2.1, 0, 1.3, -0.35, '#3a5a78', (x, y, z) => (y > 0 ? [x * 0.8, y, z > 0 ? z - 0.75 : z + 0.4] : [x, y, z]));
+}
+// Coast Patrol livery kit: white door panels and a red / blue roof bar, drawn over a teal car.
+export function patrolKitGeometry() {
+  return merge([
+    box(1.935, 0.27, 1.7, 0, 0.56, -0.35, '#f6f8fb'), box(1.94, 0.05, 1.7, 0, 0.56, -0.35, '#12b5a6'),
+    box(1.2, 0.07, 0.34, 0, 1.63, -0.5, '#d9dde6'),
+    box(0.52, 0.17, 0.28, -0.32, 1.72, -0.5, '#ff2a3a'), box(0.52, 0.17, 0.28, 0.32, 1.72, -0.5, '#2a6aff'),
+    box(0.9, 0.02, 1.1, 0, 0.955, 1.5, '#f6f8fb', 0.2),
+  ]);
 }
 
 // The "Disco Tank": chunky, teal and magenta. Returns separate hull / turret / barrel parts.
