@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Neon Coast</title>
+<meta name="description" content="Neon Coast: a tiny, fully procedural 80s-sunset island in a single HTML file.">
+<style>
+:root{
+  --ink:#0a0518; --ink2:#160b33; --pink:#ff3fb4; --cyan:#27e8ff; --sun:#ffd166; --paper:#fff6ec;
+  --mono:ui-monospace,"SF Mono","Cascadia Mono","Segoe UI Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --disp:"Avenir Next Condensed","Arial Narrow","Franklin Gothic Medium","Helvetica Neue",Impact,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);overflow:hidden;font-family:var(--mono);-webkit-font-smoothing:antialiased}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#gl:active{cursor:grabbing}
+
+/* ---------- HUD ---------- */
+#hud{position:fixed;inset:0;pointer-events:none;user-select:none}
+.chip{background:rgba(10,5,24,.72);border:1px solid rgba(39,232,255,.55);
+  clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+#clock{position:absolute;top:16px;right:16px;padding:8px 14px 9px 16px;text-align:right;min-width:168px}
+#clock b{display:block;font-size:30px;line-height:1;letter-spacing:.06em;color:var(--sun);
+  text-shadow:0 0 12px rgba(255,209,102,.6);font-variant-numeric:tabular-nums}
+#clock span{display:block;margin-top:5px;font-size:10px;letter-spacing:.22em;color:var(--cyan)}
+#clock i{font-style:normal;color:var(--pink)}
+#mapwrap{position:absolute;top:92px;right:16px;width:152px;height:152px;border-radius:50%;
+  border:2px solid var(--pink);box-shadow:0 0 14px rgba(255,63,180,.55),inset 0 0 18px rgba(10,5,24,.9);overflow:hidden;background:var(--ink)}
+#map{width:100%;height:100%;display:block}
+#mapwrap::after{content:"N";position:absolute;top:3px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--cyan);text-shadow:0 0 6px var(--ink)}
+#hint{position:absolute;left:16px;bottom:44px;display:flex;flex-wrap:wrap;gap:6px 14px;max-width:60vw;font-size:12px;letter-spacing:.06em}
+#hint span{display:inline-flex;align-items:center;gap:6px;text-shadow:0 1px 4px var(--ink)}
+kbd{font:700 11px var(--mono);color:var(--ink);background:var(--cyan);padding:2px 6px;border-radius:2px;
+  box-shadow:2px 2px 0 var(--pink);text-shadow:none}
+#note{position:absolute;left:0;right:0;bottom:12px;text-align:center;font-size:11px;letter-spacing:.14em;
+  color:rgba(255,246,236,.82);text-shadow:0 1px 6px var(--ink)}
+#note b{color:var(--sun);font-weight:700}
+#perf{position:absolute;top:16px;left:16px;padding:10px 14px;font-size:11px;line-height:1.7;white-space:pre;border-color:rgba(255,63,180,.6)}
+#perf b{color:var(--cyan);font-weight:400}
+#toast{position:absolute;left:50%;top:18%;transform:translateX(-50%);padding:12px 22px;text-align:center;
+  font:800 20px var(--disp);letter-spacing:.16em;color:#fff;white-space:nowrap;
+  text-shadow:0 0 6px var(--pink),0 0 18px var(--pink),0 0 34px var(--pink);
+  border-top:2px solid var(--cyan);border-bottom:2px solid var(--cyan);background:rgba(10,5,24,.55);
+  opacity:0;transition:opacity .25s,transform .25s}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(-6px)}
+#toast small{display:block;margin-top:4px;font:400 11px var(--mono);letter-spacing:.2em;color:var(--cyan);text-shadow:none}
+
+/* ---------- cheat console ---------- */
+#console{position:fixed;left:0;right:0;bottom:0;padding:10px 16px 12px;background:rgba(6,3,16,.9);
+  border-top:2px solid var(--pink);box-shadow:0 -6px 30px rgba(255,63,180,.25);font-size:13px}
+#console::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(39,232,255,.05) 0 1px,transparent 1px 3px)}
+#log{max-height:150px;overflow:hidden;white-space:pre-wrap;color:#8fe9c4;line-height:1.5;margin-bottom:6px}
+#log .err{color:#ff8f8f}
+#console form{display:flex;align-items:center;gap:8px}
+#console label{color:var(--pink);font-weight:700}
+#cmd{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--cyan);font:inherit;letter-spacing:.14em;text-transform:uppercase;caret-color:var(--pink)}
+#cmd:focus-visible{outline:1px dashed rgba(39,232,255,.5);outline-offset:4px}
+#console em{font-style:normal;font-size:11px;color:rgba(255,246,236,.6);letter-spacing:.1em;white-space:nowrap}
+
+/* ---------- title card ---------- */
+#title{position:fixed;inset:0;display:grid;place-items:center;text-align:center;cursor:pointer;
+  background:radial-gradient(120% 90% at 50% 100%,rgba(255,96,60,.35),rgba(64,14,92,.55) 45%,rgba(10,5,24,.9));
+  transition:opacity .6s}
+#title.out{opacity:0;pointer-events:none}
+#title .card{padding:24px}
+#title .kicker{font-size:12px;letter-spacing:.5em;color:var(--cyan);margin:0 0 14px;text-indent:.5em}
+#title h1{margin:0;font:italic 900 clamp(58px,13vw,168px)/.86 var(--disp);letter-spacing:-.01em;text-transform:uppercase;
+  background:linear-gradient(180deg,#fff7c9 8%,var(--sun) 38%,#ff7a3d 58%,var(--pink) 82%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(4px 4px 0 #2a0b5a) drop-shadow(0 0 26px rgba(255,63,180,.55))}
+#title h1 span{display:block}
+#title .rule{height:3px;margin:20px auto 16px;width:min(520px,70vw);
+  background:linear-gradient(90deg,transparent,var(--cyan) 20%,var(--pink) 80%,transparent)}
+#title .sub{margin:0;font-size:13px;letter-spacing:.34em;color:var(--paper)}
+#bar{width:min(360px,60vw);height:8px;margin:30px auto 0;border:1px solid var(--cyan);padding:1px}
+#bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--pink));transition:width .15s}
+#status{margin:12px 0 0;font-size:11px;letter-spacing:.24em;color:rgba(255,246,236,.75);min-height:1.2em}
+#go{margin:30px 0 0;font:800 22px var(--disp);letter-spacing:.3em;color:#fff;background:none;border:2px solid var(--pink);padding:12px 26px 12px 32px;cursor:pointer;
+  text-shadow:0 0 10px var(--pink);box-shadow:0 0 18px rgba(255,63,180,.5),inset 0 0 14px rgba(255,63,180,.3);animation:pulse 1.6s ease-in-out infinite}
+#go:focus-visible{outline:2px solid var(--cyan);outline-offset:4px}
+#keys{margin:26px auto 0;font-size:11px;line-height:2.1;letter-spacing:.08em;color:rgba(255,246,236,.85);max-width:640px}
+@keyframes pulse{50%{box-shadow:0 0 30px rgba(255,63,180,.9),inset 0 0 20px rgba(255,63,180,.5)}}
+#nogl{position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;background:var(--ink);line-height:1.7}
+#nogl h2{font:italic 900 44px var(--disp);color:var(--sun);margin:0 0 8px}
+@media (max-width:700px){#hint{max-width:90vw;bottom:40px}#note{font-size:9px}#mapwrap{width:110px;height:110px}}
+@media (prefers-reduced-motion:reduce){#go{animation:none}#toast,#title,#bar i{transition:none}}
+</style>
+</head>
+<body>
+<canvas id="gl" aria-label="Neon Coast game view"></canvas>
+
+<div id="hud" hidden>
+  <div id="clock" class="chip"><b id="time">19:00</b><span><i id="phase">SUNSET</i> · <span id="zone" style="display:inline">THE PROMENADE</span></span></div>
+  <div id="mapwrap"><canvas id="map" width="304" height="304" aria-label="Minimap"></canvas></div>
+  <div id="perf" class="chip" hidden></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <div id="hint"></div>
+  <div id="note">Everything you see and hear is generated in code — <b>0 asset files</b></div>
+</div>
+
+<div id="console" hidden>
+  <div id="log" aria-live="polite"></div>
+  <form id="cform" autocomplete="off">
+    <label for="cmd">NEON-DOS&gt;</label>
+    <input id="cmd" type="text" maxlength="24" spellcheck="false" autocapitalize="characters" aria-label="Cheat code">
+    <em>Type HELP for codes · Esc to close</em>
+  </form>
+</div>
+
+<div id="title">
+  <div class="card">
+    <p class="kicker">A POCKET-SIZED SUNSET ISLAND</p>
+    <h1><span>Neon</span><span>Coast</span></h1>
+    <div class="rule"></div>
+    <p class="sub">SKATE · DRIVE · FLY</p>
+    <div id="bar"><i></i></div>
+    <p id="status">WARMING UP THE NEON…</p>
+    <button id="go" type="button" hidden>CLICK TO START</button>
+    <p id="keys" hidden>
+      <kbd>W A S D</kbd> move &nbsp; <kbd>Shift</kbd> sprint &nbsp; <kbd>Space</kbd> jump &nbsp; <kbd>Drag</kbd> look &nbsp; <kbd>E</kbd> vehicles<br>
+      <kbd>~</kbd> / <kbd>T</kbd> cheat console &nbsp; <kbd>N</kbd> time of day &nbsp; <kbd>M</kbd> mute &nbsp; <kbd>P</kbd> perf panel
+    </p>
+  </div>
+</div>
+
+<div id="nogl" hidden>
+  <div>
+    <h2>NEON COAST</h2>
+    <p>This little island is drawn with WebGL, which this browser or device doesn't have switched on.<br>
+    Try a current desktop version of Chrome, Firefox, Edge or Safari with hardware acceleration enabled.</p>
+  </div>
+</div>
+
+<script>/*%%BUNDLE%%*/</script>
+</body>
+</html>
