@@ -1,34 +1,26 @@
 // The game layer on top of the sandbox: cash, health, heat (wanted stars) and the Coast
-// Patrol, carjacking, pickups, the bar job and the CAUGHT / KNOCKED OUT cards.
+// Patrol, carjacking, pickups and the CAUGHT / KNOCKED OUT cards.
+// Heat comes from taking an occupied vehicle, running people over, tank fire and red lights in
+// view of a patrol car. Bumping other cars is just traffic: it never adds a star.
 import * as THREE from 'three';
 import { box, merge, clamp, lerp, angleDelta, segBlocked, timeU, PI, reducedMotion } from '../core/util.js';
 import { signal } from '../world/roads.js';
 import { createGlow } from '../world/glow.js';
-import { makeMarker } from './cutscene.js';
 
 const $ = (id) => document.getElementById(id);
-const DROPS = [
-  { name: 'the kiosk at the end of Driftwood Pier', tag: 'DRIFTWOOD PIER KIOSK', x: 40, z: 233 },
-  { name: 'the west lifeguard hut on Coral Beach', tag: 'WEST LIFEGUARD HUT', x: -113, z: 101 },
-  { name: 'the east lifeguard hut on Coral Beach', tag: 'EAST LIFEGUARD HUT', x: 157, z: 105 },
-  { name: 'the garden party on the Back Bay lawn', tag: 'BACK BAY LAWN', x: -236, z: -143 },
-  { name: 'the night market at the east end of Midtown', tag: 'MIDTOWN, EAST END', x: 262, z: -11.5 },
-];
 const CASH = [[40, 205], [-205, 112], [228, 116], [-150, -144], [150, -144], [118, 71], [-262, 4], [0, -112]];
 const REASON = {
-  jack: 'THAT WAS NOT YOUR CAR', ped: 'WATCH WHERE YOU ROLL', car: 'FENDER BENDER', tank: 'HEAVY ARTILLERY ON THE BOULEVARD',
+  jack: 'THAT WAS NOT YOUR RIDE', ped: 'WATCH WHERE YOU ROLL', tank: 'HEAVY ARTILLERY ON THE BOULEVARD',
   red: 'COAST PATROL SAW THAT RED LIGHT', patrol: 'YOU STOLE A PATROL CAR',
 };
 
 export function createRules(game, scene) {
   const { L, vehicles, player, audio, hud, env, peds, traffic, R, cam } = game;
-  Object.assign(game, { money: 250, health: 100, wanted: 0, cooling: false, mission: null, busy: null, stats: { jobs: 0, reds: 0 } });
+  Object.assign(game, { money: 250, health: 100, wanted: 0, cooling: false, mission: null, busy: null, inside: null, stats: { jobs: 0, reds: 0 } });
   const cd = {};
-  let unseen = 0, hurtCd = 0, bust = 0, losT = 0, seen = false, jobWait = 0, frame = 0, jack = null, lastNode = null;
+  let unseen = 0, hurtCd = 0, bust = 0, losT = 0, seen = false, frame = 0, jack = null, lastNode = null;
 
   // ---- markers and pickups
-  const barMark = makeMarker(scene, '#ff3fb4'), dropMark = makeMarker(scene, '#ffd166');
-  barMark.position.set(L.bar.x, 0, L.bar.z);
   const basic = new THREE.MeshBasicMaterial({ vertexColors: true });
   const cashMesh = new THREE.InstancedMesh(merge([
     box(0.8, 0.3, 0.42, 0, 0, 0, '#39d98a'), box(0.2, 0.31, 0.43, 0, 0, 0, '#fff3c4'), box(0.82, 0.05, 0.44, 0, 0, 0, '#1f9a5c'),
@@ -81,10 +73,11 @@ export function createRules(game, scene) {
     $('cardt').textContent = title; $('cards').textContent = fee ? `${what}: -$${fee}` : what + ': ON THE HOUSE';
     card.className = 'on ' + cls;
     audio.lose();
-    if (game.mission) endJob(false, true);
+    game.story.onDown(title);
     setTimeout(() => fade.classList.add('on'), 2300);
     setTimeout(() => {
       leaveVehicle();
+      game.places.putOutside(at.x, at.z);
       player.pos.set(at.x, 0, at.z); player.vel.set(0, 0, 0); player.vy = 0; player.yaw = 0; player.speed = 0;
       cam.yaw = 0; cam.pitch = 0.2;
       game.money -= fee; game.health = 100; game.wanted = 0; unseen = 0; bust = 0;
@@ -93,40 +86,9 @@ export function createRules(game, scene) {
     }, 2750);
   }
 
-  // ---- the delivery job
-  function offerJob() {
-    const f = game.focus();
-    const far = DROPS.filter((d) => d !== game.lastDrop);
-    const t = far[Math.floor(Math.random() * far.length)];
-    const dist = Math.hypot(t.x - L.bar.x, t.z - L.bar.z), secs = Math.round((dist / 6.2 + 14) / 5) * 5, pay = Math.round((220 + dist) / 10) * 10;
-    game.busy = 'cut';
-    player.vel.set(0, 0, 0);
-    game.cut.start([
-      ['DEE', 'Skye! Wheels on? Good. I have a hot one for you.'],
-      ['SKYE', "Hot costs extra, Dee. So does 'right now'."],
-      ['DEE', `One crate of Flamingo Fizz for ${t.name}. They ran dry an hour ago.`],
-      ['SKYE', "That's clear across town."],
-      ['DEE', `${secs} seconds before the ice gives up. $${pay} when it lands. Roll!`],
-    ], () => {
-      game.busy = null;
-      player.pos.set(L.bar.x, 0, L.bar.z + 2.6); player.yaw = 0; player.speed = 0; player.vel.set(0, 0, 0);
-      cam.yaw = Math.atan2(t.x - player.pos.x, t.z - player.pos.z); cam.pitch = 0.2;
-      game.lastDrop = t;
-      game.mission = { target: t, time: secs, pay, text: `Deliver the Flamingo Fizz to ${t.tag} · $${pay}` };
-      dropMark.position.set(t.x, 0, t.z);
-      hud.toast('SPECIAL DELIVERY', t.tag);
-    });
-  }
-  function endJob(won, quiet) {
-    const ms = game.mission;
-    game.mission = null; jobWait = 6;
-    if (won) { game.money += ms.pay; game.stats.jobs++; audio.win(); hud.toast('DELIVERED', `+$${ms.pay} · DEE HAS MORE WORK AT THE VELVET FLAMINGO`); }
-    else if (!quiet) { audio.lose(); hud.toast('TOO LATE', 'THE ICE MELTED · TRY AGAIN AT THE VELVET FLAMINGO'); }
-  }
-
   // ---- carjack: glide to the driver's door, swing it open, haul them out, hop in
   function startJack(c) {
-    if (game.busy || !c.ai || c.jacking || c.kind !== 'car') return false;
+    if (game.busy || !c.ai || c.jacking || c.kind === 'tank') return false;
     jack = { c, t: 0, sx: player.pos.x, sz: player.pos.z, out: false };
     c.ai.hold = true; c.ai.pursuit = false; c.jacking = true; game.busy = 'jack';
     doorMat.color.set(c.color);
@@ -148,7 +110,7 @@ export function createRules(game, scene) {
     player.yaw += angleDelta(player.yaw, Math.atan2(c.x - player.pos.x, c.z - player.pos.z)) * (1 - Math.exp(-14 * dt));
     player.animate(dt, 0, null);
     const open = clamp((t - 0.3) / 0.25, 0, 1) * (1 - clamp((t - 1.2) / 0.15, 0, 1));
-    door.visible = true;
+    door.visible = c.kind === 'car';
     door.position.set(c.x + lx * 0.97 + fx * 0.3, c.y + 0.72, c.z + lz * 0.97 + fz * 0.3);
     door.rotation.y = c.yaw - open * 1.15;
     if (t > 0.4 && t < 0.95) { player.model.armR.rotation.x = -1.5; player.model.armL.rotation.x = -1.3; }
@@ -162,8 +124,8 @@ export function createRules(game, scene) {
       door.visible = false;
       traffic.release(c);
       c.jacking = false; c.driven = true; c.traffic = !c.police;
-      game.vehicle = c; game.mode = 'car'; game.busy = null;
-      player.pos.y = 0; player.setHidden(true);
+      game.vehicle = c; game.mode = c.kind; game.busy = null;
+      player.pos.y = 0; player.setHidden(c.kind !== 'bike');
       audio.thud(0.3);
       crime(c.police ? 'patrol' : 'jack', c.police ? 2 : 1, 0.5);
       jack = null;
@@ -174,9 +136,20 @@ export function createRules(game, scene) {
   vehicles.onCollide = (a, b, imp) => {
     const mine = a.driven ? a : b.driven ? b : null;
     if (!mine || imp < 4) return;
-    const other = mine === a ? b : a;
-    if (other.kind === 'car' && (imp > 6 || other.police)) crime('car', 1, 4);
+    // fender benders are free: no heat for car-on-car contact, only a few bruises if it was a big one
     if (imp > 10 && mine.kind === 'car') hurt(Math.min(22, imp * 0.5));
+  };
+  // a heavy crash on the Comet sends the courier over the bars
+  vehicles.onThrow = (c, sp) => {
+    if (game.busy || game.vehicle !== c) return;
+    const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), k = Math.min(sp, 30) * 0.4;
+    leaveVehicle();
+    player.pos.set(c.x, 0.9, c.z); player.vel.set(fx * k, 0, fz * k); player.vy = 6.5; player.onGround = false; player.yaw = c.yaw;
+    c.spin += (Math.random() - 0.5) * 8; c.vx *= 0.4; c.vz *= 0.4;
+    hurtCd = 1.2;
+    audio.thud(0.9);
+    hud.toast('THROWN OFF', 'THE COMET IS FAST, NOT FORGIVING');
+    hurt(Math.min(38, 8 + sp * 0.8));
   };
   vehicles.onBoom = (x, y, z) => {
     peds.alarm(x, z, 55, 9);
@@ -187,7 +160,7 @@ export function createRules(game, scene) {
   game.pedHit = (p, o) => { if (o.driven) crime('ped', 1, 2); };
 
   const rules = {
-    crime, hurt, startJack,
+    crime, hurt, startJack, leaveVehicle,
     blips: [],
     update(dt) {
       frame++;
@@ -209,18 +182,6 @@ export function createRules(game, scene) {
       cashMesh.instanceMatrix.needsUpdate = medMesh.instanceMatrix.needsUpdate = true;
       glow.commit();
 
-      // the bar's doorway marker and the job
-      jobWait -= dt;
-      const ms = game.mission;
-      barMark.visible = !ms && jobWait <= 0 && game.busy !== 'cut';
-      dropMark.visible = !!ms;
-      if (barMark.visible && !game.busy && onFoot() && Math.hypot(f.x - L.bar.x, f.z - L.bar.z) < 1.7) offerJob();
-      if (ms && !game.busy) {
-        ms.time -= dt;
-        if (Math.hypot(f.x - ms.target.x, f.z - ms.target.z) < 2.6 && Math.abs(f.y) < 3) endJob(true);
-        else if (ms.time <= 0) endJob(false);
-      }
-
       // Coast Patrol: do they see you? are they on top of you?
       let near = 1e9;
       if ((losT -= dt) <= 0) {
@@ -228,7 +189,7 @@ export function createRules(game, scene) {
         for (const c of traffic.police) {
           if (c.off || !c.ai) continue;
           const d = Math.hypot(c.x - f.x, c.z - f.z);
-          if (d < 75 && !segBlocked(c.x, c.z, f.x, f.z, L.solids)) seen = true;
+          if (d < 75 && !game.inside && !segBlocked(c.x, c.z, f.x, f.z, L.solids)) seen = true;
         }
       }
       let siren = 0;
@@ -243,7 +204,7 @@ export function createRules(game, scene) {
         if (seen) unseen = 0; else unseen += dt;
         if (unseen > 24) { game.wanted--; unseen = 14; if (!game.wanted) hud.toast('HEAT GONE', 'COAST PATROL LOST INTEREST'); }
         const airborne = game.mode === 'heli' && game.vehicle.y > 1;
-        if (game.wanted >= 2 && !airborne && near < (onFoot() ? 6.6 : 8) && pSpeed() < (onFoot() ? 8.5 : 3.5)) bust += dt; else bust = Math.max(0, bust - dt * 2);
+        if (game.wanted >= 2 && !airborne && !game.inside && near < (onFoot() ? 6.6 : 8) && pSpeed() < (onFoot() ? 8.5 : 3.5)) bust += dt; else bust = Math.max(0, bust - dt * 2);
         if (bust > 1.3) down('CAUGHT', 'bust', L.station, 'COAST PATROL FINE', 0.15, 50);
       } else bust = 0;
       game.cooling = game.wanted > 0 && unseen > 6;
@@ -260,7 +221,7 @@ export function createRules(game, scene) {
 
       // traffic hurts when you are on foot
       hurtCd -= dt;
-      if (onFoot() && !game.busy && hurtCd <= 0 && player.pos.y < 1.2) {
+      if (onFoot() && !game.busy && !game.inside && hurtCd <= 0 && player.pos.y < 1.2) {
         for (const c of vehicles.cars) {
           if (c.off) continue;
           const dx = player.pos.x - c.x, dz = player.pos.z - c.z, d = Math.hypot(dx, dz), sp = Math.hypot(c.vx, c.vz);
@@ -278,8 +239,7 @@ export function createRules(game, scene) {
       const bl = rules.blips;
       bl.length = 0;
       for (const p of picks) if (p.t <= 0) bl.push({ x: p.x, z: p.z, color: p.med ? '#ff8ad0' : '#6dffb0', near: true });
-      if (barMark.visible) bl.push({ x: L.bar.x, z: L.bar.z, color: '#ff3fb4', big: true });
-      if (ms) bl.push({ x: ms.target.x, z: ms.target.z, color: '#ffd166', big: true, diamond: true });
+      game.places.blips(bl); game.story.blips(bl);
     },
   };
   return rules;

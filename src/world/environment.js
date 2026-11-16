@@ -199,6 +199,8 @@ export function createEnvironment(scene, sky, ocean, city, camera, audio) {
       reflU.sky.value.copy(cur.hor).lerp(cur.mid, 0.5).multiplyScalar(0.8 + fl * 2);
       reflU.sun.value.copy(cur.sun).multiplyScalar(cur.sunI * 0.5 * (1 - veil)); reflU.dir.value.copy(lightDir);
       city.setLights(cur.neon, cur.lit, cur.glass);
+      // indoors the courier is lit by the room, not the sky
+      if (env.indoor) { hemi.color.set(0xfff0f6); hemi.groundColor.set(0xb090d0); hemi.intensity = 2.1; sun.intensity = 0.5; scene.fog.near = 400; scene.fog.far = 900; }
     },
   };
   return env;

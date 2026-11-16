@@ -64,6 +64,11 @@ export function createTraffic(R, vehicles, grid, game) {
     const c = vehicles.addCar(0, 0, 0, vehicles.PAINTS[(i * 4 + 1) % vehicles.PAINTS.length], { traffic: true });
     if (c) place(c, 30);
   }
+  // a couple of Comets ride with the traffic
+  for (let i = 0; i < 2; i++) {
+    const c = vehicles.addCar(0, 0, 0, vehicles.BIKE_PAINT[(i * 2 + 4) % vehicles.BIKE_PAINT.length], { traffic: true, kind: 'bike' });
+    if (c) { place(c, 30); c.ai.cruise = 11.5 + i * 2; }
+  }
   const police = [];
   for (let i = 0; i < POLICE; i++) {
     const c = vehicles.addCar(0, 0, 0, PATROL_TEAL, { police: true, label: 'patrol car', off: true });

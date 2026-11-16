@@ -48,7 +48,23 @@ function buildModel() {
     cyl(0.06, 0.06, 0.16, 8, 0, -0.9, 0.15, MAG, 0, PI / 2), cyl(0.06, 0.06, 0.16, 8, 0, -0.9, -0.07, MAG, 0, PI / 2),
   ], sx * 0.12, 0.96, 0);
   const armL = arm(1), armR = arm(-1), legL = leg(1), legR = leg(-1);
-  return { root, body, head, armL, armR, legL, legR };
+  // Outfits repaint the vertex colours: every vertex remembers which of the four base colours it was built with.
+  const BASE = [TEAL, MAG, WHITE, BAG].map((h) => new THREE.Color(h)), KEYS = ['jacket', 'trim', 'light', 'bag'];
+  const skins = [];
+  root.traverse((m) => {
+    if (!m.isMesh) return;
+    const a = m.geometry.attributes.color, role = new Int8Array(a.count).fill(-1);
+    for (let i = 0; i < a.count; i++) BASE.forEach((b, k) => { if (Math.abs(a.getX(i) - b.r) + Math.abs(a.getY(i) - b.g) + Math.abs(a.getZ(i) - b.b) < 0.01) role[i] = k; });
+    skins.push({ a, role });
+  });
+  const c = new THREE.Color();
+  const setOutfit = (o) => {
+    for (const { a, role } of skins) {
+      for (let i = 0; i < a.count; i++) if (role[i] >= 0) { c.set(o[KEYS[role[i]]]); a.setXYZ(i, c.r, c.g, c.b); }
+      a.needsUpdate = true;
+    }
+  };
+  return { root, body, head, armL, armR, legL, legR, setOutfit };
 }
 
 export function createPlayer(scene, L) {
@@ -62,7 +78,7 @@ export function createPlayer(scene, L) {
 
   const P = {
     pos: new THREE.Vector3(-10, 0, 67), vel: new THREE.Vector3(), vy: 0, yaw: PI / 2,
-    onGround: true, hidden: false, lowGravity: false, phase: 0, speed: 0, lean: 0, model,
+    onGround: true, hidden: false, lowGravity: false, phase: 0, speed: 0, lean: 0, model, floor: 0,
     setHidden(h) { P.hidden = h; model.root.visible = !h; shadow.visible = !h; },
     update(dt, inp, camYaw, vehicles, audio) {
       if (P.hidden) return;
@@ -118,9 +134,21 @@ export function createPlayer(scene, L) {
         m.body.rotation.set(0.08, 0, -P.lean); m.body.position.y = 0;
       }
       m.head.rotation.x = -0.15 * k;
-      m.root.position.copy(P.pos); m.root.rotation.y = P.yaw;
-      shadow.position.set(P.pos.x, 0.03, P.pos.z);
-      const sk = 1 / (1 + P.pos.y * 0.35); shadow.scale.set(sk, 1, sk);
+      m.root.position.copy(P.pos); m.root.rotation.set(0, P.yaw, 0);
+      shadow.position.set(P.pos.x, P.floor + 0.03, P.pos.z);
+      const sk = 1 / (1 + (P.pos.y - P.floor) * 0.35); shadow.scale.set(sk, 1, sk);
+    },
+    // sat on the Comet: tucked in behind the screen, leaning and wheelie-ing with the bike
+    ride(v) {
+      const m = model, fx = Math.sin(v.yaw), fz = Math.cos(v.yaw), up = Math.sin(-Math.min(v.tx, 0));
+      P.pos.set(v.x, v.y, v.z); P.yaw = v.yaw; P.speed = 0; P.vel.set(0, 0, 0); P.vy = 0; P.onGround = true;
+      m.root.position.set(v.x - fx * (0.95 + up * 0.3), v.y + 0.02 + up * 0.5, v.z - fz * (0.95 + up * 0.3));
+      m.root.rotation.set(v.tx * 0.8, v.yaw, v.tz, 'YXZ');
+      m.body.rotation.set(0.42, 0, 0); m.body.position.y = 0;
+      m.legL.rotation.set(-1.25, 0, 0.28); m.legR.rotation.set(-1.25, 0, -0.28);
+      m.armL.rotation.set(-1.6, 0, -0.12); m.armR.rotation.set(-1.6, 0, 0.12);
+      m.head.rotation.x = -0.35;
+      shadow.visible = false;
     },
   };
   return P;

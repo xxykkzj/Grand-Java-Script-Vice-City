@@ -2,13 +2,14 @@
 import * as THREE from 'three';
 import { damp, clamp, angleDelta, reducedMotion } from '../core/util.js';
 
-const DIST = { foot: 7.5, car: 10.5, tank: 14, heli: 17 };
-const LIFT = { foot: 1.5, car: 1.6, tank: 3, heli: 2.4 };
+const DIST = { foot: 7.5, car: 10.5, bike: 8.2, tank: 14, heli: 17 };
+const LIFT = { foot: 1.5, car: 1.6, bike: 1.6, tank: 3, heli: 2.4 };
 
 export function createFollowCamera(camera, solids) {
   const target = new THREE.Vector3(-10, 1.5, 67), look = new THREE.Vector3();
   const cam = {
     yaw: Math.PI / 2, pitch: 0.2, dist: 7.5,
+    snap(p) { target.set(p.x, p.y + 1.5, p.z); },
     update(dt, input, mode, focus, heading, speed, fx, playerPhase) {
       if (input.dragDX || input.dragDY) {
         cam.yaw -= input.dragDX * 0.0055;
@@ -16,13 +17,13 @@ export function createFollowCamera(camera, solids) {
       }
       // ease back behind a moving car / helicopter when the mouse has been left alone
       const idle = performance.now() / 1000 - input.lastDrag;
-      if ((mode === 'car' || mode === 'heli') && idle > 1.2 && Math.abs(speed) > 3) {
-        cam.yaw += angleDelta(cam.yaw, heading) * (1 - Math.exp(-(mode === 'car' ? 2.2 : 1.2) * dt));
+      if ((mode === 'car' || mode === 'bike' || mode === 'heli') && idle > 1.2 && Math.abs(speed) > 3) {
+        cam.yaw += angleDelta(cam.yaw, heading) * (1 - Math.exp(-(mode === 'heli' ? 1.2 : mode === 'bike' ? 3 : 2.2) * dt));
       }
       target.x = damp(target.x, focus.x, 12, dt);
       target.z = damp(target.z, focus.z, 12, dt);
       target.y = damp(target.y, focus.y + LIFT[mode], 8, dt);
-      let want = DIST[mode] + (mode === 'car' ? Math.min(Math.abs(speed) * 0.06, 3) : 0);
+      let want = DIST[mode] + (mode === 'car' || mode === 'bike' ? Math.min(Math.abs(speed) * 0.06, 3) : 0);
       // pull in if a building sits between the camera and the target
       const cp = Math.cos(cam.pitch), dx = -Math.sin(cam.yaw) * cp, dy = Math.sin(cam.pitch), dz = -Math.cos(cam.yaw) * cp;
       for (let i = 1; i <= 10; i++) {

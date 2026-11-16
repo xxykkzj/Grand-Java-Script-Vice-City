@@ -211,6 +211,7 @@ export function createPeds(scene, R, grid, game) {
         const i = N + c.idx;
         if (c.off || !c.hasDriver || !(c.ai || c.jacking)) { torso.setMatrixAt(i, ZERO); head.setMatrixAt(i, ZERO); continue; }
         B.compose(v.set(c.x, c.y, c.z), q.setFromEuler(eu.set(c.tx, c.yaw, c.tz)), sc.set(1, 1, 1));
+        if (c.kind === 'bike') { part(torso, i, 0, 0.92, -0.42, 0.5, 0, 0.9, 0.9); part(head, i, 0, 1.42, -0.1, 0.1, 0, 1, 1); continue; }
         part(torso, i, 0.42, 0.66, -0.55, -0.12, 0, 0.9, 0.9);
         part(head, i, 0.42, 1.24, -0.6, 0, 0, 1, 1);
       }

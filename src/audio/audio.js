@@ -7,7 +7,7 @@ const CHORDS = [{ root: 45, third: 3 }, { root: 41, third: 4 }, { root: 48, thir
 const BASS = [0, null, 12, 0, null, 12, 0, 7, 0, null, 12, 0, 7, 12, 0, 12];
 
 export function createAudio() {
-  let ctx = null, master, music, sfx, noise, arpBus, timer = 0, nextT = 0, stepI = 0;
+  let ctx = null, master, music, mfilt, sfx, noise, arpBus, timer = 0, nextT = 0, stepI = 0;
   let eng, rotor, skate, rain, siren, heyT = 0;
   const A = {
     muted: false, ready: false,
@@ -20,7 +20,10 @@ export function createAudio() {
       const comp = ctx.createDynamicsCompressor();
       comp.threshold.value = -14; comp.ratio.value = 4;
       master.connect(comp); comp.connect(ctx.destination);
-      music = ctx.createGain(); music.gain.value = 0.55; music.connect(master);
+      music = ctx.createGain(); music.gain.value = 0.55;
+      // the music bus runs through a low-pass so shops get a muffled radio and Club Prism gets the full system
+      mfilt = ctx.createBiquadFilter(); mfilt.type = 'lowpass'; mfilt.frequency.value = 16000; mfilt.Q.value = 0.4;
+      music.connect(mfilt); mfilt.connect(master);
       sfx = ctx.createGain(); sfx.gain.value = 0.9; sfx.connect(master);
       // 2 s of white noise shared by drums, rain, skates, rotor, explosions
       noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
@@ -89,9 +92,14 @@ export function createAudio() {
       rotor.lfo.frequency.setTargetAtTime(3 + s.rotor * 11, t, 0.2);
       rain.g.gain.setTargetAtTime(s.rain * 0.09, t, 0.4);
       siren.gain.setTargetAtTime((s.siren || 0) * 0.07, t, 0.15);
-      music.gain.setTargetAtTime(s.duck ? 0.3 : 0.55, t, 0.3);
+      // room: 0 street, 1 a shop or the bar (radio in the corner), 2 Club Prism (loud)
+      music.gain.setTargetAtTime(s.room === 2 ? (s.duck ? 0.5 : 1.05) : s.duck ? 0.3 : s.room === 1 ? 0.42 : 0.55, t, 0.3);
+      mfilt.frequency.setTargetAtTime(s.room === 1 ? 1500 : 16000, t, 0.25);
     },
+    club: false,
     step(k = 1) { hit(0.035 * k, 0.05, 'bandpass', 2400); },
+    // typewriter blip for subtitles, pitched per character
+    talk(pitch = 1) { tone('square', 420 * pitch, 380 * pitch, 0.035, 0.022); },
     jump() { tone('sine', 300, 620, 0.12, 0.08); },
     thud(k = 1) { hit(0.3 * k, 0.12, 'lowpass', 500); tone('sine', 110, 50, 0.12, 0.25 * k); },
     shot() { hit(0.5, 0.18, 'lowpass', 1400); tone('square', 160, 40, 0.16, 0.25); },
@@ -153,6 +161,8 @@ export function createAudio() {
     }
     if (s === 4 || s === 12) { hit(0.38, 0.16, 'highpass', 1400, 0, t, music); note('triangle', 55, t, 0.08, 0.2, 2000, music); }
     if (s % 2 === 0) hit(s % 4 === 2 ? 0.13 : 0.07, s % 4 === 2 ? 0.09 : 0.035, 'highpass', 7500, 0, t, music);
+    // inside Club Prism the DJ adds claps and an off-beat open hat
+    if (A.club) { if (s === 4 || s === 12) hit(0.3, 0.2, 'bandpass', 1900, 0, t, music); if (s % 4 === 2) hit(0.16, 0.22, 'highpass', 9000, 0, t, music); if (s % 8 === 6) note('square', ch.root + 24, t, 0.1, 0.05, 3000, arpBus); }
     // bass
     if (BASS[s] !== null) note('sawtooth', ch.root - 12 + BASS[s], t, STEP * 0.95, 0.3, 900, music);
     // pluck arp up and down the chord

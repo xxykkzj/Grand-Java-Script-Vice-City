@@ -1,0 +1,214 @@
+# Neon Coast: the story
+
+Everything here is original to Neon Coast. The lines live in [`src/game/story.js`](src/game/story.js); edit them there and rebuild. The script section below mirrors that file.
+
+## Setting
+
+Summer 1986. Neon Coast is a sandbar with one boulevard, one pier and more neon than sense. Everybody on Lumina Boulevard owes somebody, and most of them pay in favours.
+
+Skye delivers those favours on eight wheels. Parcels, crates of Flamingo Fizz, the occasional apology. The best customer is Dee Marlowe, who owns the Velvet Flamingo and is three months behind on its lease: $5,000 by Sunday, or the landlord sells to Marty Glitz, the promoter next door at Club Prism, who wants the bar as a "VIP annexe".
+
+Saturday is the Neon Coast Dance-Off at Club Prism. The prize is $5,000. Dee has entered. Marty is running it, and Marty is a very organised man.
+
+## Characters
+
+| Who | Where | What they are like |
+| --- | --- | --- |
+| **Skye** | everywhere | The courier you play. Roller skates, bomber jacket, a smart answer for everything and a soft spot for robots with feelings. |
+| **Dee Marlowe** | The Velvet Flamingo | Owner and bartender. Pink beehive, never stops polishing a glass. Back Bay roller-disco champion, 1979. Bad at business, good at people. |
+| **Marty Glitz** | Club Prism | Promoter. Purple suit, gold tie, mirrored shades indoors. Believes in reach, shoulders and filling in paperwork ahead of time. |
+| **Gus Pibble** | Pelican Pantry 24 | Night clerk. Paper hat, green apron, permanently startled. Owes Marty for the slush machine. Owns a Comet sport bike that is his whole savings. |
+| **DJ Kilowatt** | Club Prism, the booth | Headphones, yellow cap, one hand always in the air. Has not forgiven Marty for the smoke machine incident. |
+| **Mimi Zig** | Zigzag Threads | Sells jackets. Has opinions about your shorts. |
+
+## The arc
+
+1. **Fizz Run.** A simple delivery for Dee: fetch a crate from Gus, run it to the pier against the clock, come home. Gus is jumpy about men in shiny jackets, and Dee admits the lease is due.
+2. **Paper Trail.** Marty hires the fastest wheels on the boulevard to flyer the town for the Dance-Off, then lets slip that the scorecards are "already organised".
+3. **Cold Feet.** Gus cracks: the pre-filled scorecards are in a shoebox in his freezer. Skye takes the box and Gus's Comet, shakes Marty's bouncers through the back streets and brings the evidence to Dee, who knows exactly who should read it out.
+4. **Last Dance.** Saturday night. DJ Kilowatt reads the cards over the PA, the crowd takes over the judging, and Skye dances for the Velvet Flamingo on skates. The prize goes home to Dee. Paid in full.
+
+Payoff: the Flamingo keeps its lease, Skye gets a cut of the prize and Dee's 1979 jacket (the Flamingo Royale outfit at Zigzag Threads), and Dee's odd jobs pay better from then on.
+
+## How a job plays
+
+- The pulsing star on the minimap is where the next job starts. Skate into the ring at that door.
+- Every job is a few steps with one objective each, shown under the minimap. A clock only appears on the legs where it matters: the melting ice, the flyer run, the bouncers, the song.
+- Steps marked as checkpoints are where a retry puts you. Run out of time, get knocked out or get caught and you see JOB BLOWN: `Enter` retries from the last checkpoint, `Esc` drops the job (it is offered again at the same door).
+- Finish the last step and the pass card shows the reward.
+- In a scene, `Space` or `Enter` finishes the line being typed, then moves to the next one. `X` skips the scene.
+
+## Full script
+
+### 1. Fizz Run
+
+*Starts at The Velvet Flamingo. Reward $300. Dee is out of syrup and the pier is out of patience.*
+
+**Briefing (The Velvet Flamingo)**
+
+> **DEE:** Skye! Tell me those wheels are warmed up.  
+> **SKYE:** They're skates, Dee. They run on gossip and tips.  
+> **DEE:** Then here's both. The pier kiosk ordered a crate of Flamingo Fizz and I'm clean out of syrup.  
+> **DEE:** Gus at Pelican Pantry is holding my last case. Grab it, run it to the pier, come home.  
+> **SKYE:** Pantry, pier, home. And the tip?  
+> **DEE:** The tip is I don't tell anyone you cried at that robot movie.  
+> **SKYE:** It had feelings, Dee.  
+
+**Step 1 (checkpoint):** Pick up the syrup crate from Gus at Pelican Pantry 24.
+
+> **GUS:** W-welcome to Pelican Pantry, open twenty-four hours, please do not lean on the slush machine.  
+> **SKYE:** Easy, Gus. I'm here for Dee's syrup.  
+> **GUS:** Oh! Oh, good. It's just you. Crate's right here. It's heavy. It's also sticky. Sorry.  
+> **SKYE:** Who'd you think I was?  
+> **GUS:** Nobody! Nobody in a shiny jacket asked about the Flamingo. Twice. Have a nice night!  
+
+**Step 2 (checkpoint):** Get the crate to the kiosk at the end of Driftwood Pier before the ice gives up. Timed: 55 s.
+
+**Step 3:** Head back to Dee at the Velvet Flamingo.
+
+> **DEE:** The pier just called. They said the fizz arrived cold and the courier arrived smug.  
+> **SKYE:** Both true. Dee, why's Gus jumping at shadows in shiny jackets?  
+> **DEE:** Because Marty Glitz wants this bar for a 'VIP annexe', and I'm three months behind on the lease.  
+> **DEE:** Five grand by Sunday, or my flamingo gets a velvet rope and a cover charge.  
+> **SKYE:** Five grand. That's a lot of fizz.  
+> **DEE:** It's exactly one Dance-Off prize. Saturday. Club Prism. Keep your ears open over there.  
+
+**Pass card:** THE PIER IS FIZZY AGAIN
+
+### 2. Paper Trail
+
+*Starts at Club Prism. Reward $350. Club Prism needs flyers on every corner by showtime.*
+
+**Briefing (Club Prism)**
+
+> **MARTY GLITZ:** There she is! The fastest wheels on the boulevard. Marty Glitz. I'm sure you've heard of me.  
+> **SKYE:** I've heard your sound system. From the far end of the pier.  
+> **MARTY GLITZ:** That's called reach, kid. Saturday is the Neon Coast Dance-Off. Five-thousand-dollar prize. My floor.  
+> **MARTY GLITZ:** I need flyers on every corner before the hairspray sets. You skate, I pay. Simple as a drum machine.  
+> **SKYE:** Who's judging this thing?  
+> **MARTY GLITZ:** Trusted professionals. Hand-picked. By hand. Mine. Now roll, the ink is still wet!  
+
+**Step 1 (checkpoint):** Paper the town with Dance-Off flyers. Timed: 45 s, +26 s per ring. 5 rings.
+
+**Step 2:** Collect your pay from Marty Glitz at Club Prism.
+
+> **MARTY GLITZ:** Every lamp post from here to Back Bay. Beautiful. You could go far, kid. Further, even.  
+> **SKYE:** So who's the favourite for Saturday?  
+> **MARTY GLITZ:** Favourite? Ha! Let's just say the prize money isn't leaving the building.  
+> **MARTY GLITZ:** The scorecards are already... organised. I'm a very organised man.  
+> **SKYE:** Organised. Right.  
+> **MARTY GLITZ:** Here's your cash. Buy yourself a jacket with shoulders. Shoulders are the future.  
+
+**Pass card:** EVERY CORNER COVERED
+
+### 3. Cold Feet
+
+*Starts at Pelican Pantry 24. Reward $400. Gus has something in the freezer that is not a popsicle.*
+
+**Briefing (Pelican Pantry 24)**
+
+> **GUS:** Skye! Shut the door. Is anyone behind you? Anyone shiny?  
+> **SKYE:** Just a guy asleep in the phone booth. Talk to me, Gus.  
+> **GUS:** Mr Glitz lent me money for the slush machine. Now he keeps a shoebox in my freezer. I looked. I shouldn't have looked.  
+> **GUS:** Scorecards. For Saturday. Already filled in. In pen! His nephew wins by a landslide and the kid can't even moonwalk.  
+> **SKYE:** Gus, you beautiful, clammy man. Give me the box.  
+> **GUS:** His bouncers check on it every hour. Take my bike, the Comet's out front. She's fast. She's also my whole savings. Please.  
+
+**Step 1 (checkpoint):** Get on Gus's Comet, parked outside the Pantry (E).
+
+**Step 2 (checkpoint):** Shake the bouncers: thread the back streets. Timed: 30 s, +13 s per ring. 5 rings.
+
+**Step 3:** Bring the shoebox to Dee at the Velvet Flamingo.
+
+> **DEE:** You smell like burnt rubber and frozen peas. What did you do?  
+> **SKYE:** Borrowed a shoebox. Marty's already filled in Saturday's scorecards.  
+> **DEE:** That glitter-plated weasel. I trained for this! I bought leg warmers!  
+> **SKYE:** So we take it to the Coast Patrol?  
+> **DEE:** Honey, the Patrol are his best customers. No. We take it to the one person in that club Marty can't turn down.  
+> **DEE:** DJ Kilowatt. He's got the microphone, and he's hated Marty since the smoke machine incident. Saturday night. Wear something nice.  
+
+**Pass card:** THE BOX IS IN SAFE HANDS
+
+### 4. Last Dance
+
+*Starts at Club Prism. Reward $1,000 and the Flamingo Royale jacket. Saturday night. One shoebox, one microphone, one dance floor.*
+
+**Briefing (Club Prism)**
+
+> **DJ KILOWATT:** Skye on skates! You're not on the list. I like that about you.  
+> **SKYE:** Kilowatt. Before the contest starts, you'll want to read what's in this box. Out loud.  
+> **DJ KILOWATT:** 'First place: Chip Glitz. Ten, ten, ten.' These are dated today. The contest hasn't started.  
+> **DJ KILOWATT:** Neon Coast! Quick word from the booth. It seems tonight was judged LAST TUESDAY!  
+> **MARTY GLITZ:** That's a draft! A rehearsal! Everybody rehearses their paperwork!  
+> **DJ KILOWATT:** New rules. The crowd judges. And Dee's knee is out, so somebody dances for the Velvet Flamingo. Skye?  
+> **SKYE:** On skates? Obviously on skates.  
+
+**Step 1 (checkpoint):** DANCE-OFF! Skate over the white-hot tiles before the song ends. Timed: 34 s. 12 tiles.
+
+**Step 2:** Take your bow.
+
+> **DJ KILOWATT:** The crowd has spoken, and the crowd is hoarse. Five thousand dollars to the Velvet Flamingo!  
+> **MARTY GLITZ:** Fine. FINE. Take the oversized cheque. It doesn't even fit in my office.  
+> **SKYE:** Pleasure doing business, Marty. Great shoulders, by the way.  
+> **MARTY GLITZ:** ...They ARE great shoulders.  
+
+**Step 3 (checkpoint):** Carry the prize back to Dee at the Velvet Flamingo.
+
+> **DEE:** I heard the cheering from here. Either you won or Marty fell in the fountain again.  
+> **SKYE:** Five thousand dollars, one giant cheque. The Flamingo stays a flamingo.  
+> **DEE:** Paid in full. Do you know how long I've waited to say that to a landlord?  
+> **DEE:** Here's your cut. And this. I wore it the night I won Back Bay roller-disco, nineteen seventy-nine.  
+> **SKYE:** Dee, it's pink and gold. It's the loudest jacket I've ever seen.  
+> **DEE:** It's called Flamingo Royale, and Mimi's holding it for you at Zigzag Threads. Now go. This coast isn't going to deliver itself.  
+
+**Pass card:** PAID IN FULL
+
+### Odd jobs (repeatable)
+
+*Press E at Dee's counter when no job is running. One timed crate to a random drop; pays half as much again once the story is finished.*
+
+> **DEE:** Back for more? Good. I have a hot one.  
+> **SKYE:** Hot costs extra, Dee. So does 'right now'.  
+> **DEE:** One crate of Flamingo Fizz for [the drop]. They ran dry an hour ago.  
+> **DEE:** [N] seconds before the ice gives up. $[pay] when it lands. Roll!  
+
+### Counter one-liners
+
+**MIMI** (Zigzag Threads)
+
+- Darling! Those shorts are a cry for help. Step up.
+- Zigzag Threads: if it clashes, it matches.
+- New jacket, new you. Same wheels, sadly.
+
+**GUS** (Pelican Pantry 24)
+
+- Welcome to Pelican Pantry, please do not lean on the slush machine.
+- The hot dogs are from today. Mostly.
+- You didn't see a shoebox. There is no shoebox.
+
+**DEE** (The Velvet Flamingo)
+
+- Skates off the stools, Skye.
+- First fizz is free. The second one is also free. I am bad at business.
+
+**DJ KILOWATT** (Club Prism)
+
+- This next one goes out to everybody on eight wheels.
+- Floor is open. Hairspray is optional.
+
+### Shop lists
+
+| Zigzag Threads | Price | Notes |
+| --- | --- | --- |
+| COURIER CLASSIC | yours | Teal bomber, magenta trim. The original. |
+| SUNSET STRIPE | $120 | Tangerine with lemon piping. |
+| MIDNIGHT ARCADE | $180 | Deep violet, cyan trim, black shorts. |
+| MINT CONDITION | $150 | Pistachio and peach. Very poolside. |
+| CHERRY BOMB | $220 | Lipstick red, white stripes, no apologies. |
+| FLAMINGO ROYALE | $750 | Dee's 1979 roller-disco jacket. Pink and gold. Free once the story is finished. |
+
+| Pelican Pantry 24 | Price | Notes |
+| --- | --- | --- |
+| PELICAN POP | $5 | Fizzy, blue, suspiciously cold. +15 health |
+| BOARDWALK HOT DOG | $12 | From today. Mostly. +35 health |
+| TURBO CRUNCH BAR | $20 | Oats, glucose and optimism. +60 health |

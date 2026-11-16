@@ -17,10 +17,22 @@ const ACCENT = ['#ff4fa3', '#19c9bd', '#ffc93f', '#7a5cff', '#ff8a3d', '#ffffff'
 const NEON = ['#ff2bd1', '#18f0ff', '#ffe14a', '#8dff5a', '#ff6a3d', '#b388ff'];
 export const SIGN_NAMES = [
   'Coral Palms Hotel', 'Sunset Strip Diner', 'The Velvet Flamingo', 'Blue Manatee Hotel',
-  'Gilded Gecko Club', 'Aqua Deco Suites', 'Mango Moon Motel', 'Seahorse Cinema',
+  'Club Prism', 'Aqua Deco Suites', 'Pelican Pantry 24', 'Seahorse Cinema',
   'Tidewater Records', 'Coast Patrol Station', 'Cabana Royale', 'Pink Heron Hotel',
-  'Roller Palace', 'Seabreeze Clinic', 'Hotel Lumina', 'Driftwood Pier',
+  'Zigzag Threads', 'Seabreeze Clinic', 'Hotel Lumina', 'Driftwood Pier',
 ];
+// Rooftop and beach billboards share the sign atlas (slots 16 to 23). All brands are made up.
+export const ADS = [
+  'Flamingo Fizz: The Pink Drink', 'Wave 86 FM', 'Sunny Side Suntan Oil', 'Comet 500: Ride the Tail',
+  'Dance-Off Saturday!', 'Pelican Pop', 'Turbo Crunch Bars', 'Eight Wheels Skate Hire',
+];
+// The places you can walk into. Ring colour, building name, sign colour.
+export const PLACE_DEFS = {
+  bar: { name: 'The Velvet Flamingo', title: 'THE VELVET FLAMINGO', color: '#ff3fb4' },
+  club: { name: 'Club Prism', title: 'CLUB PRISM', color: '#a98bff' },
+  wear: { name: 'Zigzag Threads', title: 'ZIGZAG THREADS', color: '#ff9a3d' },
+  mart: { name: 'Pelican Pantry 24', title: 'PELICAN PANTRY 24', color: '#5dff9a' },
+};
 
 export function makeLayout() {
   const r = rng(1986);
@@ -106,11 +118,29 @@ export function makeLayout() {
 
   // Story places hang off named buildings: the bar door, the patrol station and the clinic.
   const door = (name, out) => { const b = buildings.find((k) => k.name === name); return { x: b.cx, z: b.z1 + out, b }; };
-  const bar = door('The Velvet Flamingo', 5.2);
-  bar.b.neon = '#ff2bd1'; bar.b.bar = true;
+  const places = {};
+  for (const key in PLACE_DEFS) {
+    const d = PLACE_DEFS[key], p = places[key] = { key, ...d, ...door(d.name, 5.2) };
+    p.b.place = key; p.b.neon = key === 'bar' ? '#ff2bd1' : d.color;
+  }
+  const bar = places.bar;
+  bar.b.bar = true;
   const station = door('Coast Patrol Station', 5.4), clinic = door('Seabreeze Clinic', 5.4);
 
-  return { buildings, lamps, palms, parking, umbrellas, huts, solids, bar, station, clinic };
+  // Comet bikes parked on the sidewalk: Gus's outside the Pantry, one by the club, one near the spawn, one at the pier
+  const bikes = [
+    { x: places.mart.x + 4.6, z: 43.2, yaw: -Math.PI / 2, home: 'mart' },
+    { x: places.club.x - 4.6, z: 43.2, yaw: -Math.PI / 2 },
+    { x: -16, z: 64.6, yaw: Math.PI / 2 },
+    { x: 31, z: 146, yaw: 0 },
+  ];
+  // phone booths stand on the Deco Row sidewalk and are solid
+  const booths = [];
+  for (const s of SIDE_X) booths.push({ x: s + 13.5, z: 38.2 });
+  booths.push({ x: -60, z: 76.4 }, { x: 80, z: 76.4 });
+  for (const b of booths) solids.push({ x0: b.x - 0.6, x1: b.x + 0.6, z0: b.z - 0.6, z1: b.z + 0.6, h: 2.8 });
+
+  return { buildings, lamps, palms, parking, umbrellas, huts, solids, bar, station, clinic, places, bikes, booths };
 }
 
 // Keep something inside the walkable world (the island rectangle plus the pier).

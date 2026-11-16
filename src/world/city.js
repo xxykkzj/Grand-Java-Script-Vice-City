@@ -3,8 +3,9 @@
 // or instanced, so the entire city is roughly a dozen draw calls.
 import * as THREE from 'three';
 import { box, cyl, tint, merge, timeU, fogU, FOG_PARS, PI, rng, wetU, rainU, reflU, nightU } from '../core/util.js';
-import { HX, HZ, PIER, SIGN_NAMES } from './layout.js';
-import { paintGround, paintSigns } from './textures.js';
+import { HX, HZ, PIER, SIGN_NAMES, ADS } from './layout.js';
+import { paintGround, paintSigns, SIGN_ROWS } from './textures.js';
+import { addDetails, buildLife } from './details.js';
 import { createGlow } from './glow.js';
 
 function roundedShape(w, d, r) {
@@ -154,6 +155,8 @@ export function buildCity(scene, L) {
     }
   }
 
+  addDetails(L, solid, neon, glows, addWin, signs);
+
   // --- pier
   const px = (PIER.x0 + PIER.x1) / 2, plen = PIER.z1 - PIER.z0, pzc = PIER.z0 + plen / 2;
   solid.push(box(12, 0.5, plen, px, -0.25, pzc, '#b98a5e'));
@@ -230,16 +233,17 @@ export function buildCity(scene, L) {
   scene.add(wins);
 
   // --- neon signs: one atlas texture, one merged mesh
-  const atlasOrder = SIGN_NAMES.map((n) => signs.find((s) => s.name === n) || { name: n, color: '#ff2bd1' });
+  const ALL = [...SIGN_NAMES, ...ADS];
+  const atlasOrder = ALL.map((n) => signs.find((s) => s.name === n) || { name: n, color: '#ff2bd1' });
   const signTex = new THREE.CanvasTexture(paintSigns(atlasOrder));
   signTex.colorSpace = THREE.SRGBColorSpace;
   signTex.anisotropy = 4;
   const sgeo = [];
   for (const s of signs) {
-    const i = SIGN_NAMES.indexOf(s.name);
+    const i = ALL.indexOf(s.name);
     const g = new THREE.PlaneGeometry(s.w, s.h).toNonIndexed();
-    const uv = g.attributes.uv, u0 = (i % 2) * 0.5, v1 = 1 - Math.floor(i / 2) / 8;
-    for (let k = 0; k < uv.count; k++) uv.setXY(k, u0 + uv.getX(k) * 0.5, v1 - (1 - uv.getY(k)) / 8);
+    const uv = g.attributes.uv, u0 = (i % 2) * 0.5, v1 = 1 - Math.floor(i / 2) / SIGN_ROWS;
+    for (let k = 0; k < uv.count; k++) uv.setXY(k, u0 + uv.getX(k) * 0.5, v1 - (1 - uv.getY(k)) / SIGN_ROWS);
     g.rotateY(s.yaw); g.translate(s.x, s.y, s.z);
     sgeo.push(g);
   }
@@ -302,10 +306,13 @@ export function buildCity(scene, L) {
       transformed.y += sin(uTime * 2.4 + ph + position.x * 1.7 + position.z * 1.3) * 0.07 * tipD;
     `);
   };
-  const palms = new THREE.InstancedMesh(palmGeo, palmMat, L.palms.length);
+  const palms = new THREE.InstancedMesh(palmGeo, palmMat, L.palms.length), pcol = new THREE.Color();
   L.palms.forEach((p, i) => {
-    m4.compose(v.set(p.x, 0, p.z), q.setFromAxisAngle(UP, p.yaw), sc.set(p.s, p.s, p.s));
+    // variety: squat and lanky palms, a few sun-bleached or deep green
+    const tall = 0.78 + ((i * 37) % 11) / 16;
+    m4.compose(v.set(p.x, 0, p.z), q.setFromAxisAngle(UP, p.yaw), sc.set(p.s * (1.12 - tall * 0.12), p.s * tall, p.s * (1.12 - tall * 0.12)));
     palms.setMatrixAt(i, m4);
+    palms.setColorAt(i, pcol.set(['#ffffff', '#e4ffc8', '#fff2c4', '#cfeedd', '#ffffff'][(i * 7) % 5]));
   });
   palms.frustumCulled = false;
   scene.add(palms);
@@ -335,8 +342,10 @@ export function buildCity(scene, L) {
   for (const g of glows) glow.add(g[0], g[1], g[2], g[3], g[4], g[5]);
   glow.commit();
 
+  const life = buildLife(scene, bodyMat);
+
   return {
-    windowCount: winM.length, bodyMat,
+    windowCount: winM.length, bodyMat, tick: life.tick,
     setLights(neonK, lit, glass) {
       neonMat.color.setScalar(0.5 + neonK * 0.9);
       signMat.color.setScalar(0.4 + neonK * 0.9);

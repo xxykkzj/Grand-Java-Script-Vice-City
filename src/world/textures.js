@@ -72,6 +72,27 @@ export function paintGround(L) {
     }
   }
 
+  // kerbs, parking bays, manholes, sidewalk seams, a skate lane and a volleyball court
+  const KERB = '#efe6ee';
+  for (const rd of [back1, back2]) { rect(-294, rd.z - rd.w / 2 - 0.3, 294, rd.z - rd.w / 2, KERB); rect(-294, rd.z + rd.w / 2, 294, rd.z + rd.w / 2 + 0.3, KERB); }
+  for (const s of SIDE_X) for (const [a, b] of [[sideZ0, -74.3], [-61.7, -10.3], [2.3, 43.7]]) { rect(s - sideW / 2 - 0.3, a, s - sideW / 2, b, KERB); rect(s + sideW / 2, a, s + sideW / 2 + 0.3, b, KERB); }
+  for (let x = -288; x < 290; x += 4.5) if (!SIDE_X.some((s) => Math.abs(x - s) < 12)) { rect(x, blvd.z - 8.6, x + 0.2, blvd.z - 6.4, '#8f88a0'); rect(x, blvd.z + 6.4, x + 0.2, blvd.z + 8.6, '#8f88a0'); }
+  g.globalAlpha = 0.5;
+  for (let x = -292; x < 292; x += 4) rect(x, 36.3, x + 0.14, 43.7, '#b9a4b4');
+  for (let x = -290; x < 290; x += 6) { rect(x, -13.7, x + 0.14, -10.3, '#b9a4b4'); rect(x, -77.6, x + 0.14, -74.3, '#b9a4b4'); }
+  g.globalAlpha = 1;
+  for (let i = 0; i < 46; i++) {
+    const rd = [blvd, back1, back2][i % 3], x = -280 + r() * 560, z = rd.z + (r() - 0.5) * (rd.w - 4);
+    g.fillStyle = '#2a2533'; g.beginPath(); g.arc(X(x), Z(z), 0.55 * S, 0, 6.3); g.fill();
+    g.strokeStyle = '#5a5468'; g.lineWidth = 1; g.stroke();
+  }
+  dashX(71.6, -HX, HX, 2, 2, '#27c9bf', 0.3);                               // skate lane along the promenade
+  g.strokeStyle = '#fffaf0'; g.lineWidth = 2; g.strokeRect(X(-49), Z(98), 18 * S, 9 * S);   // volleyball court
+  for (let i = 0; i < 60; i++) {                                              // beach towels
+    const x = -285 + r() * 570, z = 88 + r() * 44, c = ['#ff5fa8', '#27d8cf', '#ffd447', '#ff8a4c', '#9b7bff', '#ffffff'][i % 6];
+    g.save(); g.translate(X(x), Z(z)); g.rotate(r() * 3); g.fillStyle = c; g.fillRect(-3, -1.6, 6, 3.2); g.fillStyle = 'rgba(255,255,255,.7)'; g.fillRect(-1, -1.6, 2, 3.2); g.restore();
+  }
+
   // soft vignette of darker sand at the island rim
   g.strokeStyle = 'rgba(160,125,95,0.5)'; g.lineWidth = 10; g.strokeRect(0, 0, W, H);
   return cv;
@@ -83,10 +104,11 @@ const FONTS = [
   'italic 800 %px "Trebuchet MS", "Segoe UI", Verdana, sans-serif',
 ];
 
-// 16 neon signs packed into one 1024x1024 atlas: 2 columns x 8 rows of 512x128.
+// 24 neon signs and billboards packed into one 1024x1536 atlas: 2 columns x 12 rows of 512x128.
+export const SIGN_ROWS = 12;
 export function paintSigns(signs) {
   const cv = document.createElement('canvas');
-  cv.width = 1024; cv.height = 1024;
+  cv.width = 1024; cv.height = SIGN_ROWS * 128;
   const g = cv.getContext('2d');
   g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
   signs.forEach((s, i) => {

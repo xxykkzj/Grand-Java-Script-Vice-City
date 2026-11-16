@@ -2,10 +2,11 @@
 import * as THREE from 'three';
 import { clamp, damp, angleDelta, pushOut, PI, reducedMotion, nightU, wetU } from '../core/util.js';
 import { clampToWorld } from '../world/layout.js';
-import { carGeometry, carGlassGeometry, patrolKitGeometry, tankGeometry, heliGeometry } from './models.js';
+import { carGeometry, carGlassGeometry, patrolKitGeometry, tankGeometry, heliGeometry, bikeGeometry } from './models.js';
 import { createGlow } from '../world/glow.js';
 
-const CAP = 54, POLICE = 4;
+const CAP = 54, POLICE = 4, BIKES = 8;
+const BIKE_PAINT = ['#ff3f6a', '#27d8cf', '#ffd447', '#f6f1e7', '#9b7bff', '#ff8a3d'];
 export const PATROL_TEAL = '#19b8b0';
 // A car steered by the traffic AI along its lane (not by physics).
 export const onRails = (c) => !!c.ai && !(c.ai.stun > 0) && !c.ai.pursuit;
@@ -28,6 +29,10 @@ export function createVehicles(scene, L, fx, audio) {
   glass.instanceMatrix = carMesh.instanceMatrix;
   glass.frustumCulled = false; glass.renderOrder = 3;
   scene.add(glass);
+  const bikeMesh = new THREE.InstancedMesh(bikeGeometry(), carMat, BIKES);
+  bikeMesh.frustumCulled = false; bikeMesh.count = 0;
+  scene.add(bikeMesh);
+  let nBikes = 0;
   const kit = new THREE.InstancedMesh(patrolKitGeometry(), new THREE.MeshLambertMaterial({ vertexColors: true }), POLICE);
   kit.frustumCulled = false;
   scene.add(kit);
@@ -68,12 +73,22 @@ export function createVehicles(scene, L, fx, audio) {
       radius: 1.5, mass: 1, driven: false, color, slip: 0, idx: cars.length,
     };
     Object.assign(c, extra);
+    if (c.kind === 'bike') {
+      if (nBikes >= BIKES) return null;
+      Object.assign(c, { label: 'Comet', radius: 0.95, mass: 0.45, bi: nBikes++ });
+      bikeMesh.count = nBikes;
+    }
     cars.push(c);
-    carMesh.setColorAt(c.idx, col.set(neon ? HOT_PINK : color));
-    carMesh.instanceColor.needsUpdate = true;
+    tintOf(c);
     return c;
   }
+  function tintOf(c) {
+    const m = c.kind === 'bike' ? bikeMesh : carMesh;
+    m.setColorAt(c.kind === 'bike' ? c.bi : c.idx, col.set(neon ? HOT_PINK : c.color));
+    m.instanceColor.needsUpdate = true;
+  }
   L.parking.forEach((p, i) => addCar(p.x, p.z, p.yaw, PAINT[i % PAINT.length]));
+  L.bikes.forEach((p, i) => addCar(p.x, p.z, p.yaw, BIKE_PAINT[i % BIKE_PAINT.length], { kind: 'bike', home: p.home, hx: p.x, hz: p.z, hyaw: p.yaw }));
   const PAINTS = PAINT;
 
   let tank = null, heli = null;
@@ -103,30 +118,37 @@ export function createVehicles(scene, L, fx, audio) {
   function updateCar(c, dt, user) {
     if (c.off || onRails(c)) return;
     const inp = c.driven ? user : c.ai && c.ai.pursuit && !(c.ai.stun > 0) ? c.ai.inp : null;
+    const B = c.kind === 'bike';
     if (inp && c.y < 0.3) {
       let fx_ = Math.sin(c.yaw), fz = Math.cos(c.yaw);
       let vf = c.vx * fx_ + c.vz * fz;
       const sf = clamp(Math.abs(vf) / 6, 0, 1) * (vf >= 0 ? 1 : -1);
-      c.yaw += inp.steer * sf * (2.5 / (1 + Math.abs(vf) * 0.03)) * (inp.hand ? 1.4 : 1) * dt;
+      c.yaw += inp.steer * sf * ((B ? 3 : 2.5) / (1 + Math.abs(vf) * 0.03)) * (inp.hand ? 1.4 : 1) * dt;
       fx_ = Math.sin(c.yaw); fz = Math.cos(c.yaw);
       const rx = -fz, rz = fx_;
       vf = c.vx * fx_ + c.vz * fz;
       let vl = c.vx * rx + c.vz * rz;
-      if (inp.throttle > 0) vf += 26 * (1 - clamp(vf / 44, 0, 1)) * dt;
+      if (inp.throttle > 0) vf += (B ? 38 : 26) * (1 - clamp(vf / (B ? 58 : 44), 0, 1)) * dt;
       else if (inp.throttle < 0) { vf -= (vf > 0.5 ? 40 : 14) * dt; if (vf < -14) vf = -14; }
       else vf -= Math.sign(vf) * Math.min(Math.abs(vf), 2.5 * dt);
       vf *= Math.exp(-(inp.hand ? 1.3 : 0.3) * dt);
       // lateral grip: lose it under handbrake or once already sliding => drift
-      const grip = inp.hand ? 1.1 : Math.abs(vl) > 7 ? 3 : 7.5;
+      const grip = B ? 9 : inp.hand ? 1.1 : Math.abs(vl) > 7 ? 3 : 7.5;
       vl *= Math.exp(-grip * dt);
       c.vx = fx_ * vf + rx * vl; c.vz = fz * vf + rz * vl;
       c.slip = Math.abs(vl);
-      c.tz = damp(c.tz, clamp(vl * 0.012, -0.12, 0.12), 8, dt);
-      c.tx = damp(c.tx, 0, 8, dt);
+      if (B) {
+        // lean into the turn; the front wheel comes up when you open the throttle from low speed
+        c.tz = damp(c.tz, -inp.steer * clamp(Math.abs(vf) / 20, 0, 1) * 0.6, 7, dt);
+        c.tx = damp(c.tx, inp.throttle > 0 && vf > 2.5 && vf < 26 && !reducedMotion ? -0.5 : 0, inp.throttle > 0 ? 4 : 9, dt);
+      } else {
+        c.tz = damp(c.tz, clamp(vl * 0.012, -0.12, 0.12), 8, dt);
+        c.tx = damp(c.tx, 0, 8, dt);
+      }
     } else {
       const k = Math.exp(-(c.y > 0.05 ? 0.2 : 2.4) * dt);
       c.vx *= k; c.vz *= k; c.yaw += c.spin * dt; c.spin *= Math.exp(-2.2 * dt); c.slip = 0;
-      if (c.y <= 0 && c.vy <= 0) { c.tx = damp(c.tx, 0, 6, dt); c.tz = damp(c.tz, 0, 6, dt); }
+      if (c.y <= 0 && c.vy <= 0) { c.tx = damp(c.tx, 0, 6, dt); c.tz = damp(c.tz, B && !c.ai ? 0.2 : 0, 6, dt); }   // parked bikes rest on the stand
     }
     if (c.y > 0 || c.vy > 0) {
       c.vy -= 22 * dt; c.y += c.vy * dt; c.tx += c.tvx * dt; c.tz += c.tvz * dt;
@@ -137,7 +159,9 @@ export function createVehicles(scene, L, fx, audio) {
       }
     }
     c.x += c.vx * dt; c.z += c.vz * dt;
+    const sp0 = Math.hypot(c.vx, c.vz);
     hitSolids(c, c.radius, 0.35);
+    if (B && c.driven && sp0 - Math.hypot(c.vx, c.vz) > 11 && api.onThrow) api.onThrow(c, sp0);
     const px = c.x, pz = c.z;
     if (clampToWorld(c, 1.6)) { if (c.x !== px) c.vx *= -0.3; if (c.z !== pz) c.vz *= -0.3; }
   }
@@ -206,11 +230,13 @@ export function createVehicles(scene, L, fx, audio) {
           const imp = -1.35 * rel / (1 / a.mass + 1 / b.mass);
           if (a.kind !== 'tank') { a.vx -= imp / a.mass * nx; a.vz -= imp / a.mass * nz; }
           if (b.kind !== 'tank') { b.vx += imp / b.mass * nx; b.vz += imp / b.mass * nz; }
-          if (!a.driven && a.kind === 'car') a.spin += (Math.random() - 0.5) * imp * 0.25;
-          if (!b.driven && b.kind === 'car') b.spin += (Math.random() - 0.5) * imp * 0.25;
+          if (!a.driven && a.kind !== 'tank') a.spin += (Math.random() - 0.5) * imp * 0.25;
+          if (!b.driven && b.kind !== 'tank') b.spin += (Math.random() - 0.5) * imp * 0.25;
           if (imp > 6) audio.thud(clamp(imp / 30, 0.2, 1));
           if (imp > 3.5) { if (a.ai) a.ai.stun = Math.max(a.ai.stun || 0, 2.2); if (b.ai) b.ai.stun = Math.max(b.ai.stun || 0, 2.2); }
           if (api.onCollide) api.onCollide(a, b, imp);
+          const rider = a.driven ? a : b.driven ? b : null;
+          if (rider && rider.kind === 'bike' && -rel > 13 && api.onThrow) api.onThrow(rider, -rel);
         }
       }
     }
@@ -236,8 +262,8 @@ export function createVehicles(scene, L, fx, audio) {
   }
 
   const api = {
-    cars, glowU, addCar, PAINTS, onCollide: null, onBoom: null, onShot: null,
-    paint(c, color) { c.color = color; carMesh.setColorAt(c.idx, col.set(neon ? HOT_PINK : color)); carMesh.instanceColor.needsUpdate = true; },
+    cars, glowU, addCar, PAINTS, BIKE_PAINT, onCollide: null, onBoom: null, onShot: null, onThrow: null,
+    paint(c, color) { c.color = color; tintOf(c); },
     get tank() { return tank; }, get heli() { return heli; },
     all() { const a = cars.filter((c) => !c.off); if (tank) a.push(tank); if (heli) a.push(heli); return a; },
     nearest(pos, reach = 2.4) {
@@ -279,8 +305,7 @@ export function createVehicles(scene, L, fx, audio) {
     },
     setNeon(on) {
       neon = on; glowU.value = on ? 0.85 : 0;
-      for (const c of cars) carMesh.setColorAt(c.idx, col.set(on ? HOT_PINK : c.color));
-      carMesh.instanceColor.needsUpdate = true;
+      for (const c of cars) tintOf(c);
     },
     get neon() { return neon; },
     fire() {
@@ -331,14 +356,33 @@ export function createVehicles(scene, L, fx, audio) {
         if (c.off) {
           m4.makeScale(0, 0, 0);
           carMesh.setMatrixAt(c.idx, m4); shadows.setMatrixAt(c.idx, m4); pools.setMatrixAt(c.idx, m4);
+          if (c.kind === 'bike') bikeMesh.setMatrixAt(c.bi, m4);
           for (let k = 0; k < 5; k++) glow.hide(g + k);
           if (c.police) { kit.setMatrixAt(nk, m4); glow.hide(G_BAR + nk * 2); glow.hide(G_BAR + nk * 2 + 1); nk++; }
           continue;
         }
         e.set(c.tx, c.yaw, c.tz);
+        const fx_ = Math.sin(c.yaw), fz = Math.cos(c.yaw), y = c.y + 0.9;
+        if (c.kind === 'bike') {
+          // pivot the wheelie on the rear axle
+          const up = Math.sin(-Math.min(c.tx, 0));
+          m4.compose(p3.set(c.x - fx_ * up * 0.3, c.y + up * 0.72, c.z - fz * up * 0.3), q.setFromEuler(e), s3);
+          bikeMesh.setMatrixAt(c.bi, m4);
+          m4.makeScale(0, 0, 0); carMesh.setMatrixAt(c.idx, m4);
+          q.setFromEuler(e.set(0, c.yaw, 0));
+          m4.compose(p3.set(c.x, 0.03, c.z), q, s3.set(0.3, 1, 0.42)); shadows.setMatrixAt(c.idx, m4); s3.set(1, 1, 1);
+          const lit = c.driven || !!c.ai;
+          if (lit && c.y < 0.5) m4.compose(p3.set(c.x, 0, c.z), q, s3.set(0.6, 1, 0.8)); else m4.makeScale(0, 0, 0);
+          pools.setMatrixAt(c.idx, m4); s3.set(1, 1, 1);
+          const brk = c.driven ? inp.throttle < 0 : !!c.ai && c.ai.braking;
+          glow.set(g, c.x - fx_ * 1.3, y + 0.16, c.z - fz * 1.3, '#ff1830', brk ? 2.4 : lit ? 1.5 : 0.9, brk ? 1 : lit ? 0.3 : 0);
+          glow.set(g + 2, c.x + fx_ * 0.95, y, c.z + fz * 0.95, '#fff0c0', lit ? 2.4 : 0, 0.12);
+          glow.hide(g + 1); glow.hide(g + 3);
+          if (neon) glow.set(g + 4, c.x, c.y + 0.5, c.z, HOT_PINK, 5, 0.35); else glow.hide(g + 4);
+          continue;
+        }
         m4.compose(p3.set(c.x, c.y, c.z), q.setFromEuler(e), s3);
         carMesh.setMatrixAt(c.idx, m4);
-        const fx_ = Math.sin(c.yaw), fz = Math.cos(c.yaw), y = c.y + 0.9;
         if (c.police) {
           kit.setMatrixAt(nk, m4);
           const hot = c.ai && c.ai.siren ? 1 : 0;
@@ -362,7 +406,7 @@ export function createVehicles(scene, L, fx, audio) {
         if (neon) glow.set(g + 4, c.x, c.y + 0.5, c.z, HOT_PINK, 9, 0.35); else glow.hide(g + 4);
       }
       glass.count = pools.count = cars.length;
-      kit.count = nk; kit.instanceMatrix.needsUpdate = true; pools.instanceMatrix.needsUpdate = true;
+      kit.count = nk; kit.instanceMatrix.needsUpdate = true; bikeMesh.instanceMatrix.needsUpdate = true; pools.instanceMatrix.needsUpdate = true;
       carMesh.instanceMatrix.needsUpdate = true; shadows.instanceMatrix.needsUpdate = true;
       if (tank) {
         const fx_ = Math.sin(tank.yaw), fz = Math.cos(tank.yaw);

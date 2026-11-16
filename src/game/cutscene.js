@@ -1,140 +1,156 @@
-// The Velvet Flamingo: a pocket bar interior (one merged unlit mesh, parked far below the
-// island and only visible during the scene) and the letterboxed cutscene that hands out jobs.
+// The cutscene director: a tiny sequencer of "beats" (camera moves, dialogue lines) with a
+// letterbox, coloured speaker names, typewriter subtitles and a shot grammar for conversations:
+// wide establishing shots, over-the-shoulder, close-ups and side-on two-shots. Speakers turn to
+// face whoever they are talking to and gesture while they talk.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { box, cyl, merge, lerp, clamp, timeU, PI, reducedMotion } from '../core/util.js';
+import { clamp, lerp, damp, angleDelta, timeU, PI, reducedMotion } from '../core/util.js';
+import { CAST } from './story.js';
+import { OY } from './interiors.js';
 
-const OY = -90;
 const $ = (id) => document.getElementById(id);
-const ease = (k) => { k = clamp(k, 0, 1); return k * k * (3 - 2 * k); };
+export const ease = (k) => { k = clamp(k, 0, 1); return k * k * (3 - 2 * k); };
+const CPS = 42;                                  // typewriter speed, characters per second
 
-function buildBar() {
-  const g = [];
-  for (let i = 0; i < 8; i++) for (let j = 0; j < 6; j++) g.push(box(1.5, 0.1, 1.5, -5.25 + i * 1.5, -0.05, -3.75 + j * 1.5, (i + j) % 2 ? '#3d1f5c' : '#1b0f30'));
-  g.push(box(12.4, 4.4, 0.2, 0, 2.1, -4.6, '#34185a'), box(12.4, 4.4, 0.2, 0, 2.1, 4.6, '#241040'), box(0.2, 4.4, 9.4, -6.1, 2.1, 0, '#2c1450'), box(0.2, 4.4, 9.4, 6.1, 2.1, 0, '#2c1450'));
-  g.push(box(12.4, 0.2, 9.4, 0, 4.3, 0, '#120822'));
-  // counter with a glowing lip, stools
-  g.push(box(7, 1.1, 0.8, 0, 0.55, -2.2, '#5a2468'), box(7.3, 0.08, 1.05, 0, 1.14, -2.2, '#ffc7ea'), box(7, 0.06, 0.06, 0, 0.22, -1.78, '#ff2bd1'), box(7.3, 0.05, 0.05, 0, 1.07, -1.68, '#18f0ff'));
-  for (const x of [-2.6, -1.3, 1.7, 2.9]) g.push(cyl(0.27, 0.27, 0.09, 10, x, 0.78, -1.15, '#ff4fa3'), cyl(0.05, 0.09, 0.76, 6, x, 0.38, -1.15, '#c9c0d8'), cyl(0.22, 0.24, 0.04, 8, x, 0.02, -1.15, '#c9c0d8'));
-  // back bar: shelves, bottles, a mirror, the house flamingo in neon
-  const BOT = ['#ff2bd1', '#18f0ff', '#ffe14a', '#8dff5a', '#ff6a3d', '#b388ff'];
-  for (const y of [1.55, 2.2]) {
-    g.push(box(6.6, 0.07, 0.34, 0, y, -4.3, '#7a3d78'));
-    for (let i = 0; i < 15; i++) if ((i * 7 + (y > 2 ? 3 : 0)) % 5) g.push(box(0.13, 0.3 + (i % 3) * 0.07, 0.13, -3 + i * 0.43, y + 0.2 + (i % 3) * 0.035, -4.3, BOT[(i + (y > 2 ? 2 : 0)) % 6]));
-  }
-  g.push(box(6.8, 0.06, 0.06, 0, 2.95, -4.45, '#18f0ff'), box(6.8, 0.06, 0.06, 0, 1.38, -4.45, '#18f0ff'));
-  const P = '#ff4fc0', nx = 4.4, nz = -4.45;
-  g.push(box(0.07, 1, 0.07, nx, 1.5, nz, P), box(0.9, 0.5, 0.07, nx - 0.1, 2.25, nz, P, 0, 0, 0.25), box(0.07, 0.9, 0.07, nx + 0.5, 2.9, nz, P, 0, 0, -0.35), box(0.3, 0.24, 0.07, nx + 0.7, 3.4, nz, P), box(0.28, 0.07, 0.07, nx + 0.95, 3.27, nz, '#ffe14a', 0, 0, -0.5));
-  // jukebox
-  g.push(box(1.2, 1.5, 0.7, -5.4, 0.75, 1.2, '#7a1a6a'), cyl(0.6, 0.6, 0.7, 12, -5.4, 1.5, 1.2, '#7a1a6a', PI / 2), box(0.06, 1.3, 0.5, -4.78, 0.9, 1.2, '#ffe14a'),
-    box(0.07, 0.5, 0.36, -4.77, 1.45, 1.2, '#18f0ff'), box(0.07, 0.12, 0.5, -4.77, 0.5, 1.2, '#ff2bd1'), box(0.07, 0.12, 0.5, -4.77, 0.3, 1.2, '#8dff5a'));
-  // tables, door with the sunset behind it, ceiling tubes
-  for (const [x, z] of [[4.2, 1.6], [3.4, -0.4]]) g.push(cyl(0.55, 0.55, 0.06, 12, x, 0.8, z, '#ffc7ea'), cyl(0.06, 0.06, 0.8, 6, x, 0.4, z, '#c9c0d8'), cyl(0.05, 0.05, 0.14, 6, x, 0.9, z, '#ffe14a'));
-  g.push(box(1.7, 2.7, 0.08, 0, 1.35, 4.48, '#ffa64a'), box(1.9, 0.1, 0.1, 0, 2.75, 4.44, P), box(0.1, 2.8, 0.1, -0.9, 1.4, 4.44, P), box(0.1, 2.8, 0.1, 0.9, 1.4, 4.44, P));
-  g.push(box(10, 0.06, 0.06, 0, 4.1, -1.5, '#18f0ff'), box(10, 0.06, 0.06, 0, 4.1, 1.5, '#ff2bd1'));
-  return merge(g);
-}
-
-export function createCutscene(scene, camera, game) {
-  const { player, L } = game;
-  const mat = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false });
-  const room = new THREE.Mesh(buildBar(), mat);
-  room.position.y = OY;
-  // Dee, the bartender: tall pink beehive, yellow shirt, dark vest
-  const dee = new THREE.Group();
-  dee.add(new THREE.Mesh(merge([
-    box(0.46, 0.6, 0.26, 0, 1.2, 0, '#ffe14a'), box(0.48, 0.5, 0.2, 0, 1.15, -0.04, '#22203a'), box(0.36, 0.9, 0.24, 0, 0.45, 0, '#22203a'),
-    box(0.25, 0.26, 0.25, 0, 1.68, 0, '#c98d62'), box(0.3, 0.42, 0.3, 0, 1.98, -0.03, '#ff5fa8'), box(0.27, 0.2, 0.1, 0, 1.72, -0.11, '#ff5fa8'),
-    box(0.05, 0.05, 0.02, -0.07, 1.7, 0.127, '#1b1830'), box(0.05, 0.05, 0.02, 0.07, 1.7, 0.127, '#1b1830'), box(0.1, 0.025, 0.02, 0, 1.6, 0.127, '#b0304a'),
-    box(0.13, 0.5, 0.14, -0.3, 1.22, 0, '#ffe14a'), box(0.1, 0.1, 0.1, -0.3, 0.93, 0, '#c98d62'),
-  ]), mat));
-  const arm = new THREE.Mesh(merge([box(0.13, 0.5, 0.14, 0, -0.22, 0, '#ffe14a'), box(0.1, 0.1, 0.1, 0, -0.5, 0, '#c98d62'), box(0.2, 0.04, 0.16, 0, -0.56, 0.02, '#fff6ec')]), mat);
-  arm.position.set(0.3, 1.46, 0);
-  dee.add(arm);
-  dee.position.set(-0.3, OY, -3.15);
-  room.visible = dee.visible = false;
-  scene.add(room, dee);
-
+export function createDirector(camera, game) {
+  const { player, audio } = game;
   const cine = $('cine'), sub = $('sub'), fade = $('fade');
-  const look = new THREE.Vector3();
+  const who = document.createElement('b'), typed = document.createElement('span'), rest = document.createElement('span');
+  rest.className = 'rest';
+  const look = new THREE.Vector3(), pos = new THREE.Vector3();
+  let beats = [], bi = -1, bt = 0, done = null, ending = false, savedFov = 62, fov = 40;
+
+  const setFov = (f) => { if (Math.abs(camera.fov - f) > 0.01) { camera.fov = f; camera.updateProjectionMatrix(); } };
   const say = (line) => {
     sub.textContent = '';
     if (!line) return;
-    const b = document.createElement('b');
-    b.textContent = line[0]; if (line[0] === 'SKYE') b.className = 'me';
-    sub.append(b, line[1]);
+    const c = CAST[line[0]] || { name: line[0], color: '#fff' };
+    who.textContent = c.name; who.style.color = c.color;
+    typed.textContent = reducedMotion ? line[1] : ''; rest.textContent = reducedMotion ? '' : line[1];
+    sub.append(who, typed, rest);
   };
-  let t = 0, lines = [], done = null, shown = -2, ending = false, saved = null;
-  const T_OUT = 3.2, T_IN = 3, T_LINE = reducedMotion ? 4 : 3.5;
+
+  // ---- conversation staging
+  // talk(room, lines) -> beats. Actors: the courier at room.me plus the room's cast.
+  function talkBeats(room, lines) {
+    const O = { x: room.ox, z: room.oz };
+    const me = { key: 'SKYE', x: room.me[0], y: 0, z: room.me[1], yaw: PI, isMe: true };
+    const actor = (k) => (k === 'SKYE' ? me : room.npc[k]);
+    const firstNpc = (lines.find((l) => l[0] !== 'SKYE') || [])[0];
+    let lastNpc = actor(firstNpc) || me;
+    me.yaw = Math.atan2(lastNpc.x - me.x, lastNpc.z - me.z);
+    const pose = (a, yaw, dt) => {
+      a.yaw += angleDelta(a.yaw, yaw) * (dt ? 1 - Math.exp(-7 * dt) : 1);
+      if (a.isMe) { player.pos.set(O.x + a.x, OY, O.z + a.z); player.yaw = a.yaw; player.speed = 0; } else a.g.rotation.y = a.yaw;
+    };
+    const parts = (a) => (a.isMe ? player.model : a);
+    const gesture = (a, act, t, on) => {
+      const m = parts(a), R = m.armR.rotation, Lr = m.armL.rotation, H = m.head.rotation, w = reducedMotion ? 0 : 1;
+      if (!on) return;
+      if (act === 'point') R.set(-1.4 + Math.sin(t * 3) * 0.05 * w, 0, 0.1);
+      else if (act === 'shrug') { R.set(-0.5, 0, -0.75 - Math.sin(t * 4) * 0.08 * w); Lr.set(-0.5, 0, 0.75 + Math.sin(t * 4) * 0.08 * w); H.z = 0.12; }
+      else if (act === 'wave') R.set(0, 0, -2.6 + Math.sin(t * 10) * 0.35 * w);
+      else if (act === 'nod') { H.x = Math.sin(t * 8) * 0.2 * Math.max(0, 1 - t * 0.6); R.set(-0.3, 0, 0); }
+      else if (act === 'think') { R.set(-2.2, 0, 0.35); H.z = 0.14; H.x = 0.06; }
+      else { R.set(-0.75 + Math.sin(t * 7) * 0.22 * w, 0, 0.05 + Math.sin(t * 3.1) * 0.1 * w); H.x = Math.sin(t * 9) * 0.035 * w; }
+    };
+    const lim = (v, m) => clamp(v, -m, m);
+    return lines.map((line) => {
+      const S = actor(line[0]) || me;
+      const Lr = S.isMe ? lastNpc : me;
+      if (!S.isMe) lastNpc = S;
+      const kind = line[2] || 'ots', act = line[3] || 'talk', side = S.isMe ? -1 : 1;
+      const dur = Math.max(2.4, line[1].length / CPS + 1.5 + line[1].length * 0.022) * (reducedMotion ? 1.15 : 1);
+      let n = 0;
+      return {
+        dur, line,
+        start() { say(line); n = 0; },
+        full() { return n >= line[1].length; },
+        reveal() { n = line[1].length; typed.textContent = line[1]; rest.textContent = ''; },
+        tick(k, dt, t) {
+          if (!reducedMotion && n < line[1].length) {
+            const m = Math.min(line[1].length, Math.floor(t * CPS));
+            if (m !== n) { if (Math.floor(m / 3) !== Math.floor(n / 3) && line[1][m - 1] !== ' ') audio.talk((CAST[line[0]] || {}).voice || 1); n = m; typed.textContent = line[1].slice(0, n); rest.textContent = line[1].slice(n); }
+          }
+          room.idle(timeU.value, dt, reducedMotion);
+          const dx = Lr.x - S.x, dz = Lr.z - S.z, d = Math.hypot(dx, dz) || 1, ux = dx / d, uz = dz / d, px = uz * side, pz = -ux * side;
+          pose(S, Math.atan2(dx, dz), dt); pose(Lr, Math.atan2(-dx, -dz), dt);
+          for (const key in room.npc) { const o = room.npc[key]; if (o !== S && o !== Lr) pose(o, o.home, dt); }
+          player.animate(dt, 0, null);
+          const talking = reducedMotion || n < line[1].length || act !== 'talk';
+          gesture(S, act, t, talking);
+          const sy = S.y + 1.56, ly = Lr.y + 1.56, push = reducedMotion ? 0 : k;
+          if (kind === 'wide') { const w = room.wide; pos.set(w[0], w[1], w[2]); look.set(lerp(w[3], S.x, 0.5), w[4], lerp(w[5], S.z, 0.5)); pos.lerp(look, push * 0.07); fov = 46; }
+          else if (kind === 'cu') { pos.set(S.x + ux * 1.45 + px * 0.34, sy + 0.04, S.z + uz * 1.45 + pz * 0.34); look.set(S.x, sy + 0.04, S.z); pos.lerp(look, push * 0.1); fov = 30; }
+          else if (kind === 'two') { const mx = (S.x + Lr.x) / 2, mz = (S.z + Lr.z) / 2; pos.set(mx + px * (2.6 + d * 0.5), (sy + ly) / 2 - 0.15, mz + pz * (2.6 + d * 0.5)); look.set(mx, (sy + ly) / 2 - 0.2, mz); pos.x += ux * push * 0.25; pos.z += uz * push * 0.25; fov = 40; }
+          else { pos.set(Lr.x + ux * 0.95 + px * 0.55, ly + 0.2, Lr.z + uz * 0.95 + pz * 0.55); look.set(S.x - px * 0.25, sy - 0.05, S.z - pz * 0.25); pos.lerp(look, push * 0.06); fov = 36; }
+          pos.x = lim(pos.x, room.hx - 0.45); pos.z = lim(pos.z, room.hz - 0.45); pos.y = Math.min(pos.y, room.h - 0.35);
+          camera.position.set(O.x + pos.x, OY + pos.y, O.z + pos.z);
+          setFov(fov);
+          camera.lookAt(O.x + look.x, OY + look.y, O.z + look.z);
+        },
+        end() { for (const a of [S, Lr]) { const m = parts(a); m.head.rotation.set(0, 0, 0); if (!a.isMe) { m.armR.rotation.set(0, 0, 0); m.armL.rotation.set(0, 0, 0); } } },
+      };
+    });
+  }
+
+  function finish() {
+    for (; bi < beats.length; bi++) { const b = beats[bi]; if (b && b.end) b.end(); const nx = beats[bi + 1]; if (nx && nx.start) nx.start(); }
+    cine.classList.remove('on'); $('hud').classList.remove('cine'); say(null);
+    setFov(savedFov);
+    cut.active = false; ending = false; game.busy = null;
+    const d = done; done = null; beats = [];
+    if (d) d();
+  }
 
   const cut = {
-    active: false,
-    start(dialogue, onDone) {
-      cut.active = true; t = 0; lines = dialogue; done = onDone; shown = -2; ending = false;
-      saved = { fov: camera.fov };
+    active: false, talkBeats,
+    // run a list of beats: { dur, start?(), tick?(k, dt, t), end?() }. `outFade` blacks out before onDone.
+    run(list, onDone, outFade = true) {
+      cut.active = true; game.busy = 'cut'; beats = list; bi = 0; bt = 0; done = onDone; ending = false; cut.outFade = outFade;
+      savedFov = 62;
       cine.classList.add('on'); $('hud').classList.add('cine');
-      camera.fov = 40; camera.updateProjectionMatrix();
+      player.vel.set(0, 0, 0);
+      if (beats[0].start) beats[0].start();
     },
-    skip() { if (cut.active && !ending) cut.end(); },
-    end() {
+    // Space / Enter: finish typing the line, or move on to the next beat
+    next() {
+      if (!cut.active || ending) return;
+      const b = beats[bi];
+      if (b.line && !b.full()) { b.reveal(); return; }
+      bt = b.dur;
+    },
+    // X / Esc: leave the scene now (every remaining state change still happens)
+    skip() { if (cut.active && !ending) cut.close(); },
+    close() {
       ending = true;
+      if (!cut.outFade) { finish(); return; }
       fade.classList.add('on');
-      setTimeout(() => {
-        room.visible = dee.visible = false; game.env.indoor = false;
-        cine.classList.remove('on'); $('hud').classList.remove('cine'); say(null);
-        camera.fov = saved.fov; camera.updateProjectionMatrix();
-        cut.active = false;
-        done();
-        setTimeout(() => fade.classList.remove('on'), 60);
-      }, 380);
+      setTimeout(() => { finish(); setTimeout(() => fade.classList.remove('on'), 60); }, 330);
     },
     update(dt) {
-      if (ending) return;
-      t += dt;
-      const bx = L.bar.x, bz = L.bar.z, b = L.bar.b;
-      if (t < T_OUT) {
-        // exterior: low angle, tilting from the sign down to the courier skating to the door
-        const k = t / T_OUT, e = ease(k);
-        player.pos.set(bx, 0, lerp(bz, b.z1 + 2.2, ease(k * 1.15))); player.yaw = PI; player.speed = k < 0.85 ? 4 : 0;
-        camera.position.set(bx + 9 - e * 3, 1.1 + e * 0.6, bz + 9 - e * 1.5);
-        look.set(bx + 1.2 * (1 - e), lerp(b.h - 2.4, 1.5, e), b.z1 + 1.5);
-        if (k > 0.85) fade.classList.add('on');
-      } else {
-        if (!room.visible) { room.visible = dee.visible = true; game.env.indoor = true; fade.classList.remove('on'); }
-        const ti = t - T_OUT;
-        if (ti < T_IN) {
-          // interior wide: Skye rolls in from the door to the counter
-          const k = ti / T_IN, e = ease(k);
-          player.pos.set(lerp(0, 0.7, e), OY, lerp(3.9, -0.85, e)); player.yaw = PI + 0.15; player.speed = k < 0.9 ? 3.5 : 0;
-          camera.position.set(4.8 - e * 1.2, OY + 2.5 - e * 0.5, 3.2 - e * 0.6);
-          look.set(-0.5, OY + 1.25, -1.6);
-        } else {
-          const li = Math.floor((ti - T_IN) / T_LINE), k = ((ti - T_IN) / T_LINE) % 1;
-          if (li >= lines.length) { cut.end(); return; }
-          if (li !== shown) { shown = li; say(lines[li]); }
-          player.pos.set(0.7, OY, -0.85); player.yaw = PI + 0.3; player.speed = 0;
-          const me = lines[li][0] === 'SKYE', push = reducedMotion ? 0 : k * 0.25;
-          if (me) { camera.position.set(-1.5 + push, OY + 1.65, -2.9 + push); look.set(0.7, OY + 1.55, -0.85); }
-          else { camera.position.set(-1.35 + push * 0.5, OY + 1.6, -0.45 - push); look.set(-0.3, OY + 1.55, -3.15); }
-          // Dee talks with her whole head and never stops polishing
-          dee.children[0].rotation.x = me ? 0 : Math.sin(timeU.value * 9) * 0.03;
-        }
-        arm.rotation.set(-1.15, 0, Math.sin(timeU.value * 5) * 0.35 - 0.3);
-        dee.rotation.y = 0.25;
+      if (ending || !cut.active) return;
+      const b = beats[bi];
+      bt += dt;
+      if (b.tick) b.tick(b.dur > 0 ? clamp(bt / b.dur, 0, 1) : 1, dt, bt);
+      if (bt >= b.dur) {
+        if (bi >= beats.length - 1) { cut.close(); return; }
+        if (b.end) b.end();
+        bi++; bt = 0;
+        if (beats[bi].start) beats[bi].start();
       }
-      player.animate(dt, 0, null);
-      player.model.root.visible = true;
-      camera.lookAt(look);
     },
+    fade(on) { fade.classList.toggle('on', on); },
+    setFov,
   };
   return cut;
 }
 
-// Pulsing mission marker: a tall see-through column of light standing on a bright ground ring.
-export function makeMarker(scene, hex) {
-  const col = new THREE.CylinderGeometry(1.5, 1.5, 9, 28, 1, true);
-  col.translate(0, 4.5, 0);
-  const ring = new THREE.RingGeometry(1.5, 2.1, 28);
+// Pulsing marker: a tall see-through column of light standing on a bright ground ring.
+export function makeMarker(scene, hex, radius = 1.5, height = 9) {
+  const col = new THREE.CylinderGeometry(radius, radius, height, 28, 1, true);
+  col.translate(0, height / 2, 0);
+  const ring = new THREE.RingGeometry(radius, radius * 1.4, 28);
   ring.rotateX(-PI / 2); ring.translate(0, 0.07, 0);
   const uv = ring.attributes.uv;
   for (let i = 0; i < uv.count; i++) uv.setXY(i, 0, -1);

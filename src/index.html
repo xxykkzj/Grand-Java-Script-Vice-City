@@ -22,30 +22,34 @@ html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);overflow
 #hud.cine>:not(#toast){visibility:hidden}
 .chip{background:rgba(10,5,24,.72);border:1px solid rgba(39,232,255,.55);
   clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
-#tl{position:absolute;top:14px;left:14px;display:flex;align-items:flex-start;gap:12px}
+#tl{position:absolute;top:14px;left:14px;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+#tr{position:absolute;top:14px;right:14px}
 #mapwrap{position:relative;width:156px;height:156px;flex:none;border-radius:50%;
   border:2px solid var(--pink);box-shadow:0 0 14px rgba(255,63,180,.55),0 0 0 4px rgba(10,5,24,.6),inset 0 0 18px rgba(10,5,24,.9);overflow:hidden;background:var(--ink)}
 #map{width:100%;height:100%;display:block}
-#stack{display:flex;flex-direction:column;gap:6px;min-width:150px;padding-top:2px}
+#stack{display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:176px}
+#stack>.chip{width:100%;text-align:right}
 #clock{padding:6px 12px 7px}
-#clock b{display:block;font-size:26px;line-height:1;letter-spacing:.06em;color:var(--sun);
+#clock b{display:block;font-size:22px;line-height:1;letter-spacing:.06em;color:var(--sun);
   text-shadow:0 0 12px rgba(255,209,102,.6);font-variant-numeric:tabular-nums}
-#clock span{display:block;margin-top:4px;font-size:9px;letter-spacing:.2em;color:var(--cyan)}
+#clock span{display:block;order:-1;font-size:9px;letter-spacing:.2em;color:var(--cyan)}
 #clock span span{display:inline;margin:0}
 #clock i{font-style:normal;color:var(--pink)}
 #cash{padding:4px 12px 5px;font:800 20px var(--disp);letter-spacing:.08em;color:#8dffb0;text-shadow:0 0 10px rgba(110,255,170,.55);
   font-variant-numeric:tabular-nums;border-color:rgba(141,255,176,.5)}
 #cash.up{color:#fff}#cash.dn{color:#ff6a8a}
 #hp{position:relative;height:16px;border-color:rgba(255,63,180,.6)}
-#hp i{position:absolute;inset:0;width:100%;transform-origin:0 50%;background:linear-gradient(90deg,var(--pink),#ff8a5c 60%,var(--sun))}
-#hp span{position:absolute;left:10px;top:2px;font-size:9px;letter-spacing:.3em;color:var(--ink);font-weight:700}
-#stars{display:flex;gap:3px;font-size:21px;line-height:1;padding-left:2px}
-#stars i{font-style:normal;color:rgba(255,246,236,.16);-webkit-text-stroke:1px rgba(39,232,255,.35)}
+#hp i{position:absolute;inset:0;width:100%;transform-origin:100% 50%;background:linear-gradient(270deg,var(--pink),#ff8a5c 60%,var(--sun))}
+#hp span{position:absolute;right:10px;top:2px;font-size:9px;letter-spacing:.3em;color:var(--ink);font-weight:700}
+#stars{display:flex;justify-content:flex-end;gap:4px;font-size:22px;line-height:1;padding:4px 10px 5px;border-color:rgba(255,63,180,.6)}
+#stars i{font-style:normal;color:rgba(255,246,236,.14);-webkit-text-stroke:1px rgba(39,232,255,.45)}
 #stars i.on{color:var(--cyan);-webkit-text-stroke:0;text-shadow:0 0 6px var(--cyan),0 0 16px var(--pink)}
 #stars.cool i.on{animation:cool .7s steps(2) infinite}
 @keyframes cool{50%{opacity:.25}}
 #zone{font-size:9px;letter-spacing:.24em;color:rgba(255,246,236,.8);text-shadow:0 1px 4px var(--ink);padding-left:3px}
-#obj{position:absolute;top:14px;right:14px;max-width:min(360px,44vw);padding:8px 14px 9px;text-align:right;border-color:rgba(255,209,102,.7)}
+#clock{display:flex;align-items:baseline;justify-content:flex-end;gap:10px}
+#obj{max-width:min(330px,44vw);padding:8px 14px 9px;border-color:rgba(255,209,102,.7)}
+#obj em{display:block;font:800 12px var(--disp);font-style:normal;letter-spacing:.22em;color:var(--pink)}
 #obj b{display:block;font:800 22px var(--disp);letter-spacing:.1em;color:var(--sun);font-variant-numeric:tabular-nums}
 #obj.late b{color:#ff6a8a}
 #obj span{font-size:11px;letter-spacing:.08em;line-height:1.5}
@@ -56,7 +60,7 @@ kbd{font:700 11px var(--mono);color:var(--ink);background:var(--cyan);padding:2p
 #note{position:absolute;left:0;right:0;bottom:12px;text-align:center;font-size:11px;letter-spacing:.14em;
   color:rgba(255,246,236,.82);text-shadow:0 1px 6px var(--ink)}
 #note b{color:var(--sun);font-weight:700}
-#perf{position:absolute;top:96px;right:14px;padding:10px 14px;font-size:11px;line-height:1.7;white-space:pre;border-color:rgba(255,63,180,.6)}
+#perf{position:absolute;bottom:44px;right:14px;padding:10px 14px;font-size:11px;line-height:1.7;white-space:pre;border-color:rgba(255,63,180,.6)}
 #perf b{color:var(--cyan);font-weight:400}
 #toast{position:absolute;left:50%;top:18%;transform:translateX(-50%);padding:12px 22px;text-align:center;
   font:800 20px var(--disp);letter-spacing:.16em;color:#fff;white-space:nowrap;
@@ -73,8 +77,8 @@ kbd{font:700 11px var(--mono);color:var(--ink);background:var(--cyan);padding:2p
 #cine.on::before,#cine.on::after{transform:none}
 #sub{position:absolute;left:50%;bottom:calc(12vh + 18px);transform:translateX(-50%);width:min(760px,86vw);text-align:center;
   font:600 19px/1.4 "Trebuchet MS","Segoe UI",system-ui,sans-serif;color:#fff;text-shadow:0 2px 0 #000,0 0 12px #000}
-#sub b{color:var(--pink);letter-spacing:.14em;font-size:13px;display:block}
-#sub b.me{color:var(--cyan)}
+#sub b{letter-spacing:.2em;font:800 14px var(--disp);display:block;margin-bottom:2px;text-shadow:0 2px 0 #000,0 0 14px currentColor}
+#sub .rest{visibility:hidden}
 #skip{position:absolute;right:18px;bottom:calc(6vh - 8px);font-size:11px;letter-spacing:.14em;color:rgba(255,246,236,.75);opacity:0;transition:opacity .4s}
 #cine.on #skip{opacity:1}
 #fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .35s}
@@ -86,7 +90,22 @@ kbd{font:700 11px var(--mono);color:var(--ink);background:var(--cyan);padding:2p
   background:linear-gradient(180deg,#eaffff 10%,var(--cyan) 45%,#7a5cff 80%);-webkit-background-clip:text;background-clip:text;color:transparent;
   filter:drop-shadow(4px 4px 0 #2a0b5a) drop-shadow(0 0 22px rgba(39,232,255,.5))}
 #card.ko h2{background:linear-gradient(180deg,#fff7c9 8%,var(--sun) 38%,#ff7a3d 58%,var(--pink) 82%);-webkit-background-clip:text;background-clip:text}
-#card p{margin:14px 0 0;font-size:13px;letter-spacing:.3em;color:var(--paper)}
+#card p{margin:14px auto 0;max-width:min(900px,90vw);font-size:13px;line-height:1.8;letter-spacing:.24em;color:var(--paper)}
+#card.pass h2{background:linear-gradient(180deg,#f4fff0 8%,#8dffb0 40%,var(--cyan) 70%,#7a5cff 95%);-webkit-background-clip:text;background-clip:text}
+#card.fail h2{background:linear-gradient(180deg,#fff 8%,#ff8fb0 40%,var(--pink) 70%,#7a1a6a 95%);-webkit-background-clip:text;background-clip:text}
+#card.pass{background:radial-gradient(90% 70% at 50% 50%,rgba(10,5,24,.15),rgba(10,5,24,.6))}
+
+/* ---------- shop menu ---------- */
+#shop{position:fixed;left:24px;top:50%;transform:translateY(-50%);width:min(430px,86vw);padding:16px 18px 14px;background:rgba(10,5,24,.86);
+  border:1px solid var(--pink);box-shadow:0 0 22px rgba(255,63,180,.35);clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px)}
+#shop h3{margin:0 0 10px;font:italic 900 28px var(--disp);letter-spacing:.06em;color:var(--sun);text-shadow:3px 3px 0 #2a0b5a}
+#shop ul{list-style:none;margin:0;padding:0}
+#shop li{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:7px 10px;border-left:3px solid transparent}
+#shop li.sel{background:rgba(39,232,255,.14);border-left-color:var(--cyan)}
+#shop li b{font:800 16px var(--disp);letter-spacing:.12em}
+#shop li i{font-style:normal;color:#8dffb0;font-weight:700;letter-spacing:.08em}
+#shop li span{grid-column:1/3;font-size:11px;color:rgba(255,246,236,.75)}
+#shop p{margin:10px 0 0;font-size:11px;line-height:1.6;letter-spacing:.06em;color:var(--cyan);min-height:2.6em}
 
 /* ---------- cheat console ---------- */
 #console{position:fixed;left:0;right:0;bottom:0;padding:10px 16px 12px;background:rgba(6,3,16,.9);
@@ -126,7 +145,7 @@ kbd{font:700 11px var(--mono);color:var(--ink);background:var(--cyan);padding:2p
 @keyframes pulse{50%{box-shadow:0 0 30px rgba(255,63,180,.9),inset 0 0 20px rgba(255,63,180,.5)}}
 #nogl{position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;background:var(--ink);line-height:1.7}
 #nogl h2{font:italic 900 44px var(--disp);color:var(--sun);margin:0 0 8px}
-@media (max-width:700px){#hint{max-width:90vw;bottom:40px}#note{font-size:9px}#mapwrap{width:110px;height:110px}#stack{min-width:120px}}
+@media (max-width:700px){#hint{max-width:90vw;bottom:40px}#note{font-size:9px}#mapwrap{width:110px;height:110px}#stack{min-width:132px}#clock b{font-size:17px}}
 @media (prefers-reduced-motion:reduce){#go,#stars.cool i.on{animation:none}#cine::before,#cine::after,#fade,#card{transition:none}#toast,#title,#bar i{transition:none}}
 </style>
 </head>
@@ -136,22 +155,25 @@ kbd{font:700 11px var(--mono);color:var(--ink);background:var(--cyan);padding:2p
 <div id="hud" hidden>
   <div id="tl">
     <div id="mapwrap"><canvas id="map" width="312" height="312" aria-label="Minimap"></canvas></div>
+    <div id="zone">THE PROMENADE</div>
+    <div id="obj" class="chip" hidden><em id="objm"></em><b id="objt"></b><span id="objs"></span></div>
+  </div>
+  <div id="tr">
     <div id="stack">
-      <div id="clock" class="chip"><b id="time">19:00</b><span><i id="phase">DUSK</i> · <span id="wx">CLEAR</span></span></div>
       <div id="cash" class="chip">$<span id="money">0</span></div>
       <div id="hp" class="chip" role="img" aria-label="Health"><i id="hpfill"></i><span>HEALTH</span></div>
-      <div id="stars" role="img" aria-label="Wanted level 0"><i>★</i><i>★</i><i>★</i><i>★</i><i>★</i></div>
-      <div id="zone">THE PROMENADE</div>
+      <div id="stars" class="chip" role="img" aria-label="Wanted level 0"><i>★</i><i>★</i><i>★</i><i>★</i><i>★</i></div>
+      <div id="clock" class="chip"><b id="time">19:00</b><span><i id="phase">DUSK</i> · <span id="wx">CLEAR</span></span></div>
     </div>
   </div>
-  <div id="obj" class="chip" hidden><b id="objt"></b><span id="objs"></span></div>
   <div id="perf" class="chip" hidden></div>
   <div id="toast" role="status" aria-live="polite"></div>
   <div id="hint"></div>
   <div id="note">Everything you see and hear is generated in code — <b>0 asset files</b></div>
 </div>
 
-<div id="cine"><div id="sub" aria-live="polite"></div><div id="skip"><kbd>Space</kbd> / <kbd>Enter</kbd> skip</div></div>
+<div id="cine"><div id="sub" aria-live="polite"></div><div id="skip"><kbd>Space</kbd> next &nbsp; <kbd>X</kbd> skip scene</div></div>
+<div id="shop" hidden><h3 id="shopt"></h3><ul id="shopl"></ul><p id="shopf"></p></div>
 <div id="card"><div><h2 id="cardt"></h2><p id="cards"></p></div></div>
 <div id="fade"></div>
 
@@ -174,7 +196,8 @@ kbd{font:700 11px var(--mono);color:var(--ink);background:var(--cyan);padding:2p
     <p id="status">WARMING UP THE NEON…</p>
     <button id="go" type="button" hidden>CLICK TO START</button>
     <p id="keys" hidden>
-      <kbd>W A S D</kbd> move &nbsp; <kbd>Shift</kbd> sprint &nbsp; <kbd>Space</kbd> jump &nbsp; <kbd>Drag</kbd> look &nbsp; <kbd>E</kbd> vehicles<br>
+      <kbd>W A S D</kbd> move &nbsp; <kbd>Shift</kbd> sprint &nbsp; <kbd>Space</kbd> jump &nbsp; <kbd>Drag</kbd> look &nbsp; <kbd>E</kbd> vehicles, bikes, counters<br>
+      Skate into a glowing ring to walk into a place &nbsp;·&nbsp; the pulsing blip on the map is your next job<br>
       <kbd>~</kbd> / <kbd>T</kbd> cheat console &nbsp; <kbd>N</kbd> time of day &nbsp; <kbd>[</kbd> <kbd>]</kbd> time speed &nbsp; <kbd>M</kbd> mute &nbsp; <kbd>P</kbd> perf panel
     </p>
   </div>

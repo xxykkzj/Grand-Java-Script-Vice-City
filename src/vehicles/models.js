@@ -40,6 +40,26 @@ export function carGeometry() {
 export function carGlassGeometry() {
   return shaped(1.66, 0.5, 2.1, 0, 1.3, -0.35, '#3a5a78', (x, y, z) => (y > 0 ? [x * 0.8, y, z > 0 ? z - 0.75 : z + 0.4] : [x, y, z]));
 }
+// The "Comet": a wedge-faired 80s sport bike. White panels take the instance colour.
+export function bikeGeometry() {
+  const W = '#ffffff', TYRE = '#0c0c10', TRIM = '#15131c', STEEL = '#b9b4c6';
+  const parts = [
+    cyl(0.33, 0.33, 0.16, 12, 0, 0.33, 0.74, TYRE, 0, PI / 2), cyl(0.33, 0.33, 0.2, 12, 0, 0.33, -0.72, TYRE, 0, PI / 2),
+    cyl(0.17, 0.17, 0.18, 6, 0, 0.33, 0.74, STEEL, 0, PI / 2), cyl(0.17, 0.17, 0.22, 6, 0, 0.33, -0.72, STEEL, 0, PI / 2),
+    box(0.06, 0.8, 0.07, 0.12, 0.68, 0.62, STEEL, -0.4), box(0.06, 0.8, 0.07, -0.12, 0.68, 0.62, STEEL, -0.4),                // forks
+    shaped(0.5, 0.56, 0.95, 0, 0.84, 0.4, W, (x, y, z) => [x * (z > 0 ? 0.55 : 1), z > 0 ? y * 0.6 + 0.04 : y, z]),          // wedge fairing
+    box(0.36, 0.28, 0.66, 0, 0.92, -0.12, W),                                                                                  // tank
+    box(0.3, 0.09, 0.56, 0, 0.9, -0.66, TRIM),                                                                                 // seat
+    shaped(0.34, 0.2, 0.62, 0, 0.93, -1.0, W, (x, y, z) => [x * (z < 0 ? 0.6 : 1), z < 0 ? y + 0.14 : y, z]),                // kicked-up tail
+    box(0.3, 0.34, 0.56, 0, 0.5, -0.05, TRIM), box(0.34, 0.1, 0.3, 0, 0.36, -0.1, STEEL),                                      // engine
+    box(0.4, 0.04, 0.34, 0, 1.22, 0.5, '#3a5a78', -0.95), box(0.7, 0.05, 0.05, 0, 1.1, 0.36, TRIM),                            // screen, bars
+    box(0.22, 0.13, 0.05, 0, 0.9, 0.88, '#fff6c8'), box(0.26, 0.07, 0.05, 0, 1.06, -1.31, '#ff1028'),                          // square headlight, tail light
+    cyl(0.06, 0.09, 0.85, 6, 0.21, 0.44, -0.78, STEEL, PI / 2 - 0.12), cyl(0.06, 0.09, 0.85, 6, -0.21, 0.44, -0.78, STEEL, PI / 2 - 0.12),
+    box(0.51, 0.07, 0.9, 0, 0.72, 0.38, '#ff2bd1'), box(0.37, 0.05, 0.67, 0, 0.84, -0.12, '#18f0ff'),                          // racing stripes
+  ];
+  return merge(parts);
+}
+
 // Coast Patrol livery kit: white door panels and a red / blue roof bar, drawn over a teal car.
 export function patrolKitGeometry() {
   return merge([

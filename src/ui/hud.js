@@ -1,5 +1,5 @@
-// DOM HUD. Top-left: a round minimap that turns with the camera, and beside it a stack of
-// clock, cash, health and wanted stars. Also the objective chip, hints, toast and perf panel.
+// DOM HUD. Top-left: a round minimap that turns with the camera, the district name and the
+// current objective. Top-right: cash, health, wanted stars and the clock. Also hints, toast, perf panel.
 import { HX, HZ, PIER, zoneName } from '../world/layout.js';
 import { WEATHER } from '../world/environment.js';
 
@@ -7,7 +7,7 @@ const $ = (id) => document.getElementById(id);
 
 export function createHud(L, groundCanvas, renderer) {
   const el = {};
-  for (const id of ['hud', 'time', 'phase', 'wx', 'zone', 'hint', 'toast', 'perf', 'map', 'money', 'cash', 'hpfill', 'stars', 'obj', 'objt', 'objs']) el[id] = $(id);
+  for (const id of ['hud', 'time', 'phase', 'wx', 'zone', 'hint', 'toast', 'perf', 'map', 'money', 'cash', 'hpfill', 'stars', 'obj', 'objt', 'objs', 'objm']) el[id] = $(id);
   const starEls = [...el.stars.children];
 
   // static minimap layer: 1 px per world unit, painted once
@@ -81,13 +81,16 @@ export function createHud(L, groundCanvas, renderer) {
         el.stars.setAttribute('aria-label', 'Wanted level ' + game.wanted);
       }
       const ms = game.mission;
-      const obj = ms ? Math.ceil(ms.time) + '|' + ms.text : '';
+      const timed = ms && ms.time != null;
+      const obj = ms ? (timed ? Math.ceil(ms.time) : '') + '|' + ms.text + '|' + ms.title : '';
       if (obj !== lastObj) {
         lastObj = obj; el.obj.hidden = !ms;
         if (ms) {
-          const s = Math.max(0, Math.ceil(ms.time));
+          const s = timed ? Math.max(0, Math.ceil(ms.time)) : 0;
+          el.objm.textContent = ms.title;
+          el.objt.hidden = !timed;
           el.objt.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
-          el.objs.textContent = ms.text; el.obj.classList.toggle('late', s <= 10);
+          el.objs.textContent = ms.text; el.obj.classList.toggle('late', timed && s <= 10);
         }
       }
 
@@ -117,6 +120,7 @@ export function createHud(L, groundCanvas, renderer) {
         let s = 4;
         if (v.police) { g.fillStyle = v.ai && v.ai.siren ? (flash ? '#ff2a3a' : '#3a7aff') : '#9fd8ff'; s = 6; }
         else if (v.kind === 'car') { g.fillStyle = v.ai ? 'rgba(255,225,74,.6)' : '#ffe14a'; s = v.ai ? 3 : 4; }
+        else if (v.kind === 'bike') { g.fillStyle = v.ai ? 'rgba(255,140,220,.7)' : '#ff8ad0'; s = 3; }
         else { g.fillStyle = v.kind === 'tank' ? '#8dff5a' : '#27e8ff'; s = 7; }
         g.fillRect(v.x + HX + PAD - s / 2, v.z + HZ + PAD - s / 2, s, s);
       }
@@ -130,7 +134,10 @@ export function createHud(L, groundCanvas, renderer) {
         const x = R + (dx * cs - dz * sn) * SCALE, y = R + (dx * sn + dz * cs) * SCALE, r = (p.big ? 7 : 4) * (p.big ? pulse : 1);
         g.fillStyle = p.color; g.strokeStyle = '#0a0518'; g.lineWidth = 2.5;
         g.beginPath();
-        if (p.diamond) { g.moveTo(x, y - r - 2); g.lineTo(x + r + 2, y); g.lineTo(x, y + r + 2); g.lineTo(x - r - 2, y); g.closePath(); } else g.arc(x, y, r, 0, 6.2832);
+        if (p.diamond) { g.moveTo(x, y - r - 2); g.lineTo(x + r + 2, y); g.lineTo(x, y + r + 2); g.lineTo(x - r - 2, y); g.closePath(); }
+        else if (p.sq) g.rect(x - 4, y - 4, 8, 8);
+        else if (p.star) { for (let k = 0; k < 10; k++) { const a = k * 0.6283 - 1.5708, q = k % 2 ? r * 0.55 : r + 3; g.lineTo(x + Math.cos(a) * q, y + Math.sin(a) * q); } g.closePath(); }
+        else g.arc(x, y, r, 0, 6.2832);
         g.stroke(); g.fill();
       }
       // north marker rides the rim
