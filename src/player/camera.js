@@ -5,7 +5,7 @@ import { damp, clamp, angleDelta, reducedMotion } from '../core/util.js';
 const DIST = { foot: 7.5, car: 10.5, bike: 8.2, tank: 14, heli: 17 };
 const LIFT = { foot: 1.5, car: 1.6, bike: 1.6, tank: 3, heli: 2.4 };
 // first-person eye: height above the vehicle/feet and how far forward of its centre
-const EYE = { foot: [1.62, 0.25], car: [1.25, 0.35], bike: [1.7, 0.2], tank: [3.5, 0.4], heli: [1.9, 1.3] };
+export const EYE = { foot: [1.62, 0.25], car: [1.25, 0.35], bike: [1.7, 0.2], tank: [3.5, 0.4], heli: [1.9, 1.3] };
 export const VIEWS = [
   { id: 'third', name: 'THIRD PERSON', dist: 1 },
   { id: 'close', name: 'CLOSE THIRD PERSON', dist: 0.52 },

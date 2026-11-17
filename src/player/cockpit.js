@@ -2,6 +2,7 @@
 // on the camera when you're in a vehicle and the view is set to first person.
 // Everything is built from boxes and a canvas texture; no asset files.
 import * as THREE from 'three';
+import { EYE } from './camera.js';
 
 const TAU = Math.PI * 2;
 
@@ -55,10 +56,15 @@ function dial(x, cx, cy, r, v, max, label, unit, col) {
   x.restore();
 }
 
-export function createCockpit(camera) {
+export function createCockpit(scene) {
+  // the anchor follows the vehicle (position + heading); 'root' sits at the driver's eye
+  // and is turned to face forward, so the parts below keep camera-style coordinates
+  // (x right, y up, -z ahead) but stay fixed to the vehicle when you look around
+  const anchor = new THREE.Group();
   const root = new THREE.Group();
-  root.renderOrder = 50;
-  camera.add(root);
+  root.rotation.y = Math.PI;
+  anchor.add(root);
+  scene.add(anchor);
 
   const trim = mat('#1a1826'), dash = mat('#24212f'), dashTop = mat('#14121c'), chrome = mat('#c7c4d6', { metalness: 0.8, roughness: 0.3 });
   const neon = new THREE.MeshBasicMaterial({ color: '#ff3fb4', transparent: true, fog: false, depthTest: false, depthWrite: false, toneMapped: false });
@@ -168,7 +174,12 @@ export function createCockpit(camera) {
     update(dt, vehicle, show, steer) {
       const k = show && vehicle ? kinds[vehicle.kind] : null;
       if (k !== active) { if (active) active.g.visible = false; active = k; if (k) k.g.visible = true; }
+      anchor.visible = !!k;
       if (!k) return;
+      const [eh, ef] = EYE[vehicle.kind];
+      anchor.position.set(vehicle.x, vehicle.y || 0, vehicle.z);
+      anchor.rotation.y = vehicle.yaw;
+      root.position.set(0, eh, ef);
       const s = vehicle.kind === 'tank' ? Math.abs(vehicle.speed || 0) : Math.hypot(vehicle.vx || 0, vehicle.vz || 0);
       if (k.wheel) k.wheel.rotation.z += ((steer || 0) * 1.6 - k.wheel.rotation.z) * Math.min(1, dt * 10);
       acc += dt;

@@ -45,8 +45,7 @@ async function boot() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(62, 1, 0.12, 2600);
-  scene.add(camera);                       // so the first-person cockpit can ride on it
-  const cockpit = createCockpit(camera);
+  const cockpit = createCockpit(scene);     // first-person dashboards, fixed to the vehicle
   const resize = () => {
     renderer.setSize(window.innerWidth, window.innerHeight, false);
     camera.aspect = window.innerWidth / Math.max(1, window.innerHeight);

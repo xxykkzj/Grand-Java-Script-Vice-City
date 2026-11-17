@@ -88,7 +88,12 @@ export function makeLayout() {
   for (let x = -270; x <= 285; x += 30) if (!nearSide(x, 10)) palm(x, 40.2);
   for (let i = 0; i < 34; i++) palm(-290 + r() * 580, 84 + r() * 40);
   for (let x = -290; x <= 290; x += 18) palm(x + (r() - 0.5) * 6, -143 + r() * 5);
-  for (const s of SIDE_X) for (let z = -125; z <= 30; z += 31) { palm(s - 7.6, z); palm(s + 7.6, z + 15); }
+  // side-street palms, skipping the stretches where the back avenues cross (they used to grow in the road)
+  const onAvenue = (z) => [ROADS.back1, ROADS.back2].some((rd) => Math.abs(z - rd.z) < rd.w / 2 + 2.5);
+  for (const s of SIDE_X) for (let z = -125; z <= 30; z += 31) {
+    if (!onAvenue(z)) palm(s - 7.6, z);
+    if (!onAvenue(z + 15)) palm(s + 7.6, z + 15);
+  }
 
   // Parked cars: { x, z, yaw }
   const spots = [];
