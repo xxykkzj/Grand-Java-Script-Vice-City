@@ -32,9 +32,25 @@ Each has its own coloured ring at the door on Lumina Boulevard, a short walk-in 
 | Place | Ring | Inside |
 | --- | --- | --- |
 | **The Velvet Flamingo** | pink | Dee's bar. Story scenes, and `E` at the counter for a timed delivery. |
-| **Club Prism** | violet | Dance floor with animated light tiles, a dancing crowd, DJ Kilowatt in the booth, a mirror ball and sweeping beams. The soundtrack gets louder and gains claps and open hats. Hosts two story jobs, including the finale on the dance floor. |
+| **Club Prism** | violet | A big room on one shared beat: DJ Kilowatt on a raised booth (decks, a mixer of blinking LEDs, speaker stacks that thump with the kick), a light-tile floor whose pattern changes every bar, a mirror ball throwing moving spots, lasers through the haze, a bar with a bartender, booths, a roped-off VIP corner, a coat check and a crowd of 29 (dancing in time with eight moves, sipping at the bar, sitting in the booths). Its own club track. **You can dance here** (see below). Hosts two story jobs, including the dance-off finale. |
 | **Zigzag Threads** | orange | Step onto the podium and press `E` to try on six colourways: Courier Classic, Sunset Stripe, Midnight Arcade, Mint Condition, Cherry Bomb, Flamingo Royale. They cost cash once and are yours for good. Putting on a different outfit while wanted knocks one star off (once every 45 seconds). |
 | **Pelican Pantry 24** | green | Gus's corner store. `E` at the counter: Pelican Pop ($5, +15 health), Boardwalk Hot Dog ($12, +35), Turbo Crunch Bar ($20, +60). |
+
+## Dancing at Club Prism
+
+Step onto the dance floor and press `F` to dance. Skye picks up the beat and the camera eases into a slow orbit (gentler with reduced motion).
+
+- **Moves:** `1` Step-Touch, `2` Shoulder Bounce, `3` Neon Wave, `4` Turntable Spin, `5` Boardwalk Glide, `6` Sky Point, `7` Low Tide, `8` Circuit Bot. `←` / `→` step to the previous / next move, `↑` / `↓` repeat the current one. Moves blend into each other and always stay on the beat.
+- **Rhythm:** the panel at the bottom shows the four beats of the bar and a ring that closes on each beat. Press a move key on the beat (PERFECT within about 60 ms, GOOD within about 125 ms) to build a **combo** and fill the **vibe** meter. Off-beat presses, or two on one beat, break the combo; so does stopping for a couple of beats. Repeating the same move over and over earns less ("MIX IT UP").
+- **The room answers:** every hit flares the floor around you, nearby dancers turn to you, cheer at every fourth hit and copy your move, and every 8 in a row earns a small cash tip.
+- `F` again, or `W A S D`, stops dancing.
+- **Last Dance** (the finale) is now a real dance-off: fill your vibe meter before Chip Glitz fills his.
+
+The club track (kick, clap, hats, an offbeat bass line, chord stabs, a sixteenth-note arpeggio) runs in 16-bar phrases with a 2-bar breakdown and a 2-bar build (snare roll and riser) before each drop. The floor, lasers, mirror-ball spots, speakers, LEDs and the crowd all follow the same clock, which is locked to the synth's scheduler.
+
+## Sitting down
+
+Walk up to a seat and press `F` (the hint shows `F: sit`): Skye sits down onto it facing the right way, then idles (looks around, leans back, on the sand lies back with arms behind the head). `F`, `E` or moving gets up. Seats: benches on the boulevard, the promenade, the pier and the sand by the pier; sun loungers and towels under the beach umbrellas; café chairs at the tables outside the Sunset Strip Diner; the bleacher steps by the volleyball court; the seawall coping; the pier edge by the rail; bar stools and booths indoors. On the beach you can also just sit on the sand anywhere (stand still first). Pedestrians use the same seats: some sit on benches and at the café, on loungers and towels and the sand by day, and the club crowd fills the booths.
 
 ## What's in town
 
@@ -50,6 +66,7 @@ Each has its own coloured ring at the door on Lumina Boulevard, a short walk-in 
 - **Pickups.** Floating cash bundles and two health kits around town; they respawn.
 - **Beach life.** Crabs scuttle sideways over the sand and dive into it when anything comes within a few metres (more of them come out at night). Sandpipers run up and down the wet sand chasing the wave edge and burst into short flights when approached; most leave at night and they huddle under the lifeguard huts when it rains. Pelicans sit on the pier posts, stretch their wings now and then, and one takes off for a lazy glide over the water. A friendly beach dog trots about, runs over when you are on foot nearby, follows you for a bit, then wanders off. Around dusk a few sea turtles surface in the shallows. Cars and pedestrians only ever make them scatter. Quiet synthesised gull cries, peeps and a woof.
 - **The edge of the world.** The island ends at things you can see: a seawall with a railing and lamps around the city, banks of rocks where the beach meets the sides, and the surf. Lumina Boulevard runs west onto a causeway stub that stops at a storm closure (water barriers, sawhorses, cones, flashing amber lamps, a CAUSEWAY CLOSED – STORM REPAIRS sign, a repair barge in the missing span); the east end is a turnaround at the wall, and the other streets end at chevron boards and bollards. On the horizon: a mainland skyline across the bay, the Key (a little island town at the far end of the old causeway, with traffic lights streaming to the mainland at night), a hilly island to the south-east, a lighthouse with a turning beam and a cargo ship crawling along the horizon. Windows light up and twinkle at night; everything fades into the sea haze, and the sky melts into the fogged ocean so the water has no visible edge. The helicopter can fly well out to sea (about 700 m from the town centre); past that a TURNING BACK: LOW FUEL warning eases it round and pushes it home. You can only step out of it over land.
+- **Solid street furniture.** Palms, street lamps, signal masts, benches, bins, hydrants, phone booths, umbrella poles, lifeguard huts and chairs, volleyball posts, billboard stilts, surfboards, café tables, pier crates and the pier rail all block you, and cars stop against them (a thud and a small bounce, never any heat; a hard hit on the Comet still throws you). The helicopter only minds the tall ones, and only when low. You can still jump over the low ones on skates. Traffic and pedestrians follow their own lanes and sidewalks, so they never snag on them.
 - **HUD.** Top right: cash, health bar, heat stars and the clock. Top left: a round minimap that turns with the camera (roads, buildings, cars, bikes, patrol cars, pickups, the four doors as coloured squares, the next job as a star, the current target as a yellow diamond, a north marker), the district name and the current objective. Context hints sit bottom left.
 
 ### City detail
@@ -75,10 +92,11 @@ Chosen to make the street read as a place without adding draw calls (almost ever
 | `Space` | jump | handbrake (drift) | | | climb |
 | `C` or `Ctrl` | | | | | descend |
 | `E` | get in or on the nearest vehicle, or take an occupied one | get out | get off | get out | get out (land first) |
+| `F` | sit down near a seat or on the sand, get up; on the club dance floor: dance | | | fire | |
 | Mouse drag | orbit the camera | orbit | orbit | aim the turret | orbit |
-| Click or `F` | | | | fire | |
+| Click | | | | fire | |
 
-Indoors: `W A S D` walk (the camera looks in from the door, so `W` is further in), `Shift` hurry, `E` at the yellow ring (Dee's counter, the podium, Gus's counter), walk into the white ring to leave. In a shop menu: `W`/`S` or arrows choose, `Enter` buys or wears, `Esc` closes.
+Indoors: `W A S D` walk (the camera looks in from the door, so `W` is further in), `Shift` hurry, `E` at the yellow ring (Dee's counter, the podium, Gus's counter), `F` to sit on a stool or a booth or to dance on the club floor, walk into the white ring to leave. In a shop menu: `W`/`S` or arrows choose, `Enter` buys or wears, `Esc` closes.
 
 Anywhere:
 
@@ -122,7 +140,7 @@ A forced weather holds for about four game hours before the sky starts making it
 
 ## Hardware notes
 
-- Built for integrated laptop graphics: a typical street frame is about 45 to 50 draw calls and roughly 240k triangles with all traffic, pedestrians, beach animals and the horizon on screen (about 50 draw calls inside Club Prism). No shadow maps, no post-processing. Interiors are built the first time you walk in and hidden when you leave.
+- Built for integrated laptop graphics: a typical street frame is about 45 to 50 draw calls and roughly 240k triangles with all traffic, pedestrians, beach animals and the horizon on screen. Indoors the camera only renders the room's layer (the room, the courier, the rings), so Club Prism with its whole crowd, lasers and lights is about 22 draw calls. No shadow maps, no post-processing. Interiors are built the first time you walk in and hidden when you leave.
 - The pixel ratio is capped at 2. If it still struggles on a high-DPI screen, zoom the page in (`Ctrl` / `Cmd` + `+`) or shrink the window: fewer pixels is the big lever.
 - Needs WebGL 2. Without it you get a plain explanatory message instead of a black page. Make sure hardware acceleration is switched on in the browser.
 - Rendering and audio pause while the tab is hidden.
@@ -152,17 +170,18 @@ then open `dist/index.html`. `npm run dev` rebuilds (unminified) whenever a file
 - **Shaders.** Gradient sky with a striped sun, stars, a moon and a drifting procedural cloud deck; animated ocean with surf; windows that light up at night from a per-instance seed; palms swaying in the vertex shader; rain as wrapped line segments animated in the vertex shader; wet-road highlights computed in the ground's fragment shader from a formula for the lamp positions.
 - **Cheap glow.** Lights get additive point sprites whose brightness follows the clock. Day/night and weather only ever change uniforms and colours.
 - **Story as data.** `src/game/story.js` holds the cast, every line of dialogue (with its camera shot and gesture), the mission steps, the shop lists and the counter one-liners. `missions.js` plays it; `cutscene.js` is the director (letterbox, typewriter subtitles with coloured speaker names, wide / over-the-shoulder / close-up / two-shot cameras, actors that turn to face each other and gesture).
-- **Interiors.** Each room is one merged unlit mesh plus a few animated extras, parked 90 units under its own building. The Club Prism dance floor is a single quad whose tiles are drawn and animated in the fragment shader; the crowd is three instanced meshes.
-- **Sound.** Web Audio only: bass arpeggio, pad, pluck arp and a drum machine on a look-ahead scheduler, a low-pass on the music bus for the muffled shop radio, extra club percussion, per-character subtitle blips, plus engine, rotor, skates, rain, thunder, explosions, siren, horns, cash ticks and the pedestrians' "hey!" built from oscillators and filtered noise.
+- **Interiors.** Each room is one merged unlit mesh plus a few animated extras, parked 90 units under its own building, on its own render layer. The Club Prism dance floor is a single quad whose tiles, per-bar patterns, breakdown and build are drawn in the fragment shader; the lasers and haze are additive meshes animated in their shaders; the mirror-ball spots are one instanced quad (rays from the ball to the walls, worked out on the CPU); the crowd of 29 is four instanced meshes (torsos, heads, arms, legs) posed from the same move library as the courier (`src/actors/moves.js`). One music clock (`beatU` in core/util.js) is free-running on real time and pulled onto the synth's scheduler position every frame; key presses are judged against it to the millisecond, between frames too.
+- **Props and seats.** `src/world/props.js`: the world builders register each solid prop as a circle or a box and each seat as a point (or a line, like the seawall); a static spatial grid means the courier and cars only test the handful in their own cells. `src/game/activity.js` does sitting and dancing.
+- **Sound.** Web Audio only: bass arpeggio, pad, pluck arp and a drum machine on a look-ahead scheduler, a low-pass on the music bus for the muffled shop radio, Club Prism's own phrase-structured track, per-character subtitle blips, plus engine, rotor, skates, rain, thunder, explosions, siren, horns, cash ticks and the pedestrians' "hey!" built from oscillators and filtered noise.
 
 ### Size
 
 | Part | Minified |
 | --- | --- |
 | three.js 0.187.0 (tree-shaken) | about 576 KB |
-| Game code | about 188 KB |
-| HTML + CSS | about 15 KB |
-| **`dist/index.html`** | **about 779 KB** |
+| Game code | about 223 KB |
+| HTML + CSS | about 17 KB |
+| **`dist/index.html`** | **about 816 KB** |
 
 ### Source layout
 
@@ -173,9 +192,9 @@ src/
   core/             input, shared helpers, spatial grid
   world/            layout, roads + traffic lights, canvas textures, sky + ocean, city builder, details (rooftops, props,
                     billboards, boats, gulls), edges (seawall, causeway closure), horizon (distant scenery),
-                    glow sprites, day/night + weather
-  actors/           AI traffic + Coast Patrol, pedestrians + drivers, beach animals
-  game/             story.js (all dialogue + mission data), missions (story engine), cutscene (director),
+                    glow sprites, day/night + weather, props (solid street furniture + seats, spatial grid)
+  actors/           AI traffic + Coast Patrol, pedestrians + drivers, beach animals, dance moves (shared by courier and crowd)
+  game/             story.js (all dialogue + mission data), missions (story engine), cutscene (director), activity (sitting, dancing + rhythm),
                     interiors (the four rooms + cast), places (doors, walking indoors, shops),
                     rules (heat, cash, health, pickups, carjack)
   player/           the courier model + skating controller, follow camera

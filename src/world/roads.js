@@ -68,7 +68,7 @@ export function connector(e1, e2) {
 const LIT = ['#ff2a3a', '#ffb62e', '#3dff8a'], WALK = '#dffcff', WAIT = '#ff6a1a';
 
 // One instanced mast per approach, one instanced cube per lamp. Colours change only when a phase flips.
-export function buildSignals(scene, R, mat) {
+export function buildSignals(scene, R, mat, props) {
   const heads = [];
   for (const n of R.lights) for (const e of n.ins) { n.heads.push(heads.length); heads.push(e); }
   // local frame: traffic travels +z, the kerb is at the origin, the road is towards +x
@@ -86,6 +86,7 @@ export function buildSignals(scene, R, mat) {
     const lat = e.hw - e.off + 1.3, px = e.x1 - e.dz * lat, pz = e.z1 + e.dx * lat, yaw = Math.atan2(e.dx, e.dz);
     q.setFromAxisAngle(UP, yaw);
     masts.setMatrixAt(i, m.compose(p.set(px, 0, pz), q, s));
+    if (props) props.circle(px, pz, 0.2, 5.6);
     const c = Math.cos(yaw), sn = Math.sin(yaw);
     LOCAL.forEach((l, k) => lamps.setMatrixAt(i * 4 + k, m.compose(p.set(px + l[0] * c + l[2] * sn, l[1], pz - l[0] * sn + l[2] * c), q, s)));
   });

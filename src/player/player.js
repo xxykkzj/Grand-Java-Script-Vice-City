@@ -78,7 +78,7 @@ export function createPlayer(scene, L) {
 
   const P = {
     pos: new THREE.Vector3(-10, 0, 67), vel: new THREE.Vector3(), vy: 0, yaw: PI / 2,
-    onGround: true, hidden: false, lowGravity: false, phase: 0, speed: 0, lean: 0, model, floor: 0,
+    onGround: true, hidden: false, lowGravity: false, phase: 0, speed: 0, lean: 0, model, floor: 0, shadow,
     setHidden(h) { P.hidden = h; model.root.visible = !h; shadow.visible = !h; },
     update(dt, inp, camYaw, vehicles, audio) {
       if (P.hidden) return;
@@ -100,6 +100,7 @@ export function createPlayer(scene, L) {
         const n = pushOut(P.pos, 0.45, b);
         if (n) { const vn = P.vel.x * n.nx + P.vel.z * n.nz; if (vn < 0) { P.vel.x -= vn * n.nx; P.vel.z -= vn * n.nz; } }
       }
+      L.props.collide(P.pos, 0.42, P.pos.y, P.vel);
       for (const v of vehicles.all()) {
         if (Math.abs(v.y - P.pos.y) > 1.6) continue;
         const ddx = P.pos.x - v.x, ddz = P.pos.z - v.z, rr = v.radius * 0.8 + 0.4, d = Math.hypot(ddx, ddz);
@@ -133,11 +134,28 @@ export function createPlayer(scene, L) {
         m.armL.rotation.set(-0.4, 0, 0.9); m.armR.rotation.set(-0.4, 0, -0.9);
         m.body.rotation.set(0.08, 0, -P.lean); m.body.position.y = 0;
       }
-      m.head.rotation.x = -0.15 * k;
+      m.head.rotation.set(-0.15 * k, 0, 0); m.body.position.x = m.body.position.z = 0;
       m.root.position.copy(P.pos); m.root.rotation.set(0, P.yaw, 0);
       shadow.position.set(P.pos.x, P.floor + 0.03, P.pos.z);
       const sk = 1 / (1 + (P.pos.y - P.floor) * 0.35); shadow.scale.set(sk, 1, sk);
     },
+    // dancing / sitting: pose the model from a pose object (see actors/moves.js); the legs pivot at the hips
+    applyPose(o) {
+      const m = model, rx = Math.cos(P.yaw), rz = -Math.sin(P.yaw);
+      m.root.position.set(P.pos.x + rx * o.x, P.pos.y, P.pos.z + rz * o.x);
+      m.root.rotation.set(0, P.yaw + o.spin, 0);
+      // rotate the body about the hips, not the feet
+      const h = 0.96, cx = Math.cos(o.rx), sx = Math.sin(o.rx), cy = Math.cos(o.ry), sy = Math.sin(o.ry), cz = Math.cos(o.rz), sz = Math.sin(o.rz);
+      m.body.position.set(h * sz * cy, o.y + h - h * (cz * cx - sz * sy * sx), -h * (cz * sx + sz * sy * cx));
+      m.body.rotation.set(o.rx, o.ry, o.rz);
+      m.head.rotation.set(o.hx, o.hy || 0, o.hz);
+      m.armL.rotation.set(o.aL[0], o.aL[1], o.aL[2]); m.armR.rotation.set(o.aR[0], o.aR[1], o.aR[2]);
+      m.legL.rotation.set(o.lL[0], 0, o.lL[1]); m.legR.rotation.set(o.lR[0], 0, o.lR[1]);
+      shadow.visible = !P.hidden;
+      shadow.position.set(m.root.position.x, P.floor + 0.03, m.root.position.z); shadow.scale.set(1, 1, 1);
+    },
+    // back to the plain standing rig (after dancing or sitting)
+    resetPose() { model.body.position.set(0, 0, 0); model.body.rotation.set(0, 0, 0); model.head.rotation.set(0, 0, 0); },
     // sat on the Comet: tucked in behind the screen, leaning and wheelie-ing with the bike
     ride(v) {
       const m = model, fx = Math.sin(v.yaw), fz = Math.cos(v.yaw), up = Math.sin(-Math.min(v.tx, 0));

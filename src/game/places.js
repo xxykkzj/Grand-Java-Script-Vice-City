@@ -13,6 +13,7 @@ export function createPlaces(game, scene, camera) {
   const list = Object.values(L.places), rooms = {};
   for (const p of list) { p.mark = makeMarker(scene, p.color); p.mark.position.set(p.x, 0, p.z); p.armed = true; }
   const exitMark = makeMarker(scene, '#fff6ec', 0.8, 2.6), useMark = makeMarker(scene, '#ffe14a', 0.7, 1.8);
+  exitMark.layers.enable(1); useMark.layers.enable(1);
   const local = { x: 0, z: 0 };
   let shop = null, sel = 0, msg = '', heatCd = 0, barkN = 0;
 
@@ -27,20 +28,22 @@ export function createPlaces(game, scene, camera) {
     const r = p.room = room(p);
     if (game.inside && game.inside !== p) game.inside.room.group.visible = false;
     r.group.visible = true; game.inside = p; env.indoor = true; audio.club = p.key === 'club';
+    camera.layers.set(1);                       // indoors only the room, the courier and the rings are drawn
     player.floor = OY; player.pos.set(r.ox + x, OY, r.oz + z); player.vel.set(0, 0, 0); player.vy = 0; player.onGround = true; player.yaw = PI; player.speed = 0;
     exitMark.position.set(r.ox, OY, r.oz + r.hz - 1.1);
     if (r.use) useMark.position.set(r.ox + r.use.x, OY, r.oz + r.use.z);
   }
   function putOutside(x, z) {
     if (game.inside) game.inside.room.group.visible = false;
-    game.inside = null; env.indoor = false; audio.club = false;
+    if (game.act) game.act.reset();
+    game.inside = null; env.indoor = false; audio.club = false; camera.layers.set(0);
     for (const p of list) p.armed = Math.hypot(p.x - x, p.z - z) > 3;
     player.floor = 0; player.pos.set(x, 0, z); player.yaw = 0; player.vel.set(0, 0, 0); player.vy = 0; player.speed = 0;
     cam.yaw = 0; cam.pitch = 0.2; cam.snap(player.pos);
     exitMark.visible = useMark.visible = false;
   }
   const roamCam = (r, lx, lz, k = 1) => {
-    const x = r.ox + lx * 0.55, y = OY + Math.min(3.4, r.h - 0.7), z = r.oz + r.hz - 0.5;
+    const x = r.ox + lx * 0.55, y = OY + Math.min(3.4, r.h - 0.7), z = r.oz + Math.min(r.hz - 0.5, lz + 7.5);
     const c = camera.position;
     if (k >= 1) c.set(x, y, z); else c.set(lerp(c.x, x, k), lerp(c.y, y, k), lerp(c.z, z, k));
     camera.lookAt(r.ox + lx, OY + 1.1, r.oz + lz - 0.6);
@@ -49,6 +52,7 @@ export function createPlaces(game, scene, camera) {
   // Walk-in scene: low shot of the courier rolling up to the door, cut inside, a wide reveal,
   // then either a conversation (ev = { lines, leave, done }) or you get the run of the place.
   function enter(p, ev) {
+    if (game.act) game.act.reset();
     const r = room(p), b = p.b, sx = player.pos.x, sz = player.pos.z, T1 = ev ? 2.4 : 1.5;
     const goal = ev ? r.me : [0, r.hz - 2.6];
     const beats = [
@@ -92,6 +96,7 @@ export function createPlaces(game, scene, camera) {
   // a conversation when you are already inside
   function talk(ev) {
     const p = game.inside;
+    if (game.act) game.act.reset();
     cut.run(cut.talkBeats(p.room, ev.lines), () => after(p, ev), !!ev.leave);
   }
   function leave() {
@@ -174,8 +179,10 @@ export function createPlaces(game, scene, camera) {
     hint() {
       const p = game.inside, r = p.room;
       if (shop) return [['W S', 'choose'], ['Enter', shop === 'wear' ? 'wear / buy' : 'buy'], ['Esc', 'done']];
-      const near = r.use && Math.hypot(player.pos.x - r.ox - r.use.x, player.pos.z - r.oz - r.use.z) < r.use.r;
-      return [...(near ? [['E', USE_HINT[p.key]]] : []), ['WASD', 'move'], ['Shift', 'hurry'], ['Door', 'walk into the white ring to leave']];
+      const ah = game.act.hint();
+      if (ah) return ah;
+      const near = r.use && Math.hypot(player.pos.x - r.ox - r.use.x, player.pos.z - r.oz - r.use.z) < r.use.r, f = game.act.fHint();
+      return [...(near ? [['E', USE_HINT[p.key]]] : []), ...(f ? [f] : []), ['WASD', 'move'], ['Shift', 'hurry'], ['Door', 'walk into the white ring to leave']];
     },
     update(dt, ctl) {
       const p = game.inside;
@@ -210,6 +217,12 @@ export function createPlaces(game, scene, camera) {
         player.speed = 0; player.animate(dt, 0, null);
         return;
       }
+      // sitting on a stool / sofa, or dancing (the dance owns the camera)
+      if (!game.busy && game.act.mode) {
+        game.act.update(dt, ctl, game.input);
+        if (game.act.dancing) return;
+        if (game.act.mode) { cut.setFov(60); roamCam(r, player.pos.x - r.ox, player.pos.z - r.oz); return; }
+      }
       // walking around indoors: camera sits above the door looking in, so W is "further in"
       if (!game.busy) {
         let dx = ctl.strafe, dz = -ctl.move;
@@ -218,6 +231,7 @@ export function createPlaces(game, scene, camera) {
         player.vel.x = damp(player.vel.x, dx, len > 0 ? 7 : 4, dt); player.vel.z = damp(player.vel.z, dz, len > 0 ? 7 : 4, dt);
         local.x = player.pos.x - r.ox + player.vel.x * dt; local.z = player.pos.z - r.oz + player.vel.z * dt;
         for (const b of r.blocks) pushOut(local, 0.42, b);
+        if (r.pushPeople) r.pushPeople(local, 0.3);
         local.x = clamp(local.x, -r.hx + 0.5, r.hx - 0.5); local.z = clamp(local.z, -r.hz + 0.5, r.hz - 0.5);
         player.pos.set(r.ox + local.x, OY, r.oz + local.z);
         player.speed = Math.hypot(player.vel.x, player.vel.z);

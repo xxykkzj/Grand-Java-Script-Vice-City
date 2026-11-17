@@ -1,13 +1,14 @@
 // All sound is synthesised with Web Audio: a looping synthwave track (bass arpeggio,
 // pad, pluck arp, drum machine) plus engine, rotor, skates, rain and explosions.
+import { BPM } from '../core/util.js';
 const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
-const BPM = 104, STEP = 60 / BPM / 4;
+const STEP = 60 / BPM / 4;
 // Am - F - C - G, root as a MIDI note and whether the third is minor
 const CHORDS = [{ root: 45, third: 3 }, { root: 41, third: 4 }, { root: 48, third: 4 }, { root: 43, third: 4 }];
 const BASS = [0, null, 12, 0, null, 12, 0, 7, 0, null, 12, 0, 7, 12, 0, 12];
 
 export function createAudio() {
-  let ctx = null, master, music, mfilt, sfx, noise, arpBus, timer = 0, nextT = 0, stepI = 0;
+  let ctx = null, master, music, mfilt, sfx, noise, arpBus, timer = 0, nextT = 0, stepI = 0, song = 0;
   let eng, rotor, skate, rain, siren, heyT = 0;
   const A = {
     muted: false, ready: false,
@@ -74,6 +75,12 @@ export function createAudio() {
       A.ready = true;
       A.setMuted(A.muted);
     },
+    // the song position in beats right now (what you hear, latency included), or null without audio
+    beatNow() {
+      if (!ctx || ctx.state !== 'running') return null;
+      const lat = (ctx.outputLatency || 0) + (ctx.baseLatency || 0);
+      return (song - (nextT - ctx.currentTime + lat) / STEP) / 4;
+    },
     setMuted(m) { A.muted = m; if (ctx) master.gain.setTargetAtTime(m ? 0 : 0.85, ctx.currentTime, 0.03); },
     toggleMute() { A.setMuted(!A.muted); return A.muted; },
     suspend() { if (ctx) ctx.suspend(); },
@@ -117,6 +124,9 @@ export function createAudio() {
     peep(vol = 1) { if (vol <= 0) return; tone('sine', 3200, 2600, 0.05, 0.02 * vol); tone('sine', 3300, 2700, 0.05, 0.018 * vol, 0.08); },
     woof(vol = 1) { if (vol <= 0) return; tone('square', 240, 130, 0.08, 0.04 * vol); tone('triangle', 300, 150, 0.1, 0.06 * vol, 0.12); },
     horn(vol = 1) { if (vol <= 0) return; tone('square', 392, 392, 0.32, 0.05 * vol); tone('square', 494, 494, 0.32, 0.05 * vol); },
+    // dancing on the beat: a bright tick for a hit (brighter when perfect), a dull one for a miss
+    beatHit(perfect) { tone('triangle', perfect ? 1760 : 1320, perfect ? 1760 : 1320, 0.06, 0.06); if (perfect) tone('sine', 2640, 2640, 0.08, 0.03, 0.03); },
+    beatMiss() { tone('square', 140, 90, 0.12, 0.05); },
     cash() { tone('square', 1320, 1320, 0.05, 0.05); tone('square', 1760, 1760, 0.09, 0.05, 0.05); },
     pickup() { tone('triangle', 660, 660, 0.08, 0.14); tone('triangle', 990, 990, 0.08, 0.14, 0.07); tone('triangle', 1320, 1320, 0.2, 0.14, 0.14); },
     win() { [0, 4, 7, 12, 16].forEach((n, i) => tone('square', mtof(69 + n), mtof(69 + n), 0.22, 0.07, i * 0.09)); },
@@ -154,7 +164,51 @@ export function createAudio() {
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(f); f.connect(g); g.connect(bus); o.start(t); o.stop(t + dur + 0.05);
   }
+  // a rising noise sweep for the build
+  function riser(t, dur) {
+    const src = ctx.createBufferSource(); src.buffer = noise; src.loop = true;
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 2.5;
+    f.frequency.setValueAtTime(500, t); f.frequency.exponentialRampToValueAtTime(9000, t + dur);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.22, t + dur * 0.97); g.gain.linearRampToValueAtTime(0, t + dur);
+    src.connect(f); f.connect(g); g.connect(music); src.start(t); src.stop(t + dur + 0.05);
+  }
+  function kick(t, v = 0.95) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.13);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+    o.connect(g); g.connect(music); o.start(t); o.stop(t + 0.3);
+  }
+  // Club Prism's own track: same key and tempo as the street tune, built in 16-bar phrases
+  // (12 bars of groove, a 2-bar breakdown, a 2-bar build, then the drop)
+  const CBASS = [null, null, 12, null, null, 0, 12, null, null, null, 12, 0, 7, null, 12, 10];
+  function clubStep(step, t) {
+    const pb = Math.floor(step / 16) % 16, s = step & 15, ch = CHORDS[(step >> 4) % 4];
+    const brk = pb === 12 || pb === 13, build = pb >= 14, lift = build ? (pb - 14) * 16 + s : 0;
+    if (!brk && s % 4 === 0 && !(pb === 15 && s >= 8)) kick(t, pb === 0 && s === 0 ? 1.1 : 0.95);
+    if (!brk && !build && (s === 4 || s === 12)) { hit(0.32, 0.18, 'bandpass', 1700, 0, t, music); hit(0.2, 0.12, 'highpass', 2600, 0, t + 0.012, music); }
+    if (build) {   // snare roll that speeds up into the drop
+      const every = lift < 16 ? 4 : lift < 24 ? 2 : 1;
+      if (s % every === 0) hit(0.08 + lift * 0.007, 0.1, 'bandpass', 1500 + lift * 40, 0, t, music);
+      if (lift === 0) riser(t, STEP * 32);
+    }
+    if (!brk) {
+      hit(s % 4 === 2 ? 0.1 : 0.045, 0.03, 'highpass', 8000, 0, t, music);
+      if (s % 4 === 2) hit(0.13, 0.2, 'highpass', 9500, 0, t, music);
+    } else if (s % 4 === 2) hit(0.05, 0.05, 'highpass', 9000, 0, t, music);
+    // bass: offbeat octave line (a long sub note in the breakdown)
+    if (brk) { if (s === 0) note('sine', ch.root - 12, t, STEP * 15, 0.3, 300, music); }
+    else if (CBASS[s] !== null) note('sawtooth', ch.root - 12 + CBASS[s], t, STEP * 0.9, 0.28, build ? 500 + lift * 30 : 1100, music);
+    // chord stabs on the off-beats
+    if (!brk && (s === 3 || s === 10 || (s === 14 && pb % 2))) for (const off of [12, 12 + ch.third, 19]) note('square', ch.root + off, t, 0.16, 0.035, build ? 1200 + lift * 90 : 2600, music);
+    // sixteenth-note arpeggio, up and over the chord
+    const ARP = [0, 7, 12, ch.third + 12, 19, 12, 7, ch.third + 12];
+    if (!brk && (pb >= 2 || s % 2 === 0)) note('square', ch.root + 24 + ARP[s % 8], t, 0.1, build ? 0.02 + lift * 0.001 : 0.028, 3200, arpBus);
+    // pad: always there quietly, big in the breakdown
+    if (s === 0) for (const off of [0, ch.third, 7, 12]) for (const det of [-8, 8]) note('sawtooth', ch.root + off, t, STEP * 16.5, brk ? 0.05 : 0.018, brk ? 1600 : 900, music, det, 0.3);
+    if (brk && (s === 0 || s === 6 || s === 10)) note('triangle', ch.root + 24 + (s === 6 ? 7 : s === 10 ? ch.third : 12), t, STEP * 4, 0.07, 3000, arpBus, 0, 0.02);
+  }
   function schedule(step, t) {
+    if (A.club) return clubStep(song, t);
     const bar = (step >> 4) % 4, s = step & 15, ch = CHORDS[bar];
     // drums
     if (s % 4 === 0) {
@@ -165,8 +219,6 @@ export function createAudio() {
     }
     if (s === 4 || s === 12) { hit(0.38, 0.16, 'highpass', 1400, 0, t, music); note('triangle', 55, t, 0.08, 0.2, 2000, music); }
     if (s % 2 === 0) hit(s % 4 === 2 ? 0.13 : 0.07, s % 4 === 2 ? 0.09 : 0.035, 'highpass', 7500, 0, t, music);
-    // inside Club Prism the DJ adds claps and an off-beat open hat
-    if (A.club) { if (s === 4 || s === 12) hit(0.3, 0.2, 'bandpass', 1900, 0, t, music); if (s % 4 === 2) hit(0.16, 0.22, 'highpass', 9000, 0, t, music); if (s % 8 === 6) note('square', ch.root + 24, t, 0.1, 0.05, 3000, arpBus); }
     // bass
     if (BASS[s] !== null) note('sawtooth', ch.root - 12 + BASS[s], t, STEP * 0.95, 0.3, 900, music);
     // pluck arp up and down the chord
@@ -182,7 +234,7 @@ export function createAudio() {
     if (nextT < ctx.currentTime - 0.1) nextT = ctx.currentTime + 0.05;
     while (nextT < ctx.currentTime + 0.25) {
       schedule(stepI, nextT);
-      nextT += STEP; stepI = (stepI + 1) % 64;
+      nextT += STEP; stepI = (stepI + 1) % 64; song++;
     }
   }
   return A;

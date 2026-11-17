@@ -10,7 +10,7 @@ const INK = '#1d1630', CREAM = '#fbf7f0', STEEL = '#b9bcc8';
 const NEON = ['#ff2bd1', '#18f0ff', '#ffe14a', '#8dff5a', '#ff6a3d', '#b388ff'];
 
 export function addDetails(L, S, N, glows, addWin, signs) {
-  const r = rng(808);
+  const r = rng(808), P = L.props;
   // a neon tube between two points on a façade
   const seg = (x0, y0, x1, y1, z, hex, t = 0.11) => {
     const dx = x1 - x0, dy = y1 - y0;
@@ -21,7 +21,10 @@ export function addDetails(L, S, N, glows, addWin, signs) {
     const h = w / 4, s = Math.sin(yaw), c = Math.cos(yaw);
     signs.push({ name, color, x: x + s * 0.14, y, z: z + c * 0.14, yaw, w, h });
     S.push(box(w + 0.5, h + 0.4, 0.22, x, y, z, INK, 0, yaw));
-    for (const o of [-w * 0.32, w * 0.32]) S.push(box(0.22, y, 0.22, x + c * o - s * 0.2, y / 2, z - s * o - c * 0.2, '#3b3350'));
+    for (const o of [-w * 0.32, w * 0.32]) {
+      S.push(box(0.22, y, 0.22, x + c * o - s * 0.2, y / 2, z - s * o - c * 0.2, '#3b3350'));
+      if (y < 8) P.circle(x + c * o - s * 0.2, z - s * o - c * 0.2, 0.2, y + h / 2);   // stilts on the ground (not the rooftop ones)
+    }
     N.push(box(w + 0.5, 0.1, 0.1, x + s * 0.16, y + h / 2 + 0.2, z + c * 0.16, color, 0, yaw));
     glows.push([x + s, y, z + c, color, w * 1.3, 0]);
   };
@@ -118,9 +121,12 @@ export function addDetails(L, S, N, glows, addWin, signs) {
     const s = Math.sin(yaw), c = Math.cos(yaw);
     S.push(box(2, 0.1, 0.55, x, 0.5, z, '#f7b3c6', 0, yaw), box(2, 0.5, 0.1, x - s * 0.28, 0.85, z - c * 0.28, '#f7b3c6', 0, yaw),
       box(0.1, 0.5, 0.5, x + c * 0.85, 0.25, z - s * 0.85, '#3b3350', 0, yaw), box(0.1, 0.5, 0.5, x - c * 0.85, 0.25, z + s * 0.85, '#3b3350', 0, yaw));
+    // solid, and room for two: you sit facing the way the bench faces (its back is behind you)
+    P.box(x - s * 0.05, z - c * 0.05, 2, 0.62, 1, yaw);
+    for (const o of [-0.5, 0.5]) P.seat(x + c * o + s * 0.08, z - s * o + c * 0.08, yaw, 0.55, 'bench');
   };
-  const bin = (x, z, hex) => S.push(cyl(0.34, 0.28, 0.85, 8, x, 0.43, z, hex), cyl(0.37, 0.37, 0.08, 8, x, 0.88, z, '#3b3350'));
-  const hydrant = (x, z) => S.push(cyl(0.16, 0.19, 0.6, 7, x, 0.3, z, '#ff4f6a'), cyl(0.12, 0.16, 0.14, 7, x, 0.67, z, '#ffd447'), box(0.5, 0.12, 0.12, x, 0.42, z, '#ff4f6a'));
+  const bin = (x, z, hex) => { S.push(cyl(0.34, 0.28, 0.85, 8, x, 0.43, z, hex), cyl(0.37, 0.37, 0.08, 8, x, 0.88, z, '#3b3350')); P.circle(x, z, 0.36, 0.95); };
+  const hydrant = (x, z) => { S.push(cyl(0.16, 0.19, 0.6, 7, x, 0.3, z, '#ff4f6a'), cyl(0.12, 0.16, 0.14, 7, x, 0.67, z, '#ffd447'), box(0.5, 0.12, 0.12, x, 0.42, z, '#ff4f6a')); P.circle(x, z, 0.24, 0.75); };
   for (let x = -255; x <= 285; x += 30) { bench(x, 76.2, 0); bin(x + 13.6, 63.7, '#27c9bf'); }
   for (let x = -265; x <= 285; x += 60) { bench(x, 37.4, 0); hydrant(x + 22, 43.3); bin(x - 8, 43.2, '#ff8fc4'); }
   for (let x = -250; x <= 285; x += 50) { hydrant(x + 9, -10.9); bin(x + 20, -11.2, '#ffd447'); }
@@ -131,21 +137,50 @@ export function addDetails(L, S, N, glows, addWin, signs) {
     glows.push([b.x, 2.3, b.z, '#bff4ff', 3.2, 0.05]);
   }
 
+  // --- café tables with parasols outside the Sunset Strip Diner
+  L.cafe.forEach((t, i) => {
+    const c = ['#ff5fa8', '#27d8cf', '#ffd447', '#ff8a4c'][i % 4];
+    S.push(cyl(0.45, 0.45, 0.05, 10, t.x, 0.76, t.z, CREAM), cyl(0.05, 0.05, 0.74, 5, t.x, 0.37, t.z, STEEL), cyl(0.28, 0.3, 0.04, 8, t.x, 0.02, t.z, STEEL),
+      cyl(0.03, 0.03, 1.6, 4, t.x, 1.55, t.z, CREAM), tint(new THREE.ConeGeometry(1.25, 0.45, 8).translate(t.x, 2.45, t.z), c));
+    for (const sx of [-1, 1]) {
+      const x = t.x + sx * 0.95;
+      S.push(box(0.46, 0.06, 0.46, x, 0.46, t.z, c), box(0.06, 0.5, 0.46, x + sx * 0.22, 0.72, t.z, c));
+      for (const [a, b] of [[-0.18, -0.18], [0.18, -0.18], [-0.18, 0.18], [0.18, 0.18]]) S.push(box(0.04, 0.44, 0.04, x + a, 0.22, t.z + b, STEEL));
+    }
+  });
+
   // --- beach: volleyball net, surfboards, a tall lifeguard chair
+  P.circle(-40, 97.6, 0.15, 2.6); P.circle(-40, 107.4, 0.15, 2.6);
+  // bleacher steps by the volleyball court
+  for (let i = 0; i < 3; i++) {
+    const x = -50.6 - i * 0.75, y = 0.42 * (i + 1);
+    S.push(box(0.75, y, 8, x, y / 2, 102.5, i % 2 ? '#27c9bf' : CREAM), box(0.77, 0.06, 8.02, x, y, 102.5, '#ff4fa3'));
+    P.line(x + 0.1, 99, x + 0.1, 106, PI / 2, y, 'steps');
+  }
+  P.box(-51.35, 102.5, 2.25, 8, 1.3);
   S.push(box(0.14, 2.6, 0.14, -40, 1.3, 97.6, CREAM), box(0.14, 2.6, 0.14, -40, 1.3, 107.4, CREAM), box(0.05, 0.9, 9.8, -40, 2.1, 102.5, '#ffffff'), box(0.07, 0.08, 9.8, -40, 2.56, 102.5, '#ff4fa3'));
   for (let i = 0; i < 12; i++) {
     const x = -270 + r() * 540, z = 88 + r() * 30, c = NEON[i % 6];
     S.push(box(0.55, 2.3, 0.08, x, 1.05, z, c, 0.22 * (r() - 0.5), r() * 3, 0.1), box(0.1, 2.3, 0.09, x, 1.05, z, CREAM, 0, 0, 0.1));
+    P.circle(x, z, 0.3, 2.3);
   }
   for (const x of [20, -200, 230]) {
     for (const [ox, oz] of [[-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]]) S.push(box(0.1, 2.6, 0.1, x + ox, 1.3, 124 + oz, CREAM));
     S.push(box(1.5, 0.12, 1.5, x, 2.6, 124, CREAM), box(1.5, 0.9, 0.1, x, 3.1, 123.3, '#ff4f6a'), box(0.9, 0.08, 0.5, x, 1.3, 124.9, CREAM, -0.5));
+    P.box(x, 124, 1.45, 1.45, 3.6);
   }
   // --- pier: crates, benches, life rings
   const px = (PIER.x0 + PIER.x1) / 2;
-  for (let z = 170; z < 236; z += 22) { bench(PIER.x1 - 1, z, -PI / 2); S.push(box(0.9, 0.9, 0.9, PIER.x0 + 1.2, 0.45, z + 6, '#c98d62'), box(0.7, 0.7, 0.7, PIER.x0 + 1.3, 1.25, z + 6.1, '#e0a878', 0, 0.4)); }
+  for (let z = 170; z < 236; z += 22) {
+    bench(PIER.x1 - 1, z, -PI / 2); bench(PIER.x0 + 1, z + 11, PI / 2);
+    S.push(box(0.9, 0.9, 0.9, PIER.x0 + 1.2, 0.45, z + 6, '#c98d62'), box(0.7, 0.7, 0.7, PIER.x0 + 1.3, 1.25, z + 6.1, '#e0a878', 0, 0.4));
+    P.box(PIER.x0 + 1.2, z + 6, 1, 1, 1.6);
+  }
+  // benches on the sand either side of the pier, looking out to sea
+  for (const x of [PIER.x0 - 5, PIER.x1 + 5, PIER.x0 - 12, PIER.x1 + 12]) bench(x, 143, 0);
   for (let z = 160; z < 250; z += 30) S.push(tint(new THREE.TorusGeometry(0.34, 0.1, 5, 10).rotateY(PI / 2).translate(PIER.x1 - 0.25, 0.85, z), '#ff6a3d'));
   S.push(box(0.1, 3, 0.1, px + 4.5, 1.5, 248, CREAM), box(1.3, 0.8, 0.05, px + 5.2, 2.6, 248, '#ff4fa3'));
+  P.circle(px + 4.5, 248, 0.12, 3);
 }
 
 // Boats moored off the pier (one merged mesh that bobs) and a flock of gulls (one instanced mesh

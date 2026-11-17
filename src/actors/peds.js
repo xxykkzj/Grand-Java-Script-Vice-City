@@ -12,7 +12,7 @@ const SHIRT = ['#ff5fa8', '#27d8cf', '#ffd447', '#f6f1e7', '#ff8a4c', '#9b7bff',
 const LEGS = ['#f6f1e7', '#3b5a9a', '#c9b38a', '#22203a', '#ff8fb0', '#5a7ac8', '#e8e0d0', '#2f8f86'];
 const SKIN = ['#f1c9a5', '#e0a878', '#c98d62', '#a56b43', '#7a4a2e', '#5a3620'];
 const HAT = ['#fff6ec', '#ff3fb4', '#27e8ff', '#ffd166', '#22203a'];
-const WALK = 0, WAIT = 1, DOWN = 2, FIST = 3, LIE = 4;
+const WALK = 0, WAIT = 1, DOWN = 2, FIST = 3, LIE = 4, SIT = 5;
 // Share of the crowd out and about by hour: rush hours busiest, nightlife on the boulevard, empty small hours.
 export const CROWD_CURVE = [[0, 0.62], [1, 0.3], [2, 0.12], [5, 0.1], [6.5, 0.45], [7.4, 1], [9, 1], [10.2, 0.72], [16, 0.75], [17, 1], [19, 1], [20.2, 0.85], [23, 0.75], [24, 0.62]];
 
@@ -87,6 +87,20 @@ export function createPeds(scene, R, grid, game) {
   };
   function draw(p) {
     const i = p.i, k = p.state === WALK ? clamp(p.v / 1.6, 0, 1.6) : 0, s = Math.sin(p.phase) * 0.6 * Math.min(k, 1.2);
+    if (p.state === SIT) {
+      // on a bench / lounger / chair (or the sand): hips on the seat, legs forward, looking about now and then
+      const g = p.sitY < 0.2, lean = g ? -0.28 : p.sitK === 'lounger' ? -0.5 : -0.04;
+      B.compose(v.set(p.x, p.sitY + 0.05 - 0.86 * p.h, p.z), q.setFromEuler(eu.set(0, p.yaw, 0)), sc.set(p.h, p.h, p.h));
+      part(torso, i, 0, 0.84, 0, lean, 0, p.w, 1);
+      part(head, i, 0, 1.5 + lean * 0.1, lean * 0.6, 0, Math.sin(p.phase * 0.3) * 0.15, 1, 1);
+      const lg = g ? -1.45 : p.sitK === 'lounger' ? -1.3 : -1.25;
+      part(limb, i * 4, 0.1 * p.w, 0.86, 0, lg, 0.05, 1, 1.38); part(limb, i * 4 + 1, -0.1 * p.w, 0.86, 0, lg + 0.1, -0.05, 1, 1.38);
+      const arm = g ? 0.7 : -0.45;
+      part(limb, i * 4 + 2, 0.27 * p.w, 1.38, lean * 0.4, arm, 0.25, 0.85, 1); part(limb, i * 4 + 3, -0.27 * p.w, 1.38, lean * 0.4, arm, -0.25, 0.85, 1);
+      if (p.hat) part(hat, i, 0, 1.5, lean * 0.6, 0, 0, 1, 1); else hat.setMatrixAt(i, ZERO);
+      shadow.setMatrixAt(i, M.makeTranslation(p.x, 0.03, p.z));
+      return;
+    }
     B.compose(v.set(p.x, 0, p.z), q.setFromEuler(eu.set(p.tilt, p.yaw, 0)), sc.set(p.h, p.h, p.h));
     const fist = p.state === FIST ? -2.4 + Math.sin(p.t * 16) * 0.35 : 0, flail = p.state === DOWN ? 2.6 : p.state === LIE ? 2.9 : 0;
     part(torso, i, 0, 0.84, 0, 0.06 * k, 0, p.w, 1);
@@ -99,8 +113,10 @@ export function createPeds(scene, R, grid, game) {
     shadow.setMatrixAt(i, M.makeTranslation(p.x, 0.03, p.z));
   }
 
+  function standUp(p) { if (p.hang && p.hang.seat && p.hang.seat.taken === p) p.hang.seat.taken = null; }
   function knock(p, vx, vz, long = 2.2) {
     if (p.state === DOWN) return false;
+    if (p.state === SIT) standUp(p);
     if (p.state === LIE) p.tilt = 0;
     p.state = DOWN; p.t = long; p.ovx = vx; p.ovz = vz; p.dir = Math.random() < 0.5 ? 1 : -1;
     return true;
@@ -124,6 +140,7 @@ export function createPeds(scene, R, grid, game) {
       // scared: run a few metres away from the trouble, then settle there
       p.flee -= dt;
       if (p.state === LIE) { p.state = WALK; p.tilt = 0; }
+      if (p.state === SIT) { standUp(p); p.state = WALK; }
       const dx = p.x - p.tx, dz = p.z - p.tz, d = Math.hypot(dx, dz) || 1;
       p.ox += dx / d * 5.2 * dt; p.oz += dz / d * 5.2 * dt; p.v = 5.2;
       p.yaw += angleDelta(p.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-10 * dt));
@@ -132,7 +149,8 @@ export function createPeds(scene, R, grid, game) {
       H.t -= dt;
       if (H.t <= 0) { H.t = 3 + Math.random() * 7; H.wx = (Math.random() - 0.5) * 1.6; H.wz = (Math.random() - 0.5) * 1.6; }
       const dx = H.wx - p.ox, dz = H.wz - p.oz, d = Math.hypot(dx, dz);
-      if (p.state !== LIE && d > 0.15) {
+      if (p.state === SIT) p.v = 0;
+      else if (p.state !== LIE && d > 0.15) {
         const m = Math.min(d, 0.9 * dt);
         p.ox += dx / d * m; p.oz += dz / d * m; p.v = 0.9;
         p.yaw += angleDelta(p.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-6 * dt));
@@ -216,7 +234,18 @@ export function createPeds(scene, R, grid, game) {
     const s = spots[k], side = i % 2 ? 1 : -1;
     s.list.push({ x: s.cx + side * (2.8 + Math.random() * 6.5), z: 38 + Math.random() * 4.6, cx: s.cx, cz: 40.5 });
   }
+  // seats people use: benches and café chairs any time, loungers and towels while the sun is up
+  const SEATS = game.L.props.seats.filter((s) => s.kind === 'bench' || s.kind === 'chair' || s.kind === 'lounger' || s.kind === 'towel');
   UMB.forEach((u) => spots.beach.list.push({ x: u.x + 1.6, z: u.z + 1.2, cx: u.x, cz: u.z }, { x: u.x - 1.2, z: u.z + 1.8, cx: u.x, cz: u.z }));
+  // a few people start out sitting on the boulevard and promenade benches and at the café
+  {
+    const pool = SEATS.filter((st) => st.kind === 'bench' || st.kind === 'chair');
+    for (let i = 0; i < 7 && pool.length; i++) {
+      const p = peds[N - 1 - i], st = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+      st.taken = p;
+      Object.assign(p, { hang: { x: st.x, z: st.z, cx: st.x, cz: st.z, src: st, seat: st, kind: 'seat', t: 99, wx: 0, wz: 0 }, state: SIT, sitY: st.y, sitK: st.kind, ox: 0, oz: 0, x: st.x, z: st.z, yaw: st.yaw, v: 0 });
+    }
+  }
   let target = N, active = N, densT = 0, churnT = 0;
   const mood = () => {
     const h = game.env.tod;
@@ -230,13 +259,25 @@ export function createPeds(scene, R, grid, game) {
   function spawn(p) {
     const { night, day } = mood(), r = Math.random();
     const kind = night && r < 0.5 ? (r < 0.3 ? 'club' : 'bar') : day && r < 0.38 ? 'beach' : null;
+    // take a seat: a fair share by day, a few on the boulevard benches in the evening
+    if (!kind && Math.random() < (day ? 0.4 : mood().h < 1 || mood().h > 6 ? 0.18 : 0.05)) {
+      for (let i = 0; i < 10; i++) {
+        const st = SEATS[Math.floor(Math.random() * SEATS.length)];
+        if (st.taken || (!day && (st.kind === 'lounger' || st.kind === 'towel')) || !hid(st.x, st.z, 40)) continue;
+        dress(p); st.taken = p;
+        Object.assign(p, { off: false, hang: { x: st.x, z: st.z, cx: st.x + Math.sin(st.yaw), cz: st.z + Math.cos(st.yaw), src: st, seat: st, kind: 'seat', t: 99, wx: 0, wz: 0 }, state: SIT,
+          sitY: st.y, sitK: st.kind, ox: 0, oz: 0, ovx: 0, ovz: 0, tilt: 0, flee: 0, x: st.x, z: st.z, yaw: st.yaw, v: 0 });
+        return true;
+      }
+    }
     if (kind) {
       const list = spots[kind].list;
       for (let i = 0; i < 8; i++) {
         const s = list[Math.floor(Math.random() * list.length)];
         if (s.busy || !hid(s.x, s.z, 45)) continue;
         dress(p); s.busy = p;
-        Object.assign(p, { off: false, hang: { ...s, src: s, kind, t: Math.random() * 3, wx: 0, wz: 0 }, state: kind === 'beach' && Math.random() < 0.45 ? LIE : WALK,
+        const rr = Math.random();
+        Object.assign(p, { off: false, hang: { ...s, src: s, kind, t: Math.random() * 3, wx: 0, wz: 0 }, state: kind === 'beach' && rr < 0.45 ? LIE : kind === 'beach' && rr < 0.72 ? SIT : WALK, sitY: 0, sitK: 'sand',
           ox: 0, oz: 0, ovx: 0, ovz: 0, tilt: 0, flee: 0, x: s.x, z: s.z, yaw: Math.random() * 6.28, v: 0 });
         return true;
       }
@@ -252,7 +293,7 @@ export function createPeds(scene, R, grid, game) {
     }
     return false;
   }
-  function release(p) { if (p.hang && p.hang.src.busy === p) p.hang.src.busy = null; despawn(p); }
+  function release(p) { if (p.hang && p.hang.src.busy === p) p.hang.src.busy = null; standUp(p); despawn(p); }
   function density(dt) {
     const { night, day } = mood();
     target = Math.round(N * dailyCurve(CROWD_CURVE, game.env.tod));
@@ -266,7 +307,7 @@ export function createPeds(scene, R, grid, game) {
       let best = null, bs = -1;
       for (const p of peds) {
         if (p.off || p.state === DOWN || p.state === FIST || !hid(p.x, p.z, 45)) continue;
-        const wrong = p.hang && ((p.hang.kind === 'beach' && !day) || (p.hang.kind !== 'beach' && !night));
+        const wrong = p.hang && ((p.hang.kind === 'beach' && !day) || (p.hang.kind === 'seat' && !day && p.state === SIT && (p.sitK === 'lounger' || p.sitK === 'towel')) || (p.hang.kind !== 'beach' && p.hang.kind !== 'seat' && !night));
         const sc = Math.random() + (wrong ? 2 : 0);
         if (sc > bs) { bs = sc; best = p; }
       }
@@ -278,7 +319,7 @@ export function createPeds(scene, R, grid, game) {
       // slow turnover so the crowd drifts towards the club at night and the beach by day
       churnT = 4;
       const p = peds[Math.floor(Math.random() * N)];
-      const wrong = !p.off && (p.hang ? (p.hang.kind === 'beach' ? !day : !night) : (night || day) && Math.random() < 0.35);
+      const wrong = !p.off && (p.hang ? (p.hang.kind === 'beach' ? !day : p.hang.kind === 'seat' ? Math.random() < 0.3 : !night) : (night || day) && Math.random() < 0.35);
       if (wrong && p.state !== DOWN && p.state !== FIST && hid(p.x, p.z, 45)) { release(p); spawn(p); }
     }
   }

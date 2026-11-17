@@ -1,6 +1,7 @@
 // Pure data: where everything on the island goes. No rendering in here, so the
 // ground painter, the city builder, collision and the minimap all read one source.
 import { rng, clamp } from '../core/util.js';
+import { createProps } from './props.js';
 
 export const HX = 300, HZ = 150;                          // island half extents
 export const PIER = { x0: 34, x1: 46, z0: 150, z1: 250 };
@@ -111,6 +112,39 @@ export function makeLayout() {
   for (let i = 0; i < 34; i++) umbrellas.push({ x: -285 + r() * 570, z: 90 + r() * 38, color: pick(UMB), yaw: r() * 6.283 });
   huts.push({ x: -120, z: 100, color: '#ffd447', accent: '#ff4fa3' }, { x: 150, z: 104, color: '#8fe3d9', accent: '#ff8a3d' });
 
+  // Small solid props (spatial grid, see props.js) and the seats around town.
+  const props = createProps();
+  for (const p of palms) props.circle(p.x, p.z, 0.3 * p.s, 8);
+  for (const l of lamps) props.circle(l.x, l.z, 0.2, 6.4);
+  const rot = (u, lx, lz) => [u.x + lx * Math.cos(u.yaw) + lz * Math.sin(u.yaw), u.z - lx * Math.sin(u.yaw) + lz * Math.cos(u.yaw)];
+  for (const u of umbrellas) {
+    props.circle(u.x, u.z, 0.12, 2.6);
+    const [lx, lz] = rot(u, -1.05, -0.1), [tx, tz] = rot(u, 0.9, -0.1);
+    u.lounger = props.seat(lx, lz, u.yaw, 0.36, 'lounger');
+    u.towel = props.seat(tx, tz, u.yaw, 0.06, 'towel');
+  }
+  // café tables on the sidewalk outside the Sunset Strip Diner
+  const diner = buildings.find((k) => k.name === 'Sunset Strip Diner'), cafe = [];
+  for (const ox of [-6, -2, 2, 6]) {
+    const x = diner.cx + ox, z = 38.6;
+    const bm = ((x + 265) % 60 + 60) % 60;
+    if (bm < 2.8 || bm > 57.2 || SIDE_X.some((sx) => Math.abs(x - sx - 13.5) < 2.4)) continue;   // keep clear of the benches and phone booths
+    cafe.push({ x, z });
+    props.circle(x, z, 0.42, 1.1);
+    for (const sx of [-1, 1]) { const s = props.seat(x + sx * 0.95, z, -sx * Math.PI / 2, 0.48, 'chair'); props.circle(s.x + sx * 0.12, z, 0.24, 1); }
+  }
+  // the seawall: sit on the coping with your back to the railing
+  const sw = HX - 1.05;
+  props.line(sw, -HZ + 1.6, sw, 76, -Math.PI / 2, 0.92, 'wall');
+  props.line(-sw, -HZ + 1.6, -sw, CAUSEWAY.z0 - 1.5, Math.PI / 2, 0.92, 'wall');
+  props.line(-sw, CAUSEWAY.z1 + 1.5, -sw, 76, Math.PI / 2, 0.92, 'wall');
+  props.line(-HX + 1.6, -(HZ - 1.05), HX - 1.6, -(HZ - 1.05), 0, 0.92, 'wall');
+  // the pier: sit on the deck by the rail and look out to sea
+  props.line(PIER.x0 + 0.75, PIER.z0 + 4, PIER.x0 + 0.75, PIER.z1 - 9, -Math.PI / 2, 0, 'ground');
+  props.line(PIER.x1 - 0.75, PIER.z0 + 4, PIER.x1 - 0.75, PIER.z1 - 9, Math.PI / 2, 0, 'ground');
+  props.line(PIER.x0 + 1.5, PIER.z1 - 0.75, PIER.x0 + 3.2, PIER.z1 - 0.75, 0, 0, 'ground');
+  props.line(PIER.x1 - 3.2, PIER.z1 - 0.75, PIER.x1 - 1.5, PIER.z1 - 0.75, 0, 0, 'ground');
+
   // Collision boxes (xz) with a height so the helicopter can fly over them.
   const solids = buildings.map((b) => ({ x0: b.x0, x1: b.x1, z0: b.z0, z1: b.z1, h: b.h + 1 }));
   for (const h of huts) solids.push({ x0: h.x - 2, x1: h.x + 2, z0: h.z - 2, z1: h.z + 2, h: 6 });
@@ -144,7 +178,7 @@ export function makeLayout() {
   for (const z of [ROADS.blvd.z - 5.5, ROADS.blvd.z, ROADS.blvd.z + 5.5]) solids.push({ x0: CAUSEWAY.bar + 2.8, x1: CAUSEWAY.bar + 3.4, z0: z - 1.6, z1: z + 1.6, h: 1.3 });
   for (const s of SIDE_X) solids.push({ x0: s - 5.3, x1: s + 5.3, z0: ROADS.sideZ0 - 0.8, z1: ROADS.sideZ0 - 0.4, h: 1 });
 
-  return { buildings, lamps, palms, parking, umbrellas, huts, solids, bar, station, clinic, places, bikes, booths };
+  return { buildings, lamps, palms, parking, umbrellas, huts, solids, bar, station, clinic, places, bikes, booths, props, cafe };
 }
 
 // The edge of the island is a seawall (x = ±HX, z = -HZ) and the waterline on the beach (z = +HZ).

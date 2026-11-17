@@ -329,7 +329,10 @@ export function buildCity(scene, L) {
       const k = Math.floor((a + PI) / (PI / 4) + 0.001) % 2 ? 1 : 0.62;
       for (let j = 0; j < 3; j++) c.setXYZ(i + j, k, k, k);
     } }
-  const umbGeo = merge([cg, cyl(0.04, 0.04, 2.5, 5, 0, 1.25, 0, '#ffffff'), box(0.7, 0.08, 1.9, 0.9, 0.06, 0.3, '#ffffff')]);
+  // pole, towel and a sun lounger with a raised back (both are seats: see layout.js)
+  const umbGeo = merge([cg, cyl(0.04, 0.04, 2.5, 5, 0, 1.25, 0, '#ffffff'), box(0.7, 0.04, 1.9, 0.9, 0.03, 0.3, '#ffffff'),
+    box(0.66, 0.08, 1.3, -1.05, 0.3, 0.25, '#ffffff'), box(0.62, 0.08, 0.75, -1.05, 0.55, -0.62, '#ffffff', 0.75),
+    ...[[-1.32, 0.8], [-0.78, 0.8], [-1.32, -0.9], [-0.78, -0.9]].map(([x, z]) => box(0.05, 0.3, 0.05, x, 0.13, z, '#e8e0d0'))]);
   const umbs = new THREE.InstancedMesh(umbGeo, new THREE.MeshLambertMaterial({ vertexColors: true }), L.umbrellas.length);
   const col = new THREE.Color();
   L.umbrellas.forEach((u, i) => {

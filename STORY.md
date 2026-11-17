@@ -143,7 +143,7 @@ Payoff: the Flamingo keeps its lease, Skye gets a cut of the prize and Dee's 197
 > **DJ KILOWATT:** New rules. The crowd judges. And Dee's knee is out, so somebody dances for the Velvet Flamingo. Skye?  
 > **SKYE:** On skates? Obviously on skates.  
 
-**Step 1 (checkpoint):** DANCE-OFF! Skate over the white-hot tiles before the song ends. Timed: 34 s. 12 tiles.
+**Step 1 (checkpoint):** DANCE-OFF! Hit your moves on the beat and fill the vibe meter before Chip Glitz fills his (his rises steadily, about 38 s to the top). Timed: 50 s.
 
 **Step 2:** Take your bow.
 

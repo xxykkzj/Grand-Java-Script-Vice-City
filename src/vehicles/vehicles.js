@@ -112,6 +112,13 @@ export function createVehicles(scene, L, fx, audio) {
       const vn = o.vx * n.nx + o.vz * n.nz;
       if (vn < 0) { o.vx -= (1 + bounce) * vn * n.nx; o.vz -= (1 + bounce) * vn * n.nz; }
     }
+    // street furniture: lamps, palms, benches... a car stops dead against a pole (a soft bounce, a thud,
+    // never any heat); the helicopter only minds the tall things, and only when low
+    const heli = o.kind === 'heli';
+    if (!heli || o.y < 8) {
+      const k = L.props.collide(o, heli ? o.radius * 0.8 : Math.min(o.radius, 1.6), o.y, o, heli ? 0.1 : 0.2, heli ? 3 : 0);
+      if (k > 0) { hit = true; if (k > 4 && (o.driven || !o.ai)) audio.thud(clamp(k / 25, 0.15, 0.8)); }
+    }
     return hit;
   }
 

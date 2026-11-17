@@ -54,6 +54,21 @@ html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);overflow
 #obj.late b{color:#ff6a8a}
 #obj span{font-size:11px;letter-spacing:.08em;line-height:1.5}
 #hint{position:absolute;left:16px;bottom:44px;display:flex;flex-wrap:wrap;gap:6px 14px;max-width:60vw;font-size:12px;letter-spacing:.06em}
+#dance{position:absolute;left:50%;bottom:86px;transform:translateX(-50%);width:min(440px,90vw);padding:10px 16px 10px;text-align:center;border-color:rgba(255,63,180,.7)}
+#dbeat{position:relative;height:34px;display:grid;place-items:center}
+#dring{position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border:2px solid var(--cyan);border-radius:50%;box-shadow:0 0 10px var(--cyan)}
+#dpips{display:flex;gap:10px}#dpips b{width:14px;height:14px;border-radius:50%;background:rgba(255,246,236,.15);border:1px solid rgba(39,232,255,.5)}
+#dpips b.on{background:var(--pink);box-shadow:0 0 12px var(--pink)}
+#dmove{font:800 20px var(--disp);letter-spacing:.14em;color:var(--sun);margin-top:2px}
+#dcombo{font:800 13px var(--disp);letter-spacing:.2em;color:var(--cyan);min-height:16px}
+#djudge{font:900 italic 16px var(--disp);letter-spacing:.18em;min-height:20px;color:var(--paper)}
+#djudge.p{color:#8dffb0;text-shadow:0 0 10px #8dffb0}#djudge.g{color:var(--cyan)}#djudge.m{color:#ff6a8a}#djudge.t{color:var(--sun)}
+.dbar{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:9px;letter-spacing:.24em}.dbar span{width:38px;text-align:right}
+.dbar>i{flex:1;height:9px;background:rgba(255,246,236,.1);border:1px solid rgba(39,232,255,.4);overflow:hidden}
+.dbar>i>i{display:block;height:100%;transform-origin:0 50%;transform:scaleX(0);background:linear-gradient(90deg,var(--cyan),var(--pink),var(--sun))}
+#drivalw>i>i{background:linear-gradient(90deg,#6a3fb8,#ffd166)}
+#dmoves{display:flex;flex-wrap:wrap;justify-content:center;gap:2px 10px;margin-top:6px;font-size:9px;letter-spacing:.1em;color:rgba(255,246,236,.55)}
+#dmoves span.on{color:var(--sun)}
 #hint span{display:inline-flex;align-items:center;gap:6px;text-shadow:0 1px 4px var(--ink)}
 kbd{font:700 11px var(--mono);color:var(--ink);background:var(--cyan);padding:2px 6px;border-radius:2px;
   box-shadow:2px 2px 0 var(--pink);text-shadow:none}
@@ -169,6 +184,13 @@ kbd{font:700 11px var(--mono);color:var(--ink);background:var(--cyan);padding:2p
   <div id="perf" class="chip" hidden></div>
   <div id="toast" role="status" aria-live="polite"></div>
   <div id="hint"></div>
+  <div id="dance" class="chip" hidden>
+    <div id="dbeat"><i id="dring"></i><div id="dpips"><b></b><b></b><b></b><b></b></div></div>
+    <div id="dmove"></div><div id="dcombo"></div><div id="djudge"></div>
+    <div class="dbar"><span>VIBE</span><i><i id="dvibe"></i></i></div>
+    <div class="dbar" id="drivalw" hidden><span>CHIP</span><i><i id="drival"></i></i></div>
+    <div id="dmoves"></div>
+  </div>
   <div id="note">Everything you see and hear is generated in code — <b>0 asset files</b></div>
 </div>
 

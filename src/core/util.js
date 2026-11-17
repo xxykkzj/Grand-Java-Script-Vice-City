@@ -171,3 +171,16 @@ export function outOfSight(camera, x, z, solids, near = 60) {
   const p = camera.position;
   return p.y < 9 && Math.hypot(x - p.x, z - p.z) > near * 0.6 && segBlocked(p.x, p.z, x, z, solids);
 }
+
+// One musical clock for everything that moves to the music (the club lights, floor, crowd and the
+// courier's dancing). beatU.value is the song position in beats, kept locked to the synth's scheduler.
+export const BPM = 104;
+export const BEAT_LEN = 60 / BPM;
+export const beatU = { value: 0, t: 0 };
+// beats since the start of the song, right now (between frames too: used to judge key presses)
+export const beatNow = () => beatU.value + (performance.now() / 1000 - beatU.t) / BEAT_LEN;
+// The club track is built in 16-bar phrases: 12 bars of groove, 2 bars of breakdown, 2 bars of build.
+export function section(beat) {
+  const pb = Math.floor(beat / 4) % 16;
+  return pb >= 14 ? 'build' : pb >= 12 ? 'break' : 'drop';
+}

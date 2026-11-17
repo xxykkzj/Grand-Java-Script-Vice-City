@@ -13,6 +13,8 @@
 //   { type: 'route', points: [[x, z], ...], text, time, bonus } hit the rings in order; each one adds `bonus` seconds
 //   { type: 'mount', text }                                    get on the Comet parked outside the giver
 //   { type: 'tiles', count, time, text }                       Club Prism dance floor: skate over the lit tiles
+//   { type: 'dance', target, rival, time, rivalName, lose, text }  Club Prism dance-off: fill the vibe meter (moves on the beat)
+//                                                              before the rival's meter (rises `rival` % a second) fills
 // Any step can carry `checkpoint: true`: a failed job restarts from the latest one.
 // Place keys: bar (The Velvet Flamingo) · club (Club Prism) · wear (Zigzag Threads) · mart (Pelican Pantry 24)
 
@@ -138,7 +140,7 @@ export const MISSIONS = [
       ['SKYE', 'On skates? Obviously on skates.', 'cu', 'nod'],
     ],
     steps: [
-      { type: 'tiles', count: 12, time: 34, text: 'DANCE-OFF! Skate over the white-hot tiles before the song ends', stay: true, checkpoint: true },
+      { type: 'dance', target: 100, rival: 2.6, time: 50, rivalName: 'CHIP', lose: 'CHIP GLITZ WON THE CROWD', text: 'DANCE-OFF! Hit your moves on the beat: fill the vibe before Chip Glitz does', stay: true, checkpoint: true },
       {
         type: 'visit', place: 'club', text: 'Take your bow', stay: false,
         talk: [

@@ -15,7 +15,8 @@ export function createStory(game, scene) {
 
   const next = () => (save.story < MISSIONS.length ? MISSIONS[save.story] : null);
   const step = () => A && A.m.steps[A.si];
-  const leaveAfter = (m, i) => { const s = m.steps[i], nx = m.steps[i + 1]; return s && s.stay !== undefined ? !s.stay : !(nx && nx.type === 'tiles'); };
+  const onFloor = (t) => t === 'tiles' || t === 'dance';
+  const leaveAfter = (m, i) => { const s = m.steps[i], nx = m.steps[i + 1]; return s && s.stay !== undefined ? !s.stay : !(nx && onFloor(nx.type)); };
   const hot = (i, j) => { const r = L.places.club.room; if (r) r.floorU.uHot.value.set(i, j); };
 
   function show(cls, title, text, hold) {
@@ -46,6 +47,13 @@ export function createStory(game, scene) {
       const b = A.bike = vehicles.cars.find((c) => c.kind === 'bike' && c.home === A.m.giver);
       if (b && !b.driven) Object.assign(b, { x: b.hx, z: b.hz, yaw: b.hyaw, y: 0, vx: 0, vy: 0, vz: 0, spin: 0 });
     } else if (s.type === 'tiles') newTile();
+    else if (s.type === 'dance') {
+      // the dance-off: you dance on the beat to fill the vibe meter before the rival fills his
+      const r = game.inside && game.inside.room;
+      if (r) { player.pos.set(r.ox + 0.6, player.floor, r.oz - 1.5); game.act.startDance(true); }
+      A.rivalV = 0; game.act.rival = 0; game.act.vibe = 0;
+      hud.toast('DANCE-OFF!', 'HIT 1-8 ON THE BEAT · MIX YOUR MOVES');
+    }
     objective();
     if (s.type === 'visit' && game.inside && game.inside.key === s.place) game.places.talk({ lines: s.talk, leave: leaveAfter(A.m, A.si), done: advance });
   }
@@ -54,18 +62,20 @@ export function createStory(game, scene) {
     let text = s.text;
     if (s.type === 'route') text += ` (${A.ri}/${s.points.length})`;
     if (s.type === 'tiles') text += ` (${A.hits}/${s.count})`;
+    if (s.type === 'dance') text += ` · VIBE ${Math.floor(game.act.vibe)}% · ${s.rivalName} ${Math.floor(A.rivalV || 0)}%`;
     const ms = game.mission || (game.mission = {});
     ms.title = A.m.title; ms.text = text; ms.time = A.t;
   }
   function advance() {
     if (!A) return;
+    if (step().type === 'dance') { game.act.stopDance(); game.act.contest = false; game.act.rival = null; }
     A.si++;
     if (A.si >= A.m.steps.length) return pass();
     if (step().checkpoint) A.cp = A.si;
     audio.blip(true);
     begin();
   }
-  function clear() { A = null; game.mission = null; mark.visible = false; hot(-1, -1); }
+  function clear() { A = null; game.mission = null; mark.visible = false; hot(-1, -1); if (game.act) { game.act.contest = false; game.act.rival = null; } }
   function pass() {
     const m = A.m;
     let extra = '';
@@ -83,6 +93,7 @@ export function createStory(game, scene) {
   function fail(why) {
     if (!A) return;
     game.busy = 'fail'; mark.visible = false; hot(-1, -1);
+    if (step() && step().type === 'dance') { game.act.stopDance(); game.act.rival = null; }
     audio.lose();
     show('fail', 'JOB BLOWN', `${why} · ENTER: RETRY FROM THE LAST CHECKPOINT · ESC: WALK AWAY`);
   }
@@ -91,7 +102,7 @@ export function createStory(game, scene) {
     A.si = A.cp;
     game.rules.leaveVehicle(); game.wanted = 0; game.health = Math.max(game.health, 60);
     const s = step(), prev = A.m.steps[A.si - 1];
-    if (s.type === 'tiles') game.places.warpInside('club');
+    if (onFloor(s.type)) game.places.warpInside('club');
     else {
       const door = (key) => [L.places[key].x, L.places[key].z + 3.4];
       const at = !prev || prev.type === 'mount' ? door(A.m.giver) : prev.type === 'visit' ? door(prev.place) : prev.type === 'drop' ? prev.at : prev.points[prev.points.length - 1];
@@ -104,12 +115,12 @@ export function createStory(game, scene) {
   const api = {
     get active() { return A; },
     next, start, fail, advance,
-    lockInside: () => !!A && step().type === 'tiles' && game.busy !== 'fail',
+    lockInside: () => !!A && onFloor(step().type) && game.busy !== 'fail',
     // walking into a place: is there a scene to play?
     onEnter(key) {
       if (!A) {
         const m = next();
-        return m && m.giver === key ? { lines: m.intro, leave: m.steps[0].type !== 'tiles', done: () => start(m) } : null;
+        return m && m.giver === key ? { lines: m.intro, leave: !onFloor(m.steps[0].type), done: () => start(m) } : null;
       }
       const s = step();
       return s.type === 'visit' && s.place === key ? { lines: s.talk, leave: leaveAfter(A.m, A.si), done: advance } : null;
@@ -137,7 +148,7 @@ export function createStory(game, scene) {
       if (pendingFail && !game.busy) { const w = pendingFail; pendingFail = null; fail(w); return; }
       if (!A || game.busy) { if (game.busy) mark.visible = false; return; }
       const s = step(), f = game.focus(), near = (x, z, r) => Math.hypot(f.x - x, f.z - z) < r && Math.abs(f.y) < 3;
-      if (A.t !== null) { A.t -= dt; if (A.t <= 0) { A.t = 0; objective(); fail(s.type === 'tiles' ? 'THE SONG ENDED' : 'OUT OF TIME'); return; } }
+      if (A.t !== null) { A.t -= dt; if (A.t <= 0) { A.t = 0; objective(); fail(onFloor(s.type) ? 'THE SONG ENDED' : 'OUT OF TIME'); return; } }
       mark.visible = (s.type === 'drop' || s.type === 'route') && !game.inside;
       if (s.type === 'drop') { if (near(s.at[0], s.at[1], 2.8)) return advance(); }
       else if (s.type === 'route') {
@@ -149,6 +160,13 @@ export function createStory(game, scene) {
           audio.pickup(); hud.toast(`CHECKPOINT ${A.ri}/${s.points.length}`, `+${s.bonus} SECONDS`);
         }
       } else if (s.type === 'mount') { if (game.vehicle && game.vehicle.kind === 'bike') return advance(); }
+      else if (s.type === 'dance') {
+        const p = game.inside;
+        if (!p || p.key !== 'club') { fail('YOU LEFT THE FLOOR'); return; }
+        A.rivalV += dt * s.rival; game.act.rival = A.rivalV;
+        if (game.act.vibe >= s.target) return advance();
+        if (A.rivalV >= 100) { A.rivalV = 100; objective(); fail(s.lose); return; }
+      }
       else if (s.type === 'tiles') {
         const p = game.inside, r = p && p.room;
         if (!r || p.key !== 'club') { fail('YOU LEFT THE FLOOR'); return; }
