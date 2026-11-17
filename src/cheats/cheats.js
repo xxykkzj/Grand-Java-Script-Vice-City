@@ -28,9 +28,10 @@ export function createCheats(game) {
   const lines = [];
   const print = (text, err = false) => {
     lines.push({ text, err });
-    while (lines.length > 9) lines.shift();
+    while (lines.length > 40) lines.shift();
     log.textContent = '';
     for (const l of lines) { const d = document.createElement('div'); d.textContent = l.text; if (l.err) d.className = 'err'; log.appendChild(d); }
+    log.scrollTop = log.scrollHeight;
   };
 
   // a free spot `dist` ahead of whatever the player is controlling

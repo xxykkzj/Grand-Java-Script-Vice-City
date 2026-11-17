@@ -40,7 +40,7 @@ async function boot() {
   } catch (e) { noWebGL(); return; }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(62, 1, 0.3, 1500);
+  const camera = new THREE.PerspectiveCamera(62, 1, 0.12, 1500);
   const resize = () => {
     renderer.setSize(window.innerWidth, window.innerHeight, false);
     camera.aspect = window.innerWidth / Math.max(1, window.innerHeight);
@@ -147,6 +147,7 @@ async function boot() {
       case 'KeyN': hud.toast('TIME SKIP', 'FAST-FORWARDING TO ' + env.cycle().replace('GOLDEN', 'GOLDEN HOUR')); break;
       case 'KeyM': hud.toast(audio.toggleMute() ? 'SOUND OFF' : 'SOUND ON'); break;
       case 'KeyP': hud.togglePerf(); break;
+      case 'KeyV': hud.toast('CAMERA', cam.cycleView().name); break;
     }
   };
 
@@ -198,6 +199,9 @@ async function boot() {
     if (cut.active) cut.update(dt);
     else if (game.inside) { /* places.update owns the camera indoors */ }
     else cam.update(dt, input, game.mode, game.focus(), game.heading(), speed, fx, player.phase);
+    // in first person on foot the courier's own body would sit inside the camera
+    const hideBody = cam.first && !cut.active && !game.inside && game.mode === 'foot';
+    if (player.model.root.visible === hideBody && !player.hidden) player.model.root.visible = !hideBody;
     pointScaleU.value = renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360));
     env.update(dt);
 

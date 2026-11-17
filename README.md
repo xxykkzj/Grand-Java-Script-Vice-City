@@ -89,6 +89,7 @@ Anywhere:
 | `Enter` / `Esc` | on the JOB BLOWN card: retry from the checkpoint / drop the job |
 | `M` | mute |
 | `P` | perf panel (FPS, draw calls, triangles, AI cars, pedestrians, page size) |
+| `V` | switch camera: third person, close third person, first person (remembered between visits) |
 
 Tip: in the helicopter prefer `C` to descend. `Ctrl` works too, but `Ctrl+W` is still the browser's "close tab" shortcut.
 

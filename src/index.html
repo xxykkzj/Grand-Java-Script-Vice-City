@@ -112,7 +112,7 @@ kbd{font:700 11px var(--mono);color:var(--ink);background:var(--cyan);padding:2p
   border-top:2px solid var(--pink);box-shadow:0 -6px 30px rgba(255,63,180,.25);font-size:13px}
 #console::before{content:"";position:absolute;inset:0;pointer-events:none;
   background:repeating-linear-gradient(0deg,rgba(39,232,255,.05) 0 1px,transparent 1px 3px)}
-#log{max-height:150px;overflow:hidden;white-space:pre-wrap;color:#8fe9c4;line-height:1.5;margin-bottom:6px}
+#log{max-height:min(330px,48vh);overflow-y:auto;white-space:pre-wrap;color:#8fe9c4;line-height:1.5;margin-bottom:6px}
 #log .err{color:#ff8f8f}
 #console form{display:flex;align-items:center;gap:8px}
 #console label{color:var(--pink);font-weight:700}
