@@ -10,7 +10,7 @@ export function createSky(scene) {
     uSunDir: { value: new THREE.Vector3(1, 0.1, 0.2).normalize() },
     uMoonDir: { value: new THREE.Vector3(0.55, 0.5, -0.67).normalize() },
     uSunSize: { value: 0.16 }, uStripe: { value: 1 }, uStars: { value: 0 }, uFlash: { value: 0 }, uCloud: { value: 0 }, uVeil: { value: 0 },
-    uTime: timeU,
+    uTime: timeU, uFogColor: fogU.uFogColor,
   };
   const mat = new THREE.ShaderMaterial({
     uniforms, side: THREE.BackSide, depthWrite: false, fog: false,
@@ -24,6 +24,7 @@ export function createSky(scene) {
     fragmentShader: /* glsl */`
       uniform vec3 uTop, uMid, uHor, uSunA, uSunB, uGlow, uSunDir, uMoonDir;
       uniform float uSunSize, uStripe, uStars, uFlash, uTime, uCloud, uVeil;
+      uniform vec3 uFogColor;
       float h2(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         return mix(mix(h2(i), h2(i + vec2(1.0, 0.0)), f.x), mix(h2(i + vec2(0.0, 1.0)), h2(i + vec2(1.0, 1.0)), f.x), f.y); }
@@ -34,7 +35,9 @@ export function createSky(scene) {
         float h = d.y, t = clamp(h, 0.0, 1.0);
         vec3 col = mix(uHor, uMid, smoothstep(0.0, 0.2, t));
         col = mix(col, uTop, smoothstep(0.1, 0.65, t));
-        col = mix(col, uHor * 0.55, smoothstep(0.0, -0.25, h));
+        // the sea haze: right at and below the horizon the sky is the fog colour, so the fogged-out
+        // ocean melts into it and there is never a visible edge to the water
+        col = mix(col, uFogColor, smoothstep(0.045, -0.012, h));
         // faint horizontal haze lines near the horizon: the "grid" feel
         float band = smoothstep(0.96, 1.0, sin(h * 110.0) * 0.5 + 0.5) * (1.0 - smoothstep(0.0, 0.3, t));
         col += uGlow * band * 0.07 * uStripe;
@@ -126,7 +129,8 @@ export function createOcean(scene) {
         #include <colorspace_fragment>
       }`,
   });
-  const geo = new THREE.PlaneGeometry(4000, 4000);
+  // big enough to reach the camera's far plane in every direction; it follows the camera (see update)
+  const geo = new THREE.PlaneGeometry(6000, 6000);
   geo.rotateX(-Math.PI / 2);
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.y = -0.6;

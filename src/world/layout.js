@@ -140,15 +140,38 @@ export function makeLayout() {
   booths.push({ x: -60, z: 76.4 }, { x: 80, z: 76.4 });
   for (const b of booths) solids.push({ x0: b.x - 0.6, x1: b.x + 0.6, z0: b.z - 0.6, z1: b.z + 0.6, h: 2.8 });
 
+  // the edge: sawhorses in front of the causeway closure, bollards where the side streets stop
+  for (const z of [ROADS.blvd.z - 5.5, ROADS.blvd.z, ROADS.blvd.z + 5.5]) solids.push({ x0: CAUSEWAY.bar + 2.8, x1: CAUSEWAY.bar + 3.4, z0: z - 1.6, z1: z + 1.6, h: 1.3 });
+  for (const s of SIDE_X) solids.push({ x0: s - 5.3, x1: s + 5.3, z0: ROADS.sideZ0 - 0.8, z1: ROADS.sideZ0 - 0.4, h: 1 });
+
   return { buildings, lamps, palms, parking, umbrellas, huts, solids, bar, station, clinic, places, bikes, booths };
 }
 
-// Keep something inside the walkable world (the island rectangle plus the pier).
+// The edge of the island is a seawall (x = ±HX, z = -HZ) and the waterline on the beach (z = +HZ).
+// The boulevard runs on past the west wall onto a causeway stub that ends at the storm closure.
+export const WALL = 0.8;                                     // inner face of the seawall, from the island edge
+export const CAUSEWAY = { x0: -352, bar: -338, z0: 44, z1: 62 };   // deck end, barrier line, deck sides
+// Helicopters (anything at sea) may roam out to this radius; beyond it they are steered back.
+export const SEA_R = 700;
+export const EDGE_SIGNS = ['Causeway Closed – Storm Repairs', 'Lumina Point · Road Ends'];
+export const onIsland = (x, z) => Math.abs(x) <= HX && Math.abs(z) <= HZ;
+
+// Keep something inside the walkable world (the island inside its seawall, the pier and the causeway stub).
 export function clampToWorld(o, m) {
   let hit = false;
-  if (o.x < -HX + m) { o.x = -HX + m; hit = true; }
-  if (o.x > HX - m) { o.x = HX - m; hit = true; }
-  if (o.z < -HZ + m) { o.z = -HZ + m; hit = true; }
+  const x = m > 1 ? 1.4 : 0, e = WALL + m + x, C = CAUSEWAY;   // vehicles keep their noses off the wall
+  if (o.x > HX - e) { o.x = HX - e; hit = true; }
+  if (o.x < -HX + e) {
+    const onDeck = o.z > C.z0 + m - 0.4 && o.z < C.z1 - m + 0.4;
+    if (!onDeck) {
+      // already out on the causeway heading sideways: the parapets stop you; otherwise the seawall does
+      if (o.x < -HX - 0.5) o.z = clamp(o.z, C.z0 + m - 0.4, C.z1 - m + 0.4);
+      else o.x = -HX + e;
+      hit = true;
+    }
+    if (o.x < C.bar + 0.5 + m + x) { o.x = C.bar + 0.5 + m + x; hit = true; }
+  }
+  if (o.z < -HZ + e) { o.z = -HZ + e; hit = true; }
   if (o.z > HZ - m) {
     const onPier = o.x > PIER.x0 + m - 0.4 && o.x < PIER.x1 - m + 0.4;
     if (!onPier) {
@@ -163,7 +186,9 @@ export function clampToWorld(o, m) {
 }
 
 export function zoneName(x, z) {
-  if (z > HZ) return 'DRIFTWOOD PIER';
+  if (x < -HX && z > CAUSEWAY.z0 - 2 && z < CAUSEWAY.z1 + 2 && x > CAUSEWAY.x0 - 4) return 'STORM CAUSEWAY';
+  if (z > HZ && x > PIER.x0 - 3 && x < PIER.x1 + 3 && z < PIER.z1 + 3) return 'DRIFTWOOD PIER';
+  if (!onIsland(x, z)) return 'OPEN WATER';
   if (z > 78) return 'CORAL BEACH';
   if (z > 62) return 'THE PROMENADE';
   if (z > 44) return 'LUMINA BOULEVARD';

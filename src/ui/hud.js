@@ -1,6 +1,6 @@
 // DOM HUD. Top-left: a round minimap that turns with the camera, the district name and the
 // current objective. Top-right: cash, health, wanted stars and the clock. Also hints, toast, perf panel.
-import { HX, HZ, PIER, zoneName } from '../world/layout.js';
+import { HX, HZ, PIER, CAUSEWAY, zoneName } from '../world/layout.js';
 import { WEATHER } from '../world/environment.js';
 
 const $ = (id) => document.getElementById(id);
@@ -19,6 +19,9 @@ export function createHud(L, groundCanvas, renderer) {
   b.globalAlpha = 0.55; b.drawImage(groundCanvas, PAD, PAD, HX * 2, HZ * 2); b.globalAlpha = 1;
   b.fillStyle = 'rgba(20,8,48,.35)'; b.fillRect(PAD, PAD, HX * 2, HZ * 2);
   b.fillStyle = '#b98a5e'; b.fillRect(PAD + PIER.x0 + HX, PAD + PIER.z0 + HZ, PIER.x1 - PIER.x0, PIER.z1 - PIER.z0);
+  b.fillStyle = '#3b3548'; b.fillRect(PAD + CAUSEWAY.x0 + HX, PAD + CAUSEWAY.z0 + HZ, -HX - CAUSEWAY.x0, CAUSEWAY.z1 - CAUSEWAY.z0);
+  b.fillStyle = '#ff8a3d'; b.fillRect(PAD + CAUSEWAY.bar + HX - 1, PAD + CAUSEWAY.z0 + HZ, 2, CAUSEWAY.z1 - CAUSEWAY.z0);
+  b.strokeStyle = 'rgba(233,216,196,.7)'; b.lineWidth = 1.5; b.strokeRect(PAD - 0.5, PAD - 0.5, HX * 2 + 1, HZ * 2 + 1);
   for (const s of L.buildings) {
     b.fillStyle = s.bar ? '#ff2bd1' : s.hotel ? '#ff7ac8' : '#c9a6ff';
     b.fillRect(PAD + s.x0 + HX, PAD + s.z0 + HZ, s.w, s.d);
@@ -101,7 +104,7 @@ export function createHud(L, groundCanvas, renderer) {
           const i = renderer.info.render;
           el.perf.textContent =
             `FPS         ${fps.toFixed(0)}\nDRAW CALLS  ${i.calls}\nTRIANGLES   ${(i.triangles / 1000).toFixed(1)}k\n` +
-            `AI CARS     ${st.counts[0]}\nPEDESTRIANS ${st.counts[1]}\n` +
+            `AI CARS     ${st.counts[0]} (TARGET ${st.counts[2]})\nPEDESTRIANS ${st.counts[1]} (TARGET ${st.counts[3]})\nANIMALS     ${st.counts[4]}\n` +
             `GEOMETRIES  ${renderer.info.memory.geometries}\nTEXTURES    ${renderer.info.memory.textures}\nPAGE SIZE   ${pageKB.toFixed(0)} KB (1 file)\nASSET FILES 0`;
         }
       }

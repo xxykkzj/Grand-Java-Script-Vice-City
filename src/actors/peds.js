@@ -2,7 +2,7 @@
 // handful of InstancedMeshes: torsos, heads, limbs, hats and blob shadows, so fifty people
 // cost five draw calls. They walk a sidewalk graph and cross on the walk phase.
 import * as THREE from 'three';
-import { box, cyl, merge, angleDelta, clamp, PI } from '../core/util.js';
+import { box, cyl, merge, angleDelta, clamp, PI, dailyCurve, outOfSight } from '../core/util.js';
 import { SIDE_X } from '../world/layout.js';
 import { H_ROADS, walkOK } from '../world/roads.js';
 
@@ -12,7 +12,9 @@ const SHIRT = ['#ff5fa8', '#27d8cf', '#ffd447', '#f6f1e7', '#ff8a4c', '#9b7bff',
 const LEGS = ['#f6f1e7', '#3b5a9a', '#c9b38a', '#22203a', '#ff8fb0', '#5a7ac8', '#e8e0d0', '#2f8f86'];
 const SKIN = ['#f1c9a5', '#e0a878', '#c98d62', '#a56b43', '#7a4a2e', '#5a3620'];
 const HAT = ['#fff6ec', '#ff3fb4', '#27e8ff', '#ffd166', '#22203a'];
-const WALK = 0, WAIT = 1, DOWN = 2, FIST = 3;
+const WALK = 0, WAIT = 1, DOWN = 2, FIST = 3, LIE = 4;
+// Share of the crowd out and about by hour: rush hours busiest, nightlife on the boulevard, empty small hours.
+export const CROWD_CURVE = [[0, 0.62], [1, 0.3], [2, 0.12], [5, 0.1], [6.5, 0.45], [7.4, 1], [9, 1], [10.2, 0.72], [16, 0.75], [17, 1], [19, 1], [20.2, 0.85], [23, 0.75], [24, 0.62]];
 
 export function createPeds(scene, R, grid, game) {
   // ---- sidewalk graph
@@ -65,7 +67,7 @@ export function createPeds(scene, R, grid, game) {
     Object.assign(p, { a, b: e.to, e, d: 0, state: WALK, t: 0, ox: 0, oz: 0, ovx: 0, ovz: 0, tilt: 0, flee: 0, tx: 0, tz: 0 });
   }
   for (let i = 0; i < N; i++) {
-    const p = { i, isPed: true, x: 0, z: 0, yaw: 0, phase: Math.random() * 6, speed: 1.3 + Math.random() * 0.8, lane: (Math.random() - 0.5) * 2.2 };
+    const p = { i, isPed: true, x: 0, z: 0, yaw: 0, phase: Math.random() * 6, speed: 1.3 + Math.random() * 0.8, lane: (Math.random() - 0.5) * 2.2, off: false, hang: null };
     dress(p);
     // most people stroll the boulevard and the promenade
     let a;
@@ -86,19 +88,20 @@ export function createPeds(scene, R, grid, game) {
   function draw(p) {
     const i = p.i, k = p.state === WALK ? clamp(p.v / 1.6, 0, 1.6) : 0, s = Math.sin(p.phase) * 0.6 * Math.min(k, 1.2);
     B.compose(v.set(p.x, 0, p.z), q.setFromEuler(eu.set(p.tilt, p.yaw, 0)), sc.set(p.h, p.h, p.h));
-    const fist = p.state === FIST ? -2.4 + Math.sin(p.t * 16) * 0.35 : 0, flail = p.state === DOWN ? 2.6 : 0;
+    const fist = p.state === FIST ? -2.4 + Math.sin(p.t * 16) * 0.35 : 0, flail = p.state === DOWN ? 2.6 : p.state === LIE ? 2.9 : 0;
     part(torso, i, 0, 0.84, 0, 0.06 * k, 0, p.w, 1);
     part(head, i, 0, 1.5, 0, 0, 0, 1, 1);
     part(limb, i * 4, 0.1 * p.w, 0.86, 0, s, 0, 1, 1.38);
     part(limb, i * 4 + 1, -0.1 * p.w, 0.86, 0, -s, 0, 1, 1.38);
     part(limb, i * 4 + 2, 0.27 * p.w, 1.38, 0, fist || -s - flail, 0.08, 0.85, 1);
     part(limb, i * 4 + 3, -0.27 * p.w, 1.38, 0, s - flail, -0.08, 0.85, 1);
-    if (p.hat) part(hat, i, 0, 1.5, 0, 0, 0, 1, 1); else hat.setMatrixAt(i, ZERO);
+    if (p.hat && p.state !== LIE) part(hat, i, 0, 1.5, 0, 0, 0, 1, 1); else hat.setMatrixAt(i, ZERO);
     shadow.setMatrixAt(i, M.makeTranslation(p.x, 0.03, p.z));
   }
 
   function knock(p, vx, vz, long = 2.2) {
     if (p.state === DOWN) return false;
+    if (p.state === LIE) p.tilt = 0;
     p.state = DOWN; p.t = long; p.ovx = vx; p.ovz = vz; p.dir = Math.random() < 0.5 ? 1 : -1;
     return true;
   }
@@ -107,7 +110,41 @@ export function createPeds(scene, R, grid, game) {
     if (d < 45) game.audio.hey(p.voice, 1 - d / 45);
   }
 
+  // standing around a spot: outside the club or the bar at night, by an umbrella on the beach by day
+  function hangOut(p, dt) {
+    const H = p.hang;
+    p.v = 0;
+    if (p.state === DOWN) {
+      p.t -= dt;
+      p.tilt += ((p.t > 0.6 ? p.dir * 1.5 : 0) - p.tilt) * (1 - Math.exp(-(p.t > 0.6 ? 12 : 6) * dt));
+      p.ox += p.ovx * dt; p.oz += p.ovz * dt;
+      const k = Math.exp(-3.5 * dt); p.ovx *= k; p.ovz *= k;
+      if (p.t <= 0) { p.tilt = 0; p.state = WALK; p.flee = Math.max(p.flee, 2); }
+    } else if (p.flee > 0) {
+      // scared: run a few metres away from the trouble, then settle there
+      p.flee -= dt;
+      if (p.state === LIE) { p.state = WALK; p.tilt = 0; }
+      const dx = p.x - p.tx, dz = p.z - p.tz, d = Math.hypot(dx, dz) || 1;
+      p.ox += dx / d * 5.2 * dt; p.oz += dz / d * 5.2 * dt; p.v = 5.2;
+      p.yaw += angleDelta(p.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-10 * dt));
+    } else {
+      // shuffle about a little and face the group's centre
+      H.t -= dt;
+      if (H.t <= 0) { H.t = 3 + Math.random() * 7; H.wx = (Math.random() - 0.5) * 1.6; H.wz = (Math.random() - 0.5) * 1.6; }
+      const dx = H.wx - p.ox, dz = H.wz - p.oz, d = Math.hypot(dx, dz);
+      if (p.state !== LIE && d > 0.15) {
+        const m = Math.min(d, 0.9 * dt);
+        p.ox += dx / d * m; p.oz += dz / d * m; p.v = 0.9;
+        p.yaw += angleDelta(p.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-6 * dt));
+      } else if (p.state !== LIE) p.yaw += angleDelta(p.yaw, Math.atan2(H.cx - p.x, H.cz - p.z)) * (1 - Math.exp(-2 * dt));
+      else p.tilt = -1.52;
+    }
+    p.x = H.x + p.ox; p.z = H.z + p.oz;
+    p.phase += dt * (1.2 + p.v * 3.2);
+  }
+
   function update(p, dt, t) {
+    if (p.hang) { hangOut(p, dt); hitCheck(p); return; }
     const e = p.e;
     p.v = 0;
     if (p.state === DOWN) {
@@ -154,7 +191,10 @@ export function createPeds(scene, R, grid, game) {
     p.x = a.x + dx * k - dz * il * p.lane + p.ox; p.z = a.z + dz * k + dx * il * p.lane + p.oz;
     if (p.state === WALK && p.v && Math.hypot(p.ox, p.oz) <= 0.25) p.yaw += angleDelta(p.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-8 * dt));
     p.phase += dt * (2 + p.v * 3.2);
-    // traffic and the player's own wheels
+    hitCheck(p);
+  }
+  // traffic and the player's own wheels
+  function hitCheck(p) {
     if (p.state !== DOWN) {
       grid.query(p.x, p.z, 3, (o) => {
         if (o.isPed) return;
@@ -165,11 +205,90 @@ export function createPeds(scene, R, grid, game) {
     }
   }
 
+  // ---- time of day: send people home out of sight when it gets late, bring them out for the rush.
+  // At night a good share of them hang around outside Club Prism and the Velvet Flamingo; by day, on the beach.
+  const P = game.L.places, UMB = game.L.umbrellas, solids = game.L.solids;
+  const hid = (x, z, near) => outOfSight(game.camera, x, z, solids, near);
+  const spots = {
+    club: { cx: P.club.x, cz: 40.5, list: [] }, bar: { cx: P.bar.x, cz: 40.5, list: [] }, beach: { list: [] },
+  };
+  for (const k of ['club', 'bar']) for (let i = 0; i < 12; i++) {
+    const s = spots[k], side = i % 2 ? 1 : -1;
+    s.list.push({ x: s.cx + side * (2.8 + Math.random() * 6.5), z: 38 + Math.random() * 4.6, cx: s.cx, cz: 40.5 });
+  }
+  UMB.forEach((u) => spots.beach.list.push({ x: u.x + 1.6, z: u.z + 1.2, cx: u.x, cz: u.z }, { x: u.x - 1.2, z: u.z + 1.8, cx: u.x, cz: u.z }));
+  let target = N, active = N, densT = 0, churnT = 0;
+  const mood = () => {
+    const h = game.env.tod;
+    return { h, night: h >= 20 || h < 3, day: h >= 9 && h < 18.5 };
+  };
+  function despawn(p) {
+    p.off = true; p.hang = null; p.state = WALK; p.tilt = 0;
+    for (const m of [torso, head, hat, shadow]) m.setMatrixAt(p.i, ZERO);
+    for (let k = 0; k < 4; k++) limb.setMatrixAt(p.i * 4 + k, ZERO);
+  }
+  function spawn(p) {
+    const { night, day } = mood(), r = Math.random();
+    const kind = night && r < 0.5 ? (r < 0.3 ? 'club' : 'bar') : day && r < 0.38 ? 'beach' : null;
+    if (kind) {
+      const list = spots[kind].list;
+      for (let i = 0; i < 8; i++) {
+        const s = list[Math.floor(Math.random() * list.length)];
+        if (s.busy || !hid(s.x, s.z, 45)) continue;
+        dress(p); s.busy = p;
+        Object.assign(p, { off: false, hang: { ...s, src: s, kind, t: Math.random() * 3, wx: 0, wz: 0 }, state: kind === 'beach' && Math.random() < 0.45 ? LIE : WALK,
+          ox: 0, oz: 0, ovx: 0, ovz: 0, tilt: 0, flee: 0, x: s.x, z: s.z, yaw: Math.random() * 6.28, v: 0 });
+        return true;
+      }
+    }
+    // a walker on a sidewalk node out of sight (the boulevard is busiest at night)
+    for (let i = 0; i < 12; i++) {
+      const a = nodes[Math.floor(Math.random() * nodes.length)];
+      if (night && a.z < 30 && Math.random() < 0.6) continue;
+      if (!hid(a.x, a.z, 50)) continue;
+      dress(p); p.off = false; p.hang = null; put(p, a); p.lane = (Math.random() - 0.5) * 2.2;
+      p.x = a.x; p.z = a.z;
+      return true;
+    }
+    return false;
+  }
+  function release(p) { if (p.hang && p.hang.src.busy === p) p.hang.src.busy = null; despawn(p); }
+  function density(dt) {
+    const { night, day } = mood();
+    target = Math.round(N * dailyCurve(CROWD_CURVE, game.env.tod));
+    active = 0;
+    for (const p of peds) if (!p.off) active++;
+    densT -= dt; churnT -= dt;
+    if (densT > 0) return;
+    densT = 0.1;
+    if (active > target) {
+      // send home someone out of sight; people standing in the "wrong" place for the hour go first
+      let best = null, bs = -1;
+      for (const p of peds) {
+        if (p.off || p.state === DOWN || p.state === FIST || !hid(p.x, p.z, 45)) continue;
+        const wrong = p.hang && ((p.hang.kind === 'beach' && !day) || (p.hang.kind !== 'beach' && !night));
+        const sc = Math.random() + (wrong ? 2 : 0);
+        if (sc > bs) { bs = sc; best = p; }
+      }
+      if (best) { release(best); active--; }
+    } else if (active < target) {
+      const p = peds.find((k) => k.off);
+      if (p && spawn(p)) active++;
+    } else if (churnT <= 0) {
+      // slow turnover so the crowd drifts towards the club at night and the beach by day
+      churnT = 4;
+      const p = peds[Math.floor(Math.random() * N)];
+      const wrong = !p.off && (p.hang ? (p.hang.kind === 'beach' ? !day : !night) : (night || day) && Math.random() < 0.35);
+      if (wrong && p.state !== DOWN && p.state !== FIST && hid(p.x, p.z, 45)) { release(p); spawn(p); }
+    }
+  }
+
   const api = {
     peds, count: N,
     // scare everyone within r of (x, z); the closest ones go flying
     alarm(x, z, r, blast = 0) {
       for (const p of peds) {
+        if (p.off) continue;
         const dx = p.x - x, dz = p.z - z, d = Math.hypot(dx, dz);
         if (d > r) continue;
         if (blast && d < blast) { if (knock(p, dx / (d + 0.5) * 7, dz / (d + 0.5) * 7, 2.8)) shout(p); }
@@ -182,7 +301,8 @@ export function createPeds(scene, R, grid, game) {
     eject(x, z, vx, vz) {
       const f = game.focus();
       let p = null, bd = 0;
-      for (const o of peds) { const d = Math.hypot(o.x - f.x, o.z - f.z); if (d > bd && o.state !== DOWN) { bd = d; p = o; } }
+      for (const o of peds) { const d = o.off ? 1e6 : Math.hypot(o.x - f.x, o.z - f.z); if (d > bd && o.state !== DOWN) { bd = d; p = o; } }
+      p.off = false; p.hang = null; p.tilt = 0;
       let a = nodes[0], ad = 1e9;
       for (const n of nodes) { const d = Math.hypot(n.x - x, n.z - z); if (d < ad) { ad = d; a = n; } }
       dress(p); put(p, a);
@@ -195,13 +315,17 @@ export function createPeds(scene, R, grid, game) {
     bump(player) {
       if (player.speed < 5) return;
       for (const p of peds) {
-        if (p.state === DOWN || Math.abs(p.x - player.pos.x) > 0.75 || Math.abs(p.z - player.pos.z) > 0.75) continue;
+        if (p.off || p.state === DOWN || Math.abs(p.x - player.pos.x) > 0.75 || Math.abs(p.z - player.pos.z) > 0.75) continue;
         if (knock(p, player.vel.x * 0.5, player.vel.z * 0.5, 1.3)) { shout(p); player.vel.x *= 0.4; player.vel.z *= 0.4; }
       }
     },
+    get active() { return active; },
+    get target() { return target; },
     update(dt, t, frame, cars) {
       const f = game.focus();
+      density(dt);
       for (const p of peds) {
+        if (p.off) continue;
         const far = (p.x - f.x) ** 2 + (p.z - f.z) ** 2 > 8100;
         if (far) { if ((frame + p.i) % 4) continue; update(p, dt * 4, t); } else update(p, dt, t);
         draw(p);

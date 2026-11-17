@@ -112,6 +112,10 @@ export function createAudio() {
       tone('sawtooth', 330 * pitch, 520 * pitch, 0.09, 0.09 * vol); tone('sawtooth', 560 * pitch, 380 * pitch, 0.2, 0.1 * vol, 0.1);
       tone('triangle', 660 * pitch, 440 * pitch, 0.2, 0.06 * vol, 0.1);
     },
+    // beach life, kept quiet: a gull's cry, a sandpiper's peep, the dog's woof
+    gull(vol = 1) { if (vol <= 0) return; tone('sawtooth', 1450, 820, 0.22, 0.018 * vol); tone('sawtooth', 1650, 900, 0.26, 0.015 * vol, 0.28); },
+    peep(vol = 1) { if (vol <= 0) return; tone('sine', 3200, 2600, 0.05, 0.02 * vol); tone('sine', 3300, 2700, 0.05, 0.018 * vol, 0.08); },
+    woof(vol = 1) { if (vol <= 0) return; tone('square', 240, 130, 0.08, 0.04 * vol); tone('triangle', 300, 150, 0.1, 0.06 * vol, 0.12); },
     horn(vol = 1) { if (vol <= 0) return; tone('square', 392, 392, 0.32, 0.05 * vol); tone('square', 494, 494, 0.32, 0.05 * vol); },
     cash() { tone('square', 1320, 1320, 0.05, 0.05); tone('square', 1760, 1760, 0.09, 0.05, 0.05); },
     pickup() { tone('triangle', 660, 660, 0.08, 0.14); tone('triangle', 990, 990, 0.08, 0.14, 0.07); tone('triangle', 1320, 1320, 0.2, 0.14, 0.14); },

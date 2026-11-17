@@ -38,8 +38,9 @@ Each has its own coloured ring at the door on Lumina Boulevard, a short walk-in 
 
 ## What's in town
 
-- **Traffic.** About 26 AI cars plus Coast Patrol cars follow a lane graph built from the road layout: they keep right, turn at junctions, queue behind each other, and brake for you, for pedestrians and for red lights. You can see the drivers through the glass; headlights, tail lights and light pools on the road come on at dusk. Empty parked cars are still there for the taking.
-- **Pedestrians.** 52 people in assorted outfits stroll the sidewalks and wait for the walk light at crossings. Bump them and they tumble (cartoon style) and get back up; explosions, tank fire and sirens send them running; they shout "hey!".
+- **Traffic.** Up to 26 AI cars plus Coast Patrol cars follow a lane graph built from the road layout: they keep right, turn at junctions, queue behind each other, and brake for you, for pedestrians and for red lights. You can see the drivers through the glass; headlights, tail lights and light pools on the road come on at dusk. Empty parked cars are still there for the taking.
+- **Pedestrians.** Up to 52 people in assorted outfits stroll the sidewalks and wait for the walk light at crossings. Bump them and they tumble (cartoon style) and get back up; explosions, tank fire and sirens send them running; they shout "hey!".
+- **Rush hour and nightlife.** Traffic and crowds follow the clock: busiest in the 07:00-09:00 and 17:00-19:00 rush, moderate through the day, a lively evening on the boulevard, and nearly empty streets between about 01:00 and 05:00 (a handful of cars, a few late walkers). Cars and people are parked or brought back only out of sight (far away, behind you or behind a building), so nobody pops in or out in view. At night a crowd hangs around outside Club Prism and the Velvet Flamingo; by day people sit and sunbathe by the umbrellas on the beach. The `P` panel shows the live counts next to the target for the hour.
 - **Carjacking.** Press `E` next to an occupied car: Skye opens the door and hauls the driver out, who stumbles, shakes a fist and legs it. Costs one star of heat.
 - **The Comet.** An 80s sport bike with a wedge fairing. Four are parked around town (outside the Pantry, by the club, on the promenade near the start, at the foot of the pier) and two ride with the traffic. `E` to get on or off. It leans into turns, lifts the front wheel when you open the throttle from low speed, and tops out well above the cars. It is fragile: hit a wall or a car hard and you go over the bars and lose health.
 - **Heat.** 0 to 5 stars. Taking an occupied car or bike, running people over, firing the tank and running a red light in view of a patrol car add stars. Bumping into other cars never does: a fender bender is just traffic. Out of the patrol's sight the stars start blinking and drop off after roughly 25 seconds. From 2 stars the teal-and-white **Coast Patrol** comes after you with lights and siren. If they pin you while you are on foot or stopped: **CAUGHT**, you wake up at the station with a fine. If your health runs out: **KNOCKED OUT**, you wake up at the Seabreeze Clinic with a bill.
@@ -47,6 +48,8 @@ Each has its own coloured ring at the door on Lumina Boulevard, a short walk-in 
 - **Weather.** Clear, cloudy, rain, thunderstorm and fog blend into each other and change by themselves every few game hours. Rain is drawn on the GPU; roads get wet, dark and reflective (lamp streaks, sky sheen, rain speckle) and dry out afterwards.
 - **Day and night.** One real second is one game minute (a 24-minute day). The sun and moon cross the sky; sky, fog and light colours blend through night, dawn, day, golden hour and dusk; street lamps, neon, windows and car lights fade on at dusk and off at dawn.
 - **Pickups.** Floating cash bundles and two health kits around town; they respawn.
+- **Beach life.** Crabs scuttle sideways over the sand and dive into it when anything comes within a few metres (more of them come out at night). Sandpipers run up and down the wet sand chasing the wave edge and burst into short flights when approached; most leave at night and they huddle under the lifeguard huts when it rains. Pelicans sit on the pier posts, stretch their wings now and then, and one takes off for a lazy glide over the water. A friendly beach dog trots about, runs over when you are on foot nearby, follows you for a bit, then wanders off. Around dusk a few sea turtles surface in the shallows. Cars and pedestrians only ever make them scatter. Quiet synthesised gull cries, peeps and a woof.
+- **The edge of the world.** The island ends at things you can see: a seawall with a railing and lamps around the city, banks of rocks where the beach meets the sides, and the surf. Lumina Boulevard runs west onto a causeway stub that stops at a storm closure (water barriers, sawhorses, cones, flashing amber lamps, a CAUSEWAY CLOSED – STORM REPAIRS sign, a repair barge in the missing span); the east end is a turnaround at the wall, and the other streets end at chevron boards and bollards. On the horizon: a mainland skyline across the bay, the Key (a little island town at the far end of the old causeway, with traffic lights streaming to the mainland at night), a hilly island to the south-east, a lighthouse with a turning beam and a cargo ship crawling along the horizon. Windows light up and twinkle at night; everything fades into the sea haze, and the sky melts into the fogged ocean so the water has no visible edge. The helicopter can fly well out to sea (about 700 m from the town centre); past that a TURNING BACK: LOW FUEL warning eases it round and pushes it home. You can only step out of it over land.
 - **HUD.** Top right: cash, health bar, heat stars and the clock. Top left: a round minimap that turns with the camera (roads, buildings, cars, bikes, patrol cars, pickups, the four doors as coloured squares, the next job as a star, the current target as a yellow diamond, a north marker), the district name and the current objective. Context hints sit bottom left.
 
 ### City detail
@@ -88,7 +91,7 @@ Anywhere:
 | `X` or `Esc` | skip the scene |
 | `Enter` / `Esc` | on the JOB BLOWN card: retry from the checkpoint / drop the job |
 | `M` | mute |
-| `P` | perf panel (FPS, draw calls, triangles, AI cars, pedestrians, page size) |
+| `P` | perf panel (FPS, draw calls, triangles, AI cars and pedestrians with the target for the hour, animals, page size) |
 | `V` | switch camera: third person, close third person, first person (remembered between visits) |
 
 Tip: in the helicopter prefer `C` to descend. `Ctrl` works too, but `Ctrl+W` is still the browser's "close tab" shortcut.
@@ -119,7 +122,7 @@ A forced weather holds for about four game hours before the sky starts making it
 
 ## Hardware notes
 
-- Built for integrated laptop graphics: a typical street frame is about 40 draw calls and roughly 205k triangles with all traffic and pedestrians on screen (about 50 draw calls inside Club Prism). No shadow maps, no post-processing. Interiors are built the first time you walk in and hidden when you leave.
+- Built for integrated laptop graphics: a typical street frame is about 45 to 50 draw calls and roughly 240k triangles with all traffic, pedestrians, beach animals and the horizon on screen (about 50 draw calls inside Club Prism). No shadow maps, no post-processing. Interiors are built the first time you walk in and hidden when you leave.
 - The pixel ratio is capped at 2. If it still struggles on a high-DPI screen, zoom the page in (`Ctrl` / `Cmd` + `+`) or shrink the window: fewer pixels is the big lever.
 - Needs WebGL 2. Without it you get a plain explanatory message instead of a black page. Make sure hardware acceleration is switched on in the browser.
 - Rendering and audio pause while the tab is hidden.
@@ -141,8 +144,11 @@ then open `dist/index.html`. `npm run dev` rebuilds (unminified) whenever a file
 - **Single file.** No images, models, audio files, fonts or CDN requests. System font stacks only.
 - **Procedural town.** `src/world/layout.js` lays out the island from a seeded random generator; the ground, the collision boxes and the minimap are all drawn from that one description. `src/world/roads.js` derives the lane graph and signal timing from the same road numbers.
 - **Few draw calls.** All buildings, rooftop clutter, street furniture and beach props are merged into one mesh with vertex colours, all neon tubes into another. Windows (about 9,000), palms, street lamps, umbrellas, signal masts and signal lamps are each one `InstancedMesh`. The whole car fleet is one instanced mesh for bodies, one for glass, one for shadows, one for headlight pools; the Comets are one more. All pedestrians and drivers together are five: torsos, heads, limbs, hats, blob shadows.
+- **Daily curves.** `TRAFFIC_CURVE` (actors/traffic.js) and `CROWD_CURVE` (actors/peds.js) give the share of the fleet and the crowd out at each hour; a small manager parks or returns one car or person at a time, only where the camera cannot see (`unseen` / `outOfSight` in core/util.js).
+- **Animals.** `src/actors/animals.js`: one InstancedMesh per species. Legs, wings, flippers and the dog's tail are moved in the vertex shader from a per-instance action attribute; the meshes are hidden and the logic idles when the camera is far from the beach.
+- **Horizon.** `src/world/horizon.js`: all distant scenery is one merged mesh with its own distance haze and night windows, plus one point-light set (also used for the closure's flashing lamps) and the lighthouse beam. The ocean plane follows the camera out to the far plane. `src/world/edges.js` builds the seawall, rocks, causeway stub and dead ends into the city's merged meshes, and `clampToWorld` in layout.js lines up with them.
 - **Cheap AI.** Traffic follows lane polylines kinematically and only falls back to physics for a couple of seconds when something hits it. Neighbour queries go through a uniform spatial hash rebuilt each frame. Cars and people far from the player tick at a third or a quarter of the frame rate.
-- **Textures from canvas.** The ground (roads, markings, crossings, promenade tiles, sand) is one 2048x1024 canvas; the 16 neon signs and 8 billboards share one 1024x1536 atlas.
+- **Textures from canvas.** The ground (roads, markings, crossings, promenade tiles, sand) is one 2048x1024 canvas; the 16 neon signs, 8 billboards and 2 edge signs share one 1024x1664 atlas.
 - **Shaders.** Gradient sky with a striped sun, stars, a moon and a drifting procedural cloud deck; animated ocean with surf; windows that light up at night from a per-instance seed; palms swaying in the vertex shader; rain as wrapped line segments animated in the vertex shader; wet-road highlights computed in the ground's fragment shader from a formula for the lamp positions.
 - **Cheap glow.** Lights get additive point sprites whose brightness follows the clock. Day/night and weather only ever change uniforms and colours.
 - **Story as data.** `src/game/story.js` holds the cast, every line of dialogue (with its camera shot and gesture), the mission steps, the shop lists and the counter one-liners. `missions.js` plays it; `cutscene.js` is the director (letterbox, typewriter subtitles with coloured speaker names, wide / over-the-shoulder / close-up / two-shot cameras, actors that turn to face each other and gesture).
@@ -153,10 +159,10 @@ then open `dist/index.html`. `npm run dev` rebuilds (unminified) whenever a file
 
 | Part | Minified |
 | --- | --- |
-| three.js 0.187.0 (tree-shaken) | about 574 KB |
-| Game code | about 154 KB |
+| three.js 0.187.0 (tree-shaken) | about 576 KB |
+| Game code | about 188 KB |
 | HTML + CSS | about 15 KB |
-| **`dist/index.html`** | **about 743 KB** |
+| **`dist/index.html`** | **about 779 KB** |
 
 ### Source layout
 
@@ -166,8 +172,9 @@ src/
   main.js           boot, loading bar, main loop
   core/             input, shared helpers, spatial grid
   world/            layout, roads + traffic lights, canvas textures, sky + ocean, city builder, details (rooftops, props,
-                    billboards, boats, gulls), glow sprites, day/night + weather
-  actors/           AI traffic + Coast Patrol, pedestrians + drivers
+                    billboards, boats, gulls), edges (seawall, causeway closure), horizon (distant scenery),
+                    glow sprites, day/night + weather
+  actors/           AI traffic + Coast Patrol, pedestrians + drivers, beach animals
   game/             story.js (all dialogue + mission data), missions (story engine), cutscene (director),
                     interiors (the four rooms + cast), places (doors, walking indoors, shops),
                     rules (heat, cash, health, pickups, carjack)

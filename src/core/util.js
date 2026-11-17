@@ -142,3 +142,32 @@ export function createGrid(cell = 14) {
     },
   };
 }
+
+// A daily curve: keys are [hour, value] pairs from 0 to 24; smooth (eased) between keys.
+export function dailyCurve(keys, h) {
+  h = ((h % 24) + 24) % 24;
+  let i = 0;
+  while (i < keys.length - 2 && h >= keys[i + 1][0]) i++;
+  const [h0, a] = keys[i], [h1, b] = keys[i + 1];
+  let k = clamp((h - h0) / Math.max(h1 - h0, 1e-6), 0, 1);
+  k = k * k * (3 - 2 * k);
+  return a + (b - a) * k;
+}
+
+// Is the ground point (x, z) out of the player's sight? Far away, or well outside the view cone.
+// Used to park / bring back cars and people without popping them in view.
+const _fwd = new THREE.Vector3();
+export function unseen(camera, x, z, near = 60, far = 330) {
+  const p = camera.position, dx = x - p.x, dz = z - p.z, d = Math.hypot(dx, dz);
+  if (d < near) return false;
+  if (d > far) return true;
+  camera.getWorldDirection(_fwd);
+  const f = Math.hypot(_fwd.x, _fwd.z) || 1;
+  return (dx * _fwd.x + dz * _fwd.z) / (d * f) < 0.4;
+}
+// unseen(), or tucked behind a building as seen from a street-level camera
+export function outOfSight(camera, x, z, solids, near = 60) {
+  if (unseen(camera, x, z, near, 260)) return true;
+  const p = camera.position;
+  return p.y < 9 && Math.hypot(x - p.x, z - p.z) > near * 0.6 && segBlocked(p.x, p.z, x, z, solids);
+}

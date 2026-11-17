@@ -2,7 +2,9 @@
 import * as THREE from 'three';
 import { timeU, pointScaleU, pushOut, pause, reducedMotion, createGrid } from './core/util.js';
 import { createInput } from './core/input.js';
-import { makeLayout, clampToWorld } from './world/layout.js';
+import { makeLayout, clampToWorld, onIsland, PIER, CAUSEWAY, HX } from './world/layout.js';
+import { createHorizon } from './world/horizon.js';
+import { createAnimals } from './actors/animals.js';
 import { createSky, createOcean } from './world/sky.js';
 import { buildGround, buildCity } from './world/city.js';
 import { createEnvironment } from './world/environment.js';
@@ -40,7 +42,7 @@ async function boot() {
   } catch (e) { noWebGL(); return; }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(62, 1, 0.12, 1500);
+  const camera = new THREE.PerspectiveCamera(62, 1, 0.12, 2600);
   const resize = () => {
     renderer.setSize(window.innerWidth, window.innerHeight, false);
     camera.aspect = window.innerWidth / Math.max(1, window.innerHeight);
@@ -56,6 +58,7 @@ async function boot() {
   const groundCanvas = buildGround(scene, L, renderer);
   await progress(0.38, 'RAISING DECO HOTELS…');
   const city = buildCity(scene, L);
+  const horizon = createHorizon(scene, city.blinkers);
   await progress(0.62, 'PARKING THE CARS…');
   const audio = createAudio();
   const fx = createFx(scene);
@@ -72,13 +75,14 @@ async function boot() {
 
   const game = {
     mode: 'foot', vehicle: null, started: false,
-    input, hud, audio, env, vehicles, player, L, cam, camera, renderer, scene, fx, R, wanted: 0, busy: null,
+    input, hud, audio, env, vehicles, player, L, cam, camera, renderer, scene, fx, R, grid, wanted: 0, busy: null,
     focus: () => (game.vehicle ? game.vehicle : player.pos),
     heading: () => (game.vehicle ? game.vehicle.yaw : player.yaw),
   };
   await progress(0.84, 'FILLING THE STREETS…');
   const traffic = game.traffic = createTraffic(R, vehicles, grid, game);
   const peds = game.peds = createPeds(scene, R, grid, game);
+  const animals = game.animals = createAnimals(scene, game);
   // what survives a reload: the outfit you wear and own, and how far the story has got
   const SAVE = 'neon-coast-save-1';
   const save = game.save = { outfit: 'classic', owned: [], story: 0, gift: {} };
@@ -101,6 +105,9 @@ async function boot() {
     skip: () => cut.skip(),
     bike: () => { const b = vehicles.cars.find((c) => c.kind === 'bike' && !c.ai); player.pos.set(b.x + 1.6, 0, b.z); return b; },
     to: (x, z) => { if (game.vehicle) { game.vehicle.x = x; game.vehicle.z = z; } else player.pos.set(x, player.floor, z); },
+    // set the clock (hours, e.g. 3 or 8.5); the traffic and the crowd follow it over the next seconds
+    time: (h) => { env.tod = ((h % 24) + 24) % 24; env.target = null; return env.tod; },
+    counts: () => ({ cars: traffic.count(), carTarget: traffic.target, peds: peds.active, pedTarget: peds.target, animals: animals.count(), ...animals.stats, dog: { ...animals.dog } }),
     interact: () => interact(),
   };
   game.signalAt = (n, h) => signal(n, h, timeU.value);
@@ -111,6 +118,8 @@ async function boot() {
     if (game.inside) { places.use(); return; }
     if (v) {
       if (v.kind === 'heli' && v.y > 0.6) { hud.toast('LAND FIRST', 'HOLD C TO DESCEND'); return; }
+      const dry = onIsland(v.x, v.z) || (v.x > PIER.x0 - 1 && v.x < PIER.x1 + 1 && v.z < PIER.z1 + 1) || (v.x > CAUSEWAY.x0 && v.x < -HX && v.z > CAUSEWAY.z0 && v.z < CAUSEWAY.z1);
+      if (v.kind === 'heli' && !dry) { hud.toast('NOWHERE TO STAND', 'FLY BACK OVER LAND FIRST'); return; }
       v.driven = false;
       const side = v.radius + 1.1;
       player.pos.set(v.x + Math.cos(v.yaw) * side, 0, v.z - Math.sin(v.yaw) * side);
@@ -154,7 +163,7 @@ async function boot() {
   await progress(0.92, 'SWITCHING ON THE NEON…');
   const ctl = { move: 0, strafe: 0, sprint: false, jump: false, throttle: 0, steer: 0, hand: false, up: false, down: false };
   const sound = { engine: 0, engineRev: 0, heavy: false, skate: 0, rotor: 0, rain: 0, siren: 0, duck: false, room: 0 };
-  let last = performance.now(), raf = 0, frameN = 0;
+  let last = performance.now(), raf = 0, frameN = 0, turnT = 0;
 
   const hudState = { env, game, vehicles, counts: [0, peds.count], blips: [], focus: null, heading: 0, camYaw: 0, inVehicle: null };
   function frame(now) {
@@ -179,7 +188,7 @@ async function boot() {
     grid.clear();
     for (const c of vehicles.cars) if (!c.off) grid.add(c);
     if (vehicles.tank) grid.add(vehicles.tank);
-    for (const p of peds.peds) grid.add(p);
+    for (const p of peds.peds) if (!p.off) grid.add(p);
     if (!game.vehicle && !player.hidden && game.busy !== 'cut') { me.x = player.pos.x; me.z = player.pos.z; grid.add(me); }
 
     if (game.mode === 'bike' && game.vehicle) { /* posed after the bike has moved */ }
@@ -189,6 +198,7 @@ async function boot() {
     vehicles.update(dt, ctl, cam, player);
     if (game.mode === 'bike' && game.vehicle) player.ride(game.vehicle);
     peds.update(dt, timeU.value, frameN, vehicles.cars);
+    animals.update(dt);
     if (game.started) { rules.update(dt); story.update(dt); places.update(dt, ctl); }
     city.tick(timeU.value);
     fx.update(dt);
@@ -204,6 +214,12 @@ async function boot() {
     if (player.model.root.visible === hideBody && !player.hidden) player.model.root.visible = !hideBody;
     pointScaleU.value = renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360));
     env.update(dt);
+    horizon.update(env);
+    // out at sea in the helicopter: a soft boundary with a fuel warning instead of a wall
+    if (v && v.kind === 'heli' && v.turnBack && game.started && !game.busy) {
+      turnT -= dt;
+      if (turnT <= 0) { hud.toast('TURNING BACK: LOW FUEL', 'HEAD FOR THE ISLAND'); turnT = 3.5; }
+    } else turnT = 0;
 
     // context hints
     if (game.started) {
@@ -219,7 +235,8 @@ async function boot() {
       else if (v.kind === 'tank') hud.setHint([['E', 'exit tank'], ['WASD', 'drive'], ['Drag', 'aim turret'], ['Click / F', 'fire'], ['V', 'camera view']]);
       else hud.setHint([['W S', 'forward / back'], ['A D', 'yaw'], ['Space', 'up'], ['C / Ctrl', 'down'], ['E', v.y > 0.6 ? 'land to exit' : 'exit helicopter'], ['V', 'camera view']]);
       hudState.focus = game.focus(); hudState.heading = game.heading(); hudState.camYaw = cam.yaw; hudState.inVehicle = v;
-      hudState.counts[0] = traffic.count(); hudState.blips = rules.blips;
+      hudState.counts[0] = traffic.count(); hudState.counts[1] = peds.active; hudState.blips = rules.blips;
+      hudState.counts[2] = traffic.target; hudState.counts[3] = peds.target; hudState.counts[4] = animals.count();
       hud.update(dt, hudState);
     }
 
@@ -238,6 +255,7 @@ async function boot() {
 
   // compile shaders + draw one frame behind the title card before declaring ready
   env.update(0);
+  horizon.update(env);
   cam.update(0.016, input, 'foot', player.pos, player.yaw, 0, fx, 0);
   renderer.compile(scene, camera);
   await progress(1, 'READY');

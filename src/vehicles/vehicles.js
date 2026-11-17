@@ -1,7 +1,7 @@
 // Cars (one InstancedMesh for the whole fleet), the tank, the helicopter and tank shells.
 import * as THREE from 'three';
 import { clamp, damp, angleDelta, pushOut, PI, reducedMotion, nightU, wetU } from '../core/util.js';
-import { clampToWorld } from '../world/layout.js';
+import { clampToWorld, SEA_R } from '../world/layout.js';
 import { carGeometry, carGlassGeometry, patrolKitGeometry, tankGeometry, heliGeometry, bikeGeometry } from './models.js';
 import { createGlow } from '../world/glow.js';
 
@@ -201,7 +201,17 @@ export function createVehicles(scene, L, fx, audio) {
     if (h.y > 110) { h.y = 110; h.vy = Math.min(h.vy, 0); }
     h.x += h.vx * dt; h.z += h.vz * dt;
     hitSolids(h, h.radius, 0.1);
-    h.x = clamp(h.x, -430, 430); h.z = clamp(h.z, -300, 380);
+    // soft boundary out at sea: past SEA_R the fuel warning turns the nose for home and a growing
+    // push brings it back; there is no wall, just a firmer hand the further out you go
+    const rr = Math.hypot(h.x, h.z);
+    h.turnBack = rr > SEA_R;
+    if (h.turnBack) {
+      const nx = h.x / rr, nz = h.z / rr, over = rr - SEA_R, vout = h.vx * nx + h.vz * nz;
+      if (vout > 0) { const k = Math.min(1, dt * (0.8 + over * 0.04)); h.vx -= nx * vout * k; h.vz -= nz * vout * k; }
+      h.vx -= nx * Math.min(over, 60) * 0.25 * dt; h.vz -= nz * Math.min(over, 60) * 0.25 * dt;
+      if (h.driven && h.y > 0.25) h.yaw += angleDelta(h.yaw, Math.atan2(-nx, -nz)) * (1 - Math.exp(-dt * clamp(over / 30, 0.3, 2)));
+      if (rr > SEA_R + 90) { h.x = nx * (SEA_R + 90); h.z = nz * (SEA_R + 90); }
+    }
     const vf = h.vx * fx_ + h.vz * fz, air = clamp(h.y / 2, 0, 1);
     h.pitchVis = damp(h.pitchVis, clamp(vf * 0.016, -0.35, 0.35) * air, 4, dt);
     h.rollVis = damp(h.rollVis, (h.driven ? -inp.steer * 0.22 : 0) * air, 4, dt);

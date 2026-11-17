@@ -3,7 +3,8 @@
 // or instanced, so the entire city is roughly a dozen draw calls.
 import * as THREE from 'three';
 import { box, cyl, tint, merge, timeU, fogU, FOG_PARS, PI, rng, wetU, rainU, reflU, nightU } from '../core/util.js';
-import { HX, HZ, PIER, SIGN_NAMES, ADS } from './layout.js';
+import { HX, HZ, PIER, SIGN_NAMES, ADS, EDGE_SIGNS } from './layout.js';
+import { addEdges } from './edges.js';
 import { paintGround, paintSigns, SIGN_ROWS } from './textures.js';
 import { addDetails, buildLife } from './details.js';
 import { createGlow } from './glow.js';
@@ -156,6 +157,7 @@ export function buildCity(scene, L) {
   }
 
   addDetails(L, solid, neon, glows, addWin, signs);
+  const blinkers = addEdges(solid, neon, glows, signs);
 
   // --- pier
   const px = (PIER.x0 + PIER.x1) / 2, plen = PIER.z1 - PIER.z0, pzc = PIER.z0 + plen / 2;
@@ -233,7 +235,7 @@ export function buildCity(scene, L) {
   scene.add(wins);
 
   // --- neon signs: one atlas texture, one merged mesh
-  const ALL = [...SIGN_NAMES, ...ADS];
+  const ALL = [...SIGN_NAMES, ...ADS, ...EDGE_SIGNS];
   const atlasOrder = ALL.map((n) => signs.find((s) => s.name === n) || { name: n, color: '#ff2bd1' });
   const signTex = new THREE.CanvasTexture(paintSigns(atlasOrder));
   signTex.colorSpace = THREE.SRGBColorSpace;
@@ -345,7 +347,7 @@ export function buildCity(scene, L) {
   const life = buildLife(scene, bodyMat);
 
   return {
-    windowCount: winM.length, bodyMat, tick: life.tick,
+    windowCount: winM.length, bodyMat, tick: life.tick, blinkers,
     setLights(neonK, lit, glass) {
       neonMat.color.setScalar(0.5 + neonK * 0.9);
       signMat.color.setScalar(0.4 + neonK * 0.9);

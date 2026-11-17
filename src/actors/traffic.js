@@ -1,11 +1,14 @@
 // AI traffic and Coast Patrol cars. They are ordinary cars from the fleet with an `ai`
 // record: on rails they follow lane polylines kinematically; when knocked they fall back
 // to physics for a moment, then steer home. Patrol cars can leave the rails to chase.
-import { clamp, angleDelta, segBlocked } from '../core/util.js';
+import { clamp, angleDelta, segBlocked, dailyCurve, outOfSight } from '../core/util.js';
 import { connector, signal } from '../world/roads.js';
 import { onRails, PATROL_TEAL } from '../vehicles/vehicles.js';
 
 const TRAFFIC = 26, POLICE = 4;
+// Share of the traffic fleet on the road by hour: dead quiet 01:00-05:00, rush hours at 07-09 and 17-19,
+// a moderate middle of the day, and a busy evening on the boulevard (nightlife) that tails off after midnight.
+export const TRAFFIC_CURVE = [[0, 0.42], [1, 0.2], [2, 0.12], [5, 0.12], [6.5, 0.55], [7.4, 1], [9, 1], [10.2, 0.6], [16, 0.65], [17, 1], [19, 1], [20.2, 0.7], [23, 0.6], [24, 0.42]];
 
 export function createTraffic(R, vehicles, grid, game) {
   const { cars } = vehicles, solids = game.L.solids;
@@ -35,12 +38,15 @@ export function createTraffic(R, vehicles, grid, game) {
     c.hasDriver = true; c.driven = false; c.off = false;
   }
   // a random lane position at least `far` from the player and clear of other cars
-  function place(c, far) {
+  const blvdEdges = R.edges.filter((e) => e.h && Math.abs(e.z0 - 53) < 6);
+  function place(c, far, hide = false, blvd = 0) {
     const f = game.focus();
     for (let i = 0; i < 60; i++) {
-      const e = R.edges[Math.floor(Math.random() * R.edges.length)], s = 3 + Math.random() * (e.len - 12);
+      const pool = Math.random() < blvd ? blvdEdges : R.edges;
+      const e = pool[Math.floor(Math.random() * pool.length)], s = 3 + Math.random() * (e.len - 12);
       const x = e.x0 + e.dx * s, z = e.z0 + e.dz * s;
       if (Math.hypot(x - f.x, z - f.z) < far) continue;
+      if (hide && !outOfSight(game.camera, x, z, solids)) continue;
       if (cars.some((o) => o !== c && !o.off && Math.hypot(o.x - x, o.z - z) < 11)) continue;
       rail(c, e, s);
       return true;
@@ -168,13 +174,42 @@ export function createTraffic(R, vehicles, grid, game) {
     c.vx = Math.sin(yaw) * ai.speed; c.vz = Math.cos(yaw) * ai.speed;
   }
 
+  // ---- time of day: park cars out of sight when the town goes quiet, bring them back for the rush
+  const fleet = cars.filter((c) => c.traffic);
+  let target = fleet.length, densT = 0;
+  const parkable = (c) => c.ai && !c.off && !c.driven && !c.jacking && !c.ai.pursuit && !c.ai.hold && !(c.ai.stun > 0);
+  function density(dt) {
+    const h = game.env.tod, night = h >= 20 || h < 2;
+    target = Math.round(fleet.length * dailyCurve(TRAFFIC_CURVE, h));
+    densT -= dt;
+    if (densT > 0) return;
+    densT = 0.12;
+    let on = 0;
+    for (const c of fleet) if (!c.off && c.ai) on++;
+    if (on > target) {
+      // the first suitable car out of sight goes home; at night boulevard cars stay out longest
+      let best = null, bs = -1;
+      for (const c of fleet) {
+        if (!parkable(c) || !outOfSight(game.camera, c.x, c.z, solids)) continue;
+        const sc = Math.random() + (night && Math.abs(c.z - 53) < 10 ? 0 : 0.6);
+        if (sc > bs) { bs = sc; best = c; }
+      }
+      if (best) { best.off = true; best.ai = null; }
+    } else if (on < target) {
+      const c = fleet.find((k) => k.off);
+      if (c) place(c, 70, true, night ? 0.65 : h > 7 && h < 19 ? 0.2 : 0.35);
+    }
+  }
+
   const api = {
     police, count: () => cars.reduce((n, c) => n + (c.ai && !c.off ? 1 : 0), 0),
+    get target() { return target; },
     // freeze a car for the carjack animation, then hand it to the player
     release(c) { c.ai = null; c.hasDriver = false; },
     update(dt, t) {
       frame++;
       const f = game.focus();
+      density(dt);
       // patrol roster: two cars always on the beat, more as the stars climb
       const want = game.wanted >= 4 ? 4 : game.wanted >= 3 ? 3 : 2;
       police.forEach((c, i) => {

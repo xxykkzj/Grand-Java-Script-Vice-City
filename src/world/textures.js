@@ -104,8 +104,8 @@ const FONTS = [
   'italic 800 %px "Trebuchet MS", "Segoe UI", Verdana, sans-serif',
 ];
 
-// 24 neon signs and billboards packed into one 1024x1536 atlas: 2 columns x 12 rows of 512x128.
-export const SIGN_ROWS = 12;
+// 26 neon signs, billboards and edge signs packed into one 1024x1664 atlas: 2 columns x 13 rows of 512x128.
+export const SIGN_ROWS = 13;
 export function paintSigns(signs) {
   const cv = document.createElement('canvas');
   cv.width = 1024; cv.height = SIGN_ROWS * 128;
