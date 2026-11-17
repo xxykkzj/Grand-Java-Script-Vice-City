@@ -212,12 +212,12 @@ async function boot() {
       else if (game.inside) hud.setHint(places.hint());
       else if (!v) {
         const n = vehicles.nearest(player.pos);
-        hud.setHint(n ? [['E', n.ai ? `take the ${n.label} (heat!)` : n.kind === 'bike' ? 'ride the Comet' : `enter ${n.label}`], ['~ / T', 'cheat console']]
-          : [['WASD', 'skate'], ['Shift', 'sprint'], ['Space', 'jump'], ['Drag', 'look'], ['~ / T', 'cheat console']]);
-      } else if (v.kind === 'car') hud.setHint([['E', 'exit car'], ['WASD', 'drive'], ['Space', 'handbrake']]);
-      else if (v.kind === 'bike') hud.setHint([['E', 'get off'], ['W', 'throttle (wheelie from low speed)'], ['A D', 'lean'], ['S', 'brake']]);
-      else if (v.kind === 'tank') hud.setHint([['E', 'exit tank'], ['WASD', 'drive'], ['Drag', 'aim turret'], ['Click / F', 'fire']]);
-      else hud.setHint([['W S', 'forward / back'], ['A D', 'yaw'], ['Space', 'up'], ['C / Ctrl', 'down'], ['E', v.y > 0.6 ? 'land to exit' : 'exit helicopter']]);
+        hud.setHint(n ? [['E', n.ai ? `take the ${n.label} (heat!)` : n.kind === 'bike' ? 'ride the Comet' : `enter ${n.label}`], ['V', 'camera view'], ['~ / T', 'cheat console']]
+          : [['WASD', 'skate'], ['Shift', 'sprint'], ['Space', 'jump'], ['Drag', 'look'], ['V', 'camera view'], ['~ / T', 'cheat console']]);
+      } else if (v.kind === 'car') hud.setHint([['E', 'exit car'], ['WASD', 'drive'], ['Space', 'handbrake'], ['V', 'camera view']]);
+      else if (v.kind === 'bike') hud.setHint([['E', 'get off'], ['W', 'throttle (wheelie from low speed)'], ['A D', 'lean'], ['S', 'brake'], ['V', 'camera view']]);
+      else if (v.kind === 'tank') hud.setHint([['E', 'exit tank'], ['WASD', 'drive'], ['Drag', 'aim turret'], ['Click / F', 'fire'], ['V', 'camera view']]);
+      else hud.setHint([['W S', 'forward / back'], ['A D', 'yaw'], ['Space', 'up'], ['C / Ctrl', 'down'], ['E', v.y > 0.6 ? 'land to exit' : 'exit helicopter'], ['V', 'camera view']]);
       hudState.focus = game.focus(); hudState.heading = game.heading(); hudState.camYaw = cam.yaw; hudState.inVehicle = v;
       hudState.counts[0] = traffic.count(); hudState.blips = rules.blips;
       hud.update(dt, hudState);
