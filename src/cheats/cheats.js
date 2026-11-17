@@ -69,6 +69,8 @@ export function createCheats(game) {
   };
 
   const api = {
+    // a helicopter waits near the start so the city can be explored from the air without a code
+    parkHeli() { const s = spotAhead(14, 8, 3); vehicles.spawnHeli(s.x, s.z, s.yaw); },
     open: false,
     toggle(on = !api.open) {
       api.open = on; box.hidden = !on; input.typing = on;

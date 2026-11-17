@@ -99,7 +99,7 @@ Press `~` or `T`, type a code (not case-sensitive), press Enter.
 | Code | Effect |
 | --- | --- |
 | `HEAVYMETAL` | Drops the Disco Tank in front of you. The turret follows the camera; click or `F` fires a shell that sends cars flying (and the heat up). |
-| `ROTORWASH` | Drops a helicopter in front of you. `E` to board. |
+| `ROTORWASH` | Brings the helicopter to you. One is also parked near the start. `E` to board. |
 | `TWOWHEELS` | Brings a parked Comet to you. |
 | `REWIND` | Forgets the saved story progress and outfits. |
 | `NIGHTSHIFT` | Toggles night: neon, lit windows, stars. |

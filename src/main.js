@@ -251,9 +251,11 @@ async function boot() {
     game.started = true;
     audio.start();
     cam.yaw = Math.PI / 2; cam.pitch = 0.2;
+    cheats.parkHeli();
     title.classList.add('out');
     setTimeout(() => { title.hidden = true; }, 700);
     hud.show();
+    hud.toast('HELICOPTER PARKED NEARBY', 'WALK UP AND PRESS E · CODES: PRESS T');
     input.enabled = true;
     go.blur();
   };
