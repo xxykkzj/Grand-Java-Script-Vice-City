@@ -193,12 +193,19 @@ export const BARKS = {
 };
 
 // Zigzag Threads: jacket / trim / light (shorts, boots) / bag colours. `price: 0` is yours from the start.
+// bottom: 'shorts' (default) · 'trousers' (legs colour) · 'skirt' (skirt colour, pleat for alternate pleats)
+//         · 'dress' (jacket is the bodice, bare arms). len / flare shape the skirt; sequin sparkles; boot colours the skates.
 export const OUTFITS = [
   { id: 'classic', name: 'COURIER CLASSIC', note: 'Teal bomber, magenta trim. The original.', price: 0, jacket: '#12b5a6', trim: '#e6258f', light: '#f7f5ef', bag: '#f2b63a' },
   { id: 'sunset', name: 'SUNSET STRIPE', note: 'Tangerine with lemon piping.', price: 120, jacket: '#ff7a2f', trim: '#ffd84a', light: '#fff3d6', bag: '#7a3cff' },
   { id: 'arcade', name: 'MIDNIGHT ARCADE', note: 'Deep violet, cyan trim, black shorts.', price: 180, jacket: '#3a1d8a', trim: '#18f0ff', light: '#22203a', bag: '#ff2bd1' },
   { id: 'mint', name: 'MINT CONDITION', note: 'Pistachio and peach. Very poolside.', price: 150, jacket: '#8fe8c0', trim: '#ff9a7a', light: '#ffffff', bag: '#ffd166' },
   { id: 'cherry', name: 'CHERRY BOMB', note: 'Lipstick red, white stripes, no apologies.', price: 220, jacket: '#e0213f', trim: '#ffffff', light: '#1b1830', bag: '#27e8ff' },
+  { id: 'slip', name: 'NEON SLIP', note: 'A hot-pink slip dress with cyan straps. Glows under a mirror ball.', price: 200, bottom: 'dress', jacket: '#ff2bd1', trim: '#18f0ff', light: '#f7f5ef', skirt: '#ff2bd1', len: 0.46, flare: 0.2, boot: '#f7f5ef', bag: '#18f0ff' },
+  { id: 'tennis', name: 'TIE-BREAK', note: 'Pleated white tennis skirt, cropped mint jacket. Game, set, skate.', price: 170, bottom: 'skirt', jacket: '#8fe3d9', trim: '#ff4fa3', light: '#f7f5ef', skirt: '#f7f5ef', pleat: '#d8f4ee', len: 0.3, flare: 0.3, boot: '#f7f5ef', bag: '#ff4fa3' },
+  { id: 'mirrorball', name: 'MIRRORBALL', note: 'Sequinned lilac party dress. Every light in the room finds you.', price: 320, bottom: 'dress', jacket: '#b8a8ff', trim: '#ffe14a', light: '#ffffff', skirt: '#b8a8ff', len: 0.38, flare: 0.24, sequin: true, boot: '#ffe14a', bag: '#ffe14a' },
+  { id: 'sundress', name: 'BOARDWALK SUNDRESS', note: 'Lemon sundress with a tangerine hem. Made for the promenade.', price: 140, bottom: 'dress', jacket: '#ffe36a', trim: '#ff8a3d', light: '#fff6ec', skirt: '#ffe36a', pleat: '#ffd23f', len: 0.52, flare: 0.34, boot: '#fff6ec', bag: '#ff8a3d' },
+  { id: 'slacks', name: 'SEA BREEZE SLACKS', note: 'Navy bomber, wide cream trousers. Yacht club, no yacht.', price: 160, bottom: 'trousers', jacket: '#2a4a9a', trim: '#ffd166', light: '#f6f1e7', legs: '#efe6d2', boot: '#f6f1e7', bag: '#ffd166' },
   { id: 'royale', name: 'FLAMINGO ROYALE', note: "Dee's 1979 roller-disco jacket. Pink and gold.", price: 750, jacket: '#ff5fa8', trim: '#ffcf3a', light: '#fff6ec', bag: '#ffcf3a', gift: 'Finish the story and Dee gives it to you' },
 ];
 
@@ -208,3 +215,28 @@ export const SNACKS = [
   { id: 'dog', name: 'BOARDWALK HOT DOG', note: 'From today. Mostly. +35 health', price: 12, heal: 35 },
   { id: 'bar', name: 'TURBO CRUNCH BAR', note: 'Oats, glucose and optimism. +60 health', price: 20, heal: 60 },
 ];
+
+// Street vending machines (F at the front). All brands made up.
+export const VEND = {
+  coolwave: [
+    { id: 'cw', name: 'COOLWAVE CLASSIC', note: 'Blue, fizzy, tastes like a sea breeze. +10 health', price: 3, heal: 10 },
+    { id: 'cwz', name: 'COOLWAVE ZERO', note: 'All of the wave, none of the sugar. +8 health', price: 3, heal: 8 },
+    { id: 'tide', name: 'TIDAL ICED TEA', note: 'Peach and lemon. Very refreshing, very orange. +14 health', price: 4, heal: 14 },
+  ],
+  snaxx: [
+    { id: 'curl', name: 'SNAXX CHEESE CURLS', note: 'Crunchy, glowing slightly. +12 health', price: 3, heal: 12 },
+    { id: 'gum', name: 'STARDUST GUMMIES', note: 'Shaped like little comets. +6 health', price: 2, heal: 6 },
+    { id: 'trail', name: 'SNAXX TRAIL MIX', note: 'Nuts, raisins and a single heroic chocolate drop. +20 health', price: 5, heal: 20 },
+  ],
+};
+
+// How full Club Prism is, by story progress. 'quiet' until Paper Trail is done (the flyers are what
+// bring people in), 'busy' after it, 'packed' during Last Dance. Counts of people in each part of the
+// room; music and lights scale the club track and the light show.
+export const CLUB_CROWD = {
+  quiet: { dancers: 3, barStand: 1, stools: 1, lounge: 1, vip: 0, coat: 1, music: 0.62, lights: 0.45, dj: 'warmup' },
+  busy: { dancers: 18, barStand: 2, stools: 2, lounge: 4, vip: 2, coat: 1, music: 1, lights: 1, dj: 'live' },
+  packed: { dancers: 28, barStand: 2, stools: 5, lounge: 7, vip: 2, coat: 1, music: 1.12, lights: 1.15, dj: 'live' },
+};
+// story = missions finished (save.story); active = the id of the job running now, if any
+export const clubTier = (story, active) => (active === 'dance' ? 'packed' : story >= 2 ? 'busy' : 'quiet');

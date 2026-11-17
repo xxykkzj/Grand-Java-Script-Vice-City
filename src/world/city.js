@@ -27,8 +27,50 @@ function slab(w, d, r, h, cx, y0, cz, hex) {
   return tint(g, hex);
 }
 
+// Night street light without lights: one 600 x 300 canvas (1 px = 1 m) with a warm pool painted under
+// every street lamp and a softer spill in front of every lit shop window and door. The ground shader
+// adds albedo * pool * night, so the back streets read as lit at midnight. A knocked-down lamp is
+// simply left out of the next repaint.
+function createLampMap(L) {
+  const W = HX * 2, H = HZ * 2, c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  let data = null;
+  const pool = (x, z, rad, a, rgb = '255,196,128') => {
+    const g = ctx.createRadialGradient(x, z, 0, x, z, rad);
+    g.addColorStop(0, `rgba(${rgb},${a})`); g.addColorStop(0.45, `rgba(${rgb},${a * 0.42})`); g.addColorStop(1, `rgba(${rgb},0)`);
+    ctx.fillStyle = g; ctx.fillRect(x - rad, z - rad, rad * 2, rad * 2);
+  };
+  const paint = () => {
+    ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'lighter';
+    for (const l of L.lamps) if (!l.dead) pool(l.x + Math.sin(l.yaw) * 1.45 + HX, l.z + Math.cos(l.yaw) * 1.45 + HZ, 9.5, 0.8);
+    for (const b of L.buildings) {
+      if (b.hotel) { pool(b.cx + HX, b.z1 + 2.2 + HZ, 5, 0.32, '255,214,160'); continue; }
+      const sx = b.cx + b.w * 0.17 + HX, sw = Math.min(b.w * 0.42, 8), z = b.z1 + HZ;
+      const g = ctx.createLinearGradient(0, z, 0, z + 4.5);
+      g.addColorStop(0, 'rgba(255,214,160,0.42)'); g.addColorStop(1, 'rgba(255,214,160,0)');
+      ctx.fillStyle = g; ctx.fillRect(sx - sw / 2 - 0.5, z, sw + 1, 4.5);
+    }
+    for (const k in L.places) { const p = L.places[k]; pool(p.x + HX, p.z - 3 + HZ, 5, 0.35, '255,150,220'); }
+    data = ctx.getImageData(0, 0, W, H).data;
+  };
+  paint();
+  const tex = new THREE.CanvasTexture(c);
+  tex.flipY = false; tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter;
+  return {
+    tex,
+    repaint() { paint(); tex.needsUpdate = true; },
+    // the lamp-light term (0..1+) the ground gets at (x, z) at full night, for checks
+    sample(x, z) { const i = (Math.floor(clampN(z + HZ, 0, H - 1)) * W + Math.floor(clampN(x + HX, 0, W - 1))) * 4; return (data[i] + data[i + 1] + data[i + 2]) / 765; },
+  };
+}
+const clampN = (v, a, b) => (v < a ? a : v > b ? b : v);
+export const LAMP_GAIN = 1.7;
+
 export function buildGround(scene, L, renderer) {
   const canvas = paintGround(L);
+  const lampMap = L.lampMap = createLampMap(L);
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
@@ -38,13 +80,15 @@ export function buildGround(scene, L, renderer) {
   // from the boulevard's street lamps (their positions are a formula, so no light list), rain speckle.
   const mat = new THREE.MeshLambertMaterial({ map: tex });
   mat.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, { uWet: wetU, uRain: rainU, uNight: nightU, uTime: timeU, uSkyC: reflU.sky, uSunC: reflU.sun, uSunD: reflU.dir });
+    Object.assign(sh.uniforms, { uWet: wetU, uRain: rainU, uNight: nightU, uTime: timeU, uSkyC: reflU.sky, uSunC: reflU.sun, uSunD: reflU.dir, uLampMap: { value: lampMap.tex } });
     sh.vertexShader = 'varying vec3 vWP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vWP = (modelMatrix * vec4(position, 1.0)).xyz;');
-    sh.fragmentShader = 'uniform float uWet, uRain, uNight, uTime; uniform vec3 uSkyC, uSunC, uSunD; varying vec3 vWP;\n' + sh.fragmentShader
+    sh.fragmentShader = 'uniform float uWet, uRain, uNight, uTime; uniform vec3 uSkyC, uSunC, uSunD; uniform sampler2D uLampMap; varying vec3 vWP;\n' + sh.fragmentShader
       .replace('#include <map_fragment>', /* glsl */`#include <map_fragment>
         float wetK = uWet * (0.5 + 0.5 * smoothstep(0.45, 0.12, dot(diffuseColor.rgb, vec3(0.333))));
         diffuseColor.rgb *= 1.0 - 0.4 * wetK;`)
       .replace('#include <opaque_fragment>', /* glsl */`
+        vec3 lampL = texture2D(uLampMap, vec2((vWP.x + ${HX.toFixed(1)}) / ${(HX * 2).toFixed(1)}, (vWP.z + ${HZ.toFixed(1)}) / ${(HZ * 2).toFixed(1)})).rgb;
+        outgoingLight += diffuseColor.rgb * lampL * uNight * ${LAMP_GAIN.toFixed(2)};
         if (uWet > 0.01) {
           vec3 V = normalize(cameraPosition - vWP);
           vec3 N = normalize(vec3(sin(vWP.x * 3.1 + sin(vWP.z * 2.3)) * 0.03, 1.0, cos(vWP.x * 2.2 + vWP.z * 3.3) * 0.03));
@@ -263,6 +307,7 @@ export function buildCity(scene, L) {
   L.lamps.forEach((l, i) => {
     m4.compose(v.set(l.x, 0, l.z), q.setFromAxisAngle(UP, l.yaw), sc.set(1, 1, 1));
     lamps.setMatrixAt(i, m4);
+    l.gi = glows.length;
     glows.push([l.x + Math.sin(l.yaw) * 1.45, 5.9, l.z + Math.cos(l.yaw) * 1.45, '#ffcf8a', 6.5, 0]);
   });
   lamps.frustumCulled = false;
@@ -312,7 +357,8 @@ export function buildCity(scene, L) {
   L.palms.forEach((p, i) => {
     // variety: squat and lanky palms, a few sun-bleached or deep green
     const tall = 0.78 + ((i * 37) % 11) / 16;
-    m4.compose(v.set(p.x, 0, p.z), q.setFromAxisAngle(UP, p.yaw), sc.set(p.s * (1.12 - tall * 0.12), p.s * tall, p.s * (1.12 - tall * 0.12)));
+    p.sc = [p.s * (1.12 - tall * 0.12), p.s * tall, p.s * (1.12 - tall * 0.12)];
+    m4.compose(v.set(p.x, 0, p.z), q.setFromAxisAngle(UP, p.yaw), sc.set(...p.sc));
     palms.setMatrixAt(i, m4);
     palms.setColorAt(i, pcol.set(['#ffffff', '#e4ffc8', '#fff2c4', '#cfeedd', '#ffffff'][(i * 7) % 5]));
   });
@@ -342,15 +388,34 @@ export function buildCity(scene, L) {
   umbs.frustumCulled = false;
   scene.add(umbs);
 
+  // --- planting beds: shrubs, grasses and flowers, one InstancedMesh (flowers take the instance colour)
+  const plants = buildPlants(L.planters);
+  if (plants) scene.add(plants);
+
   // --- static glow sprites
   const glow = createGlow(scene, glows.length);
   for (const g of glows) glow.add(g[0], g[1], g[2], g[3], g[4], g[5]);
   glow.commit();
 
   const life = buildLife(scene, bodyMat);
+  // knocked-down lamps and (tank-)felled palms: tip the instance over about its base towards `dir`
+  const tip = (mesh, i, x, z, yaw, s3, ang, dir) => {
+    const qa = new THREE.Quaternion().setFromAxisAngle(v.set(Math.cos(dir), 0, -Math.sin(dir)), ang);
+    q.setFromAxisAngle(UP, yaw).premultiply(qa);
+    m4.compose(v.set(x, 0, z), q, sc.set(...s3)); mesh.setMatrixAt(i, m4); mesh.instanceMatrix.needsUpdate = true;
+  };
 
   return {
     windowCount: winM.length, bodyMat, tick: life.tick, blinkers,
+    tipLamp(i, ang, dir) { const l = L.lamps[i]; tip(lamps, i, l.x, l.z, l.yaw, [1, 1, 1], ang, dir); },
+    tipPalm(i, ang, dir) { const p = L.palms[i]; tip(palms, i, p.x, p.z, p.yaw, p.sc, ang, dir); },
+    // a lamp's light: its glow sprite and its pool on the ground
+    lampLight(i, on) {
+      const l = L.lamps[i], g = glows[l.gi];
+      l.dead = !on;
+      if (on) glow.set(l.gi, g[0], g[1], g[2], g[3], g[4], g[5]); else glow.hide(l.gi);
+      glow.commit(); L.lampMap.repaint();
+    },
     setLights(neonK, lit, glass) {
       neonMat.color.setScalar(0.5 + neonK * 0.9);
       signMat.color.setScalar(0.4 + neonK * 0.9);
@@ -358,4 +423,42 @@ export function buildCity(scene, L) {
       winU.uGlass.value.copy(glass);
     },
   };
+}
+
+// Shrub + grass + flower clump for the planting beds. Flowers are marked with aFlower = 1 and take the
+// instance colour; the greens keep their own. Grasses sway a little in the vertex shader.
+function buildPlants(list) {
+  if (!list.length) return null;
+  const parts = [], flower = [];
+  const add = (g, f) => { parts.push(g); flower.push(f, g.attributes.position.count); };
+  add(tint(new THREE.IcosahedronGeometry(0.32, 0).scale(1.1, 0.75, 1).translate(0, 0.22, 0), '#2f8f4f'), 0);
+  add(tint(new THREE.IcosahedronGeometry(0.22, 0).scale(1, 0.8, 1).translate(0.2, 0.3, 0.08), '#3fae5f'), 0);
+  add(tint(new THREE.IcosahedronGeometry(0.2, 0).translate(-0.18, 0.28, -0.08), '#46b86a'), 0);
+  for (let k = 0; k < 5; k++) { const a = k * 1.3; add(box(0.04, 0.55, 0.02, Math.cos(a) * 0.12, 0.3, Math.sin(a) * 0.12, '#7ccf6a', Math.sin(a) * 0.3, a, Math.cos(a) * 0.3), 0); }
+  for (let k = 0; k < 6; k++) { const a = k * 1.05 + 0.3, rr = 0.2 + (k % 2) * 0.1; add(box(0.09, 0.07, 0.09, Math.cos(a) * rr, 0.42 + (k % 3) * 0.05, Math.sin(a) * rr, '#ffffff'), 1); }
+  const n = parts.reduce((a, g) => a + g.attributes.position.count, 0), af = new Float32Array(n);
+  let o = 0;
+  for (let i = 0; i < flower.length; i += 2) { af.fill(flower[i], o, o + flower[i + 1]); o += flower[i + 1]; }
+  const geo = merge(parts);
+  geo.setAttribute('aFlower', new THREE.BufferAttribute(af, 1));
+  const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uTime = timeU;
+    sh.vertexShader = 'attribute float aFlower; uniform float uTime;\n' + sh.vertexShader
+      .replace('#include <color_vertex>', `vColor = vec4(1.0); vColor.rgb *= color;
+        #ifdef USE_INSTANCING_COLOR
+          vColor.rgb = mix(vColor.rgb, instanceColor.rgb, aFlower);
+        #endif`)
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        #ifdef USE_INSTANCING
+          transformed.x += sin(uTime * 1.6 + instanceMatrix[3][0] * 0.7 + instanceMatrix[3][2]) * 0.035 * position.y;
+        #endif`);
+  };
+  const mesh = new THREE.InstancedMesh(geo, mat, list.length), m = new THREE.Matrix4(), q = new THREE.Quaternion(), c = new THREE.Color();
+  list.forEach((p, i) => {
+    m.compose(new THREE.Vector3(p.x, p.y, p.z), q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), p.yaw), p.grass ? new THREE.Vector3(0.55 * p.s, 1.5 * p.s, 0.55 * p.s) : new THREE.Vector3(p.s, p.s, p.s));
+    mesh.setMatrixAt(i, m); mesh.setColorAt(i, c.set(p.grass ? '#d8e27a' : p.c));
+  });
+  mesh.frustumCulled = false;
+  return mesh;
 }

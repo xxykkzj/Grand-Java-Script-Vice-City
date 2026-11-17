@@ -63,6 +63,21 @@ export function createFx(scene) {
           PAL[i % 2], 1.6, 0.15 + Math.random() * 0.2, 0);
       }
     },
+    // a burst of sparks (a lamp post going down)
+    sparks(x, y, z, n = 26) {
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * 6.283, sp = 3 + Math.random() * 7;
+        spawn(x, y, z, Math.cos(a) * sp, 2 + Math.random() * 6, Math.sin(a) * sp, i % 3 ? '#ffd27a' : '#fff3c4', 0.35, 0.3 + Math.random() * 0.5, 18);
+      }
+    },
+    // a hydrant fountain: call every frame while it runs (k fades it out)
+    spray(x, z, k = 1) {
+      const n = reducedMotion ? 2 : 4;
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * 6.283, s = Math.random() * 1.1;
+        spawn(x + Math.cos(a) * 0.08, 0.75, z + Math.sin(a) * 0.08, Math.cos(a) * s, (7 + Math.random() * 3.5) * k, Math.sin(a) * s, i % 2 ? '#bfe8ff' : '#7fc8ff', 0.45, 1.1 + Math.random() * 0.4, 14);
+      }
+    },
     update(dt) {
       const drag = Math.exp(-2.2 * dt);
       for (let i = 0; i < N; i++) {

@@ -1,8 +1,11 @@
 // Neon Coast: boot, world generation with a loading bar, and the main loop.
 import * as THREE from 'three';
-import { timeU, pointScaleU, pushOut, pause, reducedMotion, createGrid, beatU, beatNow, BEAT_LEN } from './core/util.js';
+import { timeU, pointScaleU, pushOut, pause, reducedMotion, createGrid, beatU, beatNow, BEAT_LEN, nightU } from './core/util.js';
 import { createInput } from './core/input.js';
-import { makeLayout, clampToWorld, onIsland, PIER, CAUSEWAY, HX } from './world/layout.js';
+import { makeLayout, clampToWorld, onIsland, PIER, CAUSEWAY, HX, propsOnRoad } from './world/layout.js';
+import { createLoose, LAMP_BREAK } from './world/loose.js';
+import { LAMP_GAIN } from './world/city.js';
+import { CLUB_CROWD } from './game/story.js';
 import { createHorizon } from './world/horizon.js';
 import { createAnimals } from './actors/animals.js';
 import { createSky, createOcean } from './world/sky.js';
@@ -99,6 +102,8 @@ async function boot() {
   const R = makeRoads();
   const signals = buildSignals(scene, R, city.bodyMat, L.props);
   L.props.build();
+  // dev builds: nothing may stand on a carriageway
+  if (typeof __DEV__ !== 'undefined' && __DEV__) { const bad = propsOnRoad(L); if (bad.length) console.error('PROPS ON THE ROAD', bad); else console.info('prop placement OK: nothing on the carriageways'); }
   const grid = createGrid(14);
 
   game = {
@@ -111,6 +116,7 @@ async function boot() {
   const traffic = game.traffic = createTraffic(R, vehicles, grid, game);
   const peds = game.peds = createPeds(scene, R, grid, game);
   const animals = game.animals = createAnimals(scene, game);
+  const loose = game.loose = createLoose(scene, game, city, fx, audio);
   // what survives a reload: the outfit you wear and own, and how far the story has got
   const SAVE = 'neon-coast-save-1';
   const save = game.save = { outfit: 'classic', owned: [], story: 0, gift: {} };
@@ -153,6 +159,25 @@ async function boot() {
     props: () => ({ colliders: L.props.cols.length, seats: L.props.seats.length, lines: L.props.lines.length }),
     moving: () => peds.peds.filter((p) => !p.off && p.v > 0.3).length,
     sittingPeds: () => peds.peds.filter((p) => !p.off && p.hang && p.hang.kind === 'seat').length,
+    // ---- checks for the new systems
+    propsOnRoad: () => propsOnRoad(L),
+    club: () => {
+      const r = game.inside && game.inside.key === 'club' ? game.inside.room : L.places.club.room;
+      if (!r) return null;
+      const on = r.crowd.filter((d) => d.on), zones = r.exclude || [];
+      const inZone = on.filter((d) => d.kind !== 'sit' && zones.some((z) => Math.hypot(d.x - z.x, d.z - z.z) < z.r)).length;
+      return { tier: r.tier, people: on.length, dancers: on.filter((d) => d.kind === 'dance').length, zones: zones.length, dancersInZone: inZone,
+        seated: act.mode === 'sit' && act.seat && act.seat.kind, npcSeated: Object.keys(r.npc).filter((k) => r.npc[k].seated), cut: cut.active };
+    },
+    tiers: () => CLUB_CROWD,
+    outfit: () => ({ id: save.outfit, bottom: player.model.look.bottom, skirt: player.model.skirt.visible }),
+    loose: (kind, i = 0) => { const b = loose.bodies.filter((o) => o.kind === kind)[i]; return b && loose.status(b); },
+    looseBody: (kind, i = 0) => loose.bodies.filter((o) => o.kind === kind)[i],
+    lamp: (i) => { const l = L.lamps[i]; return { x: l.x, z: l.z, yaw: l.yaw, off: l.col.off, dead: !!l.dead }; },
+    lampBreak: LAMP_BREAK,
+    // ground lamp-light term under a lamp head at full night, and the night ambient
+    nightLight: (x, z) => ({ lampTerm: L.lampMap.sample(x, z) * LAMP_GAIN * nightU.value, mapValue: L.lampMap.sample(x, z), night: nightU.value, hemi: env.hemi.intensity }),
+    drawCalls: () => renderer.info.render.calls,
   };
   game.signalAt = (n, h) => signal(n, h, timeU.value);
 
@@ -185,6 +210,8 @@ async function boot() {
   }
   const fire = () => { if (game.mode === 'tank') vehicles.fire(); };
 
+  // a tap or click during a scene: finish the line, then move on
+  canvas.addEventListener('click', () => { if (game.busy === 'cut') cut.next(); });
   input.onKey = (e) => {
     if (game.busy === 'cut') {
       if (e.code === 'Space' || e.code === 'Enter' || e.code === 'NumpadEnter') cut.next();
@@ -223,7 +250,7 @@ async function boot() {
     if (game.paused) { last = now; renderer.render(scene, camera); input.endFrame(); return; }
     const raw = Math.min(Math.max((now - last) / 1000, 0), 0.5), dt = Math.min(raw, 0.05);
     last = now;
-    timeU.value += dt;
+    timeU.value += dt; game.dt = dt;
     // the shared music clock: free-runs on real time, pulled onto the synth's own position when there is sound
     {
       beatU.value += raw / BEAT_LEN;
@@ -264,12 +291,14 @@ async function boot() {
     signals.update(timeU.value);
     traffic.update(dt, timeU.value);
     vehicles.update(dt, ctl, cam, player);
+    loose.update(dt);
     if (game.mode === 'bike' && game.vehicle) player.ride(game.vehicle);
     peds.update(dt, timeU.value, frameN, vehicles.cars);
     animals.update(dt);
     if (game.started) { rules.update(dt); story.update(dt); places.update(dt, ctl); }
     city.tick(timeU.value);
     fx.update(dt);
+    player.tickFace(dt);
 
     const v = game.vehicle;
     const speed = v ? (v.kind === 'tank' ? v.speed : Math.hypot(v.vx, v.vz)) : player.speed;
@@ -318,6 +347,9 @@ async function boot() {
     sound.rotor = vehicles.heli ? vehicles.heli.spool * (v === vehicles.heli ? 1 : 0.35) : 0;
     sound.rain = env.rainAmt; sound.siren = game.siren || 0; sound.duck = cut.active;
     sound.room = !game.inside ? 0 : game.inside.key === 'club' ? 2 : 1;
+    sound.club = game.inside && game.inside.key === 'club' ? game.inside.room.level.music : 1;
+    sound.lounge = game.inside && game.inside.room.inLounge && game.inside.room.inLounge(player.pos.x - game.inside.room.ox) ? 1 : 0;
+    sound.hum = game.inside ? 0 : loose.sound.hum; sound.spray = game.inside ? 0 : loose.sound.spray;
     audio.update(sound);
 
     renderer.render(scene, camera);

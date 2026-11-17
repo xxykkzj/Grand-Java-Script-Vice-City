@@ -44,6 +44,7 @@ const options = {
   write: false,
   metafile: true,
   logLevel: 'info',
+  define: { __DEV__: watch ? 'true' : 'false' },
 };
 
 if (watch) {

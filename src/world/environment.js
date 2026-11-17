@@ -7,9 +7,9 @@ const col = (h) => new THREE.Color(h);
 const PRESET = {
   night: {
     top: col('#03020f'), mid: col('#140a38'), hor: col('#3c165e'), sunA: col('#ff2f8a'), sunB: col('#7a1a6a'),
-    glow: col('#3a1a6a'), sun: col('#7f8cff'), hemiS: col('#3a3a8a'), hemiG: col('#3a1a52'),
+    glow: col('#3a1a6a'), sun: col('#7f8cff'), hemiS: col('#40409a'), hemiG: col('#4a2a62'),
     deep: col('#05041c'), shallow: col('#1b2c6e'), glass: col('#141a3a'),
-    sunI: 0.55, hemiI: 0.85, neon: 1.0, lit: 0.62, stars: 1, size: 0.17, stripe: 1, fogNear: 70, fogFar: 520,
+    sunI: 0.55, hemiI: 1.02, neon: 1.0, lit: 0.62, stars: 1, size: 0.17, stripe: 1, fogNear: 70, fogFar: 520,
   },
   dawn: {
     top: col('#33479a'), mid: col('#e88aa8'), hor: col('#ffd0a0'), sunA: col('#fff3c0'), sunB: col('#ff9a6a'),
@@ -91,6 +91,7 @@ export function createEnvironment(scene, sky, ocean, city, camera, audio) {
   scene.add(rain);
 
   const env = {
+    hemi,
     tod: 19, target: null, speed: 1, indoor: false, flash: 0, cur,
     weather: 'clear', w: { cloud: 0.12, rain: 0, bolt: 0, fog: 0 }, wxTimer: 2.5, wet: 0,
     nextBolt: 4, pendingThunder: -1, phase: 'DUSK',

@@ -13,6 +13,29 @@ export const onRails = (c) => !!c.ai && !(c.ai.stun > 0) && !c.ai.pursuit;
 const PAINT = ['#ffb3d1', '#9fe8dc', '#fff0a8', '#b9d4ff', '#ffc39a', '#d6bcff', '#f6f1e7', '#ff8fb0', '#7fe0ff'];
 const HOT_PINK = '#ff1f9c';
 
+// Collision shapes: a row of circles along the body, [offset along the heading, radius]. The car's
+// front circle reaches the bumper, so the bonnet no longer slides into lamp posts and walls.
+const SHAPES = {
+  car: [[1.3, 1.0], [0, 1.0], [-1.3, 1.0]],
+  bike: [[0.62, 0.45], [-0.72, 0.45]],
+  tank: [[1.25, 2.1], [0, 2.1], [-1.25, 2.1]],
+  heli: [[0.4, 1.6], [-3.6, 0.6]],
+};
+const REACH = { car: 2.3, bike: 1.17, tank: 3.35, heli: 4.2 };
+export function circlesOf(v, out = []) {
+  const sh = SHAPES[v.kind] || SHAPES.car, fx = Math.sin(v.yaw), fz = Math.cos(v.yaw);
+  for (let i = 0; i < sh.length; i++) { const o = out[i] || (out[i] = [0, 0, 0]); o[0] = v.x + fx * sh[i][0]; o[1] = v.z + fz * sh[i][0]; o[2] = sh[i][1]; }
+  out.length = sh.length;
+  return out;
+}
+// distance from a point to the vehicle's body (negative inside it)
+const _cs = [];
+export function bodyDist(v, x, z) {
+  let best = 1e9;
+  for (const c of circlesOf(v, _cs)) best = Math.min(best, Math.hypot(x - c[0], z - c[1]) - c[2]);
+  return best;
+}
+
 export function createVehicles(scene, L, fx, audio) {
   const solids = L.solids;
   const glowU = { value: 0 };
@@ -102,22 +125,46 @@ export function createVehicles(scene, L, fx, audio) {
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(0, 0, 0, 'YXZ');
   const p3 = new THREE.Vector3(), s3 = new THREE.Vector3(1, 1, 1);
 
-  function hitSolids(o, r, bounce) {
+  // Push every body circle out of the buildings and the street furniture, moving the whole vehicle.
+  const tp = { x: 0, z: 0 };
+  function hitSolids(o, bounce) {
     let hit = false;
-    for (const b of solids) {
-      if (o.y > b.h) continue;
-      const n = pushOut(o, r, b);
-      if (!n) continue;
-      hit = true;
-      const vn = o.vx * n.nx + o.vz * n.nz;
-      if (vn < 0) { o.vx -= (1 + bounce) * vn * n.nx; o.vz -= (1 + bounce) * vn * n.nz; }
+    const heli = o.kind === 'heli', sh = SHAPES[o.kind] || SHAPES.car;
+    for (const [off, r] of sh) {
+      const fx = Math.sin(o.yaw), fz = Math.cos(o.yaw);
+      tp.x = o.x + fx * off; tp.z = o.z + fz * off;
+      const x0 = tp.x, z0 = tp.z;
+      for (const b of solids) {
+        if (o.y > b.h) continue;
+        const n = pushOut(tp, r, b);
+        if (!n) continue;
+        hit = true;
+        const vn = o.vx * n.nx + o.vz * n.nz;
+        if (vn < 0) { o.vx -= (1 + bounce) * vn * n.nx; o.vz -= (1 + bounce) * vn * n.nz; }
+      }
+      // street furniture: lamps, palms, hydrants... a car stops dead against a pole (a soft bounce, a thud,
+      // never any heat) unless it is going fast enough to flatten it (see world/loose.js); the helicopter
+      // only minds the tall things, and only when low
+      if (!heli || o.y < 8) {
+        const k = L.props.collide(tp, r, o.y, o, heli ? 0.1 : 0.2, heli ? 3 : 0, o);
+        if (k > 0) { hit = true; if (k > 4 && (o.driven || !o.ai)) audio.thud(clamp(k / 25, 0.15, 0.8)); }
+      }
+      o.x += tp.x - x0; o.z += tp.z - z0;
     }
-    // street furniture: lamps, palms, benches... a car stops dead against a pole (a soft bounce, a thud,
-    // never any heat); the helicopter only minds the tall things, and only when low
-    const heli = o.kind === 'heli';
-    if (!heli || o.y < 8) {
-      const k = L.props.collide(o, heli ? o.radius * 0.8 : Math.min(o.radius, 1.6), o.y, o, heli ? 0.1 : 0.2, heli ? 3 : 0);
-      if (k > 0) { hit = true; if (k > 4 && (o.driven || !o.ai)) audio.thud(clamp(k / 25, 0.15, 0.8)); }
+    return hit;
+  }
+  // keep every circle inside the world (seawall, beach, pier, causeway)
+  function clampShape(c) {
+    let hit = false;
+    for (const [off, r] of SHAPES[c.kind] || SHAPES.car) {
+      tp.x = c.x + Math.sin(c.yaw) * off; tp.z = c.z + Math.cos(c.yaw) * off;
+      const x0 = tp.x, z0 = tp.z;
+      if (clampToWorld(tp, Math.min(r, 1))) {
+        hit = true;
+        if (tp.x !== x0) c.vx *= -0.3;
+        if (tp.z !== z0) c.vz *= -0.3;
+        c.x += tp.x - x0; c.z += tp.z - z0;
+      }
     }
     return hit;
   }
@@ -167,10 +214,9 @@ export function createVehicles(scene, L, fx, audio) {
     }
     c.x += c.vx * dt; c.z += c.vz * dt;
     const sp0 = Math.hypot(c.vx, c.vz);
-    hitSolids(c, c.radius, 0.35);
+    hitSolids(c, 0.35);
     if (B && c.driven && sp0 - Math.hypot(c.vx, c.vz) > 11 && api.onThrow) api.onThrow(c, sp0);
-    const px = c.x, pz = c.z;
-    if (clampToWorld(c, 1.6)) { if (c.x !== px) c.vx *= -0.3; if (c.z !== pz) c.vz *= -0.3; }
+    clampShape(c);
   }
 
   function updateTank(t, dt, inp, camYaw, camPitch) {
@@ -183,7 +229,7 @@ export function createVehicles(scene, L, fx, audio) {
     } else t.speed *= Math.exp(-3 * dt);
     t.vx = Math.sin(t.yaw) * t.speed; t.vz = Math.cos(t.yaw) * t.speed;
     t.x += t.vx * dt; t.z += t.vz * dt;
-    if (hitSolids(t, t.radius, 0)) t.speed *= Math.exp(-4 * dt);
+    if (hitSolids(t, 0)) t.speed *= Math.exp(-4 * dt);
     clampToWorld(t, 2.8);
     t.cool -= dt; t.recoil = damp(t.recoil, 0, 9, dt);
     t.group.position.set(t.x, 0, t.z); t.group.rotation.y = t.yaw;
@@ -207,7 +253,7 @@ export function createVehicles(scene, L, fx, audio) {
     if (h.y <= 0) { h.y = 0; if (h.vy < 0) h.vy = 0; const k = Math.exp(-6 * dt); h.vx *= k; h.vz *= k; }
     if (h.y > 110) { h.y = 110; h.vy = Math.min(h.vy, 0); }
     h.x += h.vx * dt; h.z += h.vz * dt;
-    hitSolids(h, h.radius, 0.1);
+    hitSolids(h, 0.1);
     // soft boundary out at sea: past SEA_R the fuel warning turns the nose for home and a growing
     // push brings it back; there is no wall, just a firmer hand the further out you go
     const rr = Math.hypot(h.x, h.z);
@@ -227,6 +273,7 @@ export function createVehicles(scene, L, fx, audio) {
     h.rotor.rotation.y = h.rotA; h.tail.rotation.x = h.rotA * 1.7;
   }
 
+  const CA = [], CB = [];
   function collidePairs(all) {
     for (let i = 0; i < all.length; i++) {
       const a = all[i];
@@ -236,10 +283,16 @@ export function createVehicles(scene, L, fx, audio) {
         if (b.y > 2.5) continue;
         const ra = onRails(a), rb = onRails(b);
         if (ra && rb) continue;
-        const dx = b.x - a.x, dz = b.z - a.z, rr = a.radius + b.radius - (ra || rb ? 0.55 : 0);
-        const d2 = dx * dx + dz * dz;
-        if (d2 >= rr * rr || d2 < 1e-6) continue;
-        const d = Math.sqrt(d2), nx = dx / d, nz = dz / d, ov = rr - d;
+        const reach = (REACH[a.kind] || 2.3) + (REACH[b.kind] || 2.3);
+        if ((b.x - a.x) ** 2 + (b.z - a.z) ** 2 >= reach * reach) continue;
+        // deepest overlap between any circle of a and any circle of b
+        const slack = ra || rb ? 0.55 : 0;
+        let ov = 0, nx = 0, nz = 0;
+        for (const p of circlesOf(a, CA)) for (const q2 of circlesOf(b, CB)) {
+          const dx = q2[0] - p[0], dz = q2[1] - p[1], d = Math.hypot(dx, dz), o = p[2] + q2[2] - slack - d;
+          if (o > ov && d > 1e-4) { ov = o; nx = dx / d; nz = dz / d; }
+        }
+        if (ov <= 0) continue;
         const wa = b.mass / (a.mass + b.mass);
         a.x -= nx * ov * wa; a.z -= nz * ov * wa; b.x += nx * ov * (1 - wa); b.z += nz * ov * (1 - wa);
         const rel = (b.vx - a.vx) * nx + (b.vz - a.vz) * nz;
@@ -279,7 +332,7 @@ export function createVehicles(scene, L, fx, audio) {
   }
 
   const api = {
-    cars, glowU, addCar, PAINTS, BIKE_PAINT, onCollide: null, onBoom: null, onShot: null, onThrow: null,
+    cars, glowU, addCar, PAINTS, BIKE_PAINT, onCollide: null, onBoom: null, onShot: null, onThrow: null, circlesOf, bodyDist,
     paint(c, color) { c.color = color; tintOf(c); },
     get tank() { return tank; }, get heli() { return heli; },
     all() { const a = cars.filter((c) => !c.off); if (tank) a.push(tank); if (heli) a.push(heli); return a; },

@@ -169,6 +169,17 @@ export function createTouch(game) {
     else if (game.started) audio.resume();
   }
   $('sresume').addEventListener('click', () => openSettings(false));
+  // subtitle size: Normal / Large, remembered on this device
+  const SUBK = 'neon-coast-subs';
+  const setSub = (v) => {
+    document.body.classList.toggle('subL', v === 'l');
+    for (const b of document.querySelectorAll('[data-sub]')) b.setAttribute('aria-pressed', String(b.dataset.sub === v));
+    try { localStorage.setItem(SUBK, v); } catch (e) { /* private mode */ }
+  };
+  let subV = 'n';
+  try { subV = localStorage.getItem(SUBK) || 'n'; } catch (e) { subV = 'n'; }
+  setSub(subV);
+  for (const b of document.querySelectorAll('[data-sub]')) b.addEventListener('click', () => setSub(b.dataset.sub));
   addEventListener('keydown', (e) => { if (!settings.hidden && e.code === 'Escape') { e.preventDefault(); openSettings(false); } });
 
   // ---------------------------------------------------------------- no page zoom / scroll / long-press menus

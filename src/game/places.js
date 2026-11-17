@@ -2,8 +2,9 @@
 // inside, the way back out, and the two shops (outfits at Zigzag Threads, snacks at Pelican Pantry 24).
 import { clamp, lerp, damp, angleDelta, pushOut, timeU, PI, reducedMotion } from '../core/util.js';
 import { makeMarker, ease } from './cutscene.js';
-import { buildRoom, OY } from './interiors.js';
-import { OUTFITS, SNACKS, BARKS, CAST } from './story.js';
+import { buildRoom, OY, rimU } from './interiors.js';
+import { OUTFITS, SNACKS, BARKS, CAST, VEND } from './story.js';
+import { BRANDS } from '../world/loose.js';
 
 const $ = (id) => document.getElementById(id);
 const USE_HINT = { bar: 'ask Dee for a delivery', wear: 'try on outfits', mart: 'buy a snack' };
@@ -15,19 +16,21 @@ export function createPlaces(game, scene, camera) {
   const exitMark = makeMarker(scene, '#fff6ec', 0.8, 2.6), useMark = makeMarker(scene, '#ffe14a', 0.7, 1.8);
   exitMark.layers.enable(1); useMark.layers.enable(1);
   const local = { x: 0, z: 0 };
-  let shop = null, sel = 0, msg = '', heatCd = 0, barkN = 0;
+  let shop = null, sel = 0, msg = '', heatCd = 0, barkN = 0, vend = null;
 
   const worn = () => OUTFITS.find((o) => o.id === save.outfit) || OUTFITS[0];
   const owns = (o) => !o.price || save.owned.includes(o.id) || (o.gift && save.gift[o.id]);
   player.model.setOutfit(worn());
 
-  const room = (p) => rooms[p.key] || (rooms[p.key] = buildRoom(p, scene));
+  const room = (p) => rooms[p.key] || (rooms[p.key] = buildRoom(p, scene, game));
   const bark = (key) => { const b = BARKS[key]; return `${CAST[b[0]].name}: “${b[1][barkN++ % b[1].length]}”`; };
 
   function setInside(p, x, z) {
     const r = p.room = room(p);
     if (game.inside && game.inside !== p) game.inside.room.group.visible = false;
     r.group.visible = true; game.inside = p; env.indoor = true; audio.club = p.key === 'club';
+    rimU.value.set(p.key === 'club' ? '#5a3a8a' : p.key === 'bar' ? '#4a2050' : '#3a3046');   // a soft rim light on the characters
+    camRoom = null;
     camera.layers.set(1);                       // indoors only the room, the courier and the rings are drawn
     player.floor = OY; player.pos.set(r.ox + x, OY, r.oz + z); player.vel.set(0, 0, 0); player.vy = 0; player.onGround = true; player.yaw = PI; player.speed = 0;
     exitMark.position.set(r.ox, OY, r.oz + r.hz - 1.1);
@@ -36,15 +39,20 @@ export function createPlaces(game, scene, camera) {
   function putOutside(x, z) {
     if (game.inside) game.inside.room.group.visible = false;
     if (game.act) game.act.reset();
-    game.inside = null; env.indoor = false; audio.club = false; camera.layers.set(0);
+    game.inside = null; env.indoor = false; audio.club = false; camera.layers.set(0); rimU.value.set(0);
     for (const p of list) p.armed = Math.hypot(p.x - x, p.z - z) > 3;
     player.floor = 0; player.pos.set(x, 0, z); player.yaw = 0; player.vel.set(0, 0, 0); player.vy = 0; player.speed = 0;
     cam.yaw = 0; cam.pitch = 0.2; cam.snap(player.pos);
     exitMark.visible = useMark.visible = false;
   }
+  let camRoom = null;
   const roamCam = (r, lx, lz, k = 1) => {
-    const x = r.ox + lx * 0.55, y = OY + Math.min(3.4, r.h - 0.7), z = r.oz + Math.min(r.hz - 0.5, lz + 7.5);
-    const c = camera.position;
+    let x = r.ox + lx * 0.55, y = OY + Math.min(3.4, r.h - 0.7), z = r.oz + Math.min(r.hz - 0.5, lz + 7.5);
+    const c = camera.position, alt = r.camFor && r.camFor(lx, lz);
+    if (alt) { x = r.ox + alt[0]; y = OY + alt[1]; z = r.oz + alt[2]; }
+    // rooms with a side room ease the camera between its spots instead of cutting
+    if (r.camFor && k >= 1 && camRoom === r) k = 1 - Math.exp(-5 * (game.dt || 0.016));
+    camRoom = r;
     if (k >= 1) c.set(x, y, z); else c.set(lerp(c.x, x, k), lerp(c.y, y, k), lerp(c.z, z, k));
     camera.lookAt(r.ox + lx, OY + 1.1, r.oz + lz - 0.6);
   };
@@ -107,11 +115,12 @@ export function createPlaces(game, scene, camera) {
 
   // ---- shops
   const el = { box: $('shop'), t: $('shopt'), l: $('shopl'), f: $('shopf') };
+  const items = () => (shop === 'wear' ? OUTFITS : shop === 'vend' ? VEND[vend.brand] || VEND.coolwave : SNACKS);
   function render() {
-    const wear = shop === 'wear', items = wear ? OUTFITS : SNACKS;
-    el.t.textContent = wear ? 'ZIGZAG THREADS' : 'PELICAN PANTRY 24';
+    const wear = shop === 'wear', list = items();
+    el.t.textContent = wear ? 'ZIGZAG THREADS' : shop === 'vend' ? (BRANDS[vend.brand] || BRANDS.coolwave).name : 'PELICAN PANTRY 24';
     el.l.textContent = '';
-    items.forEach((o, i) => {
+    list.forEach((o, i) => {
       const li = document.createElement('li'), b = document.createElement('b'), s = document.createElement('span'), pr = document.createElement('i');
       b.textContent = o.name; s.textContent = o.note;
       pr.textContent = wear ? (save.outfit === o.id ? 'WEARING' : owns(o) ? 'OWNED' : '$' + o.price) : '$' + o.price;
@@ -125,7 +134,7 @@ export function createPlaces(game, scene, camera) {
   }
   for (const b of el.box.querySelectorAll('[data-k]')) b.addEventListener('click', () => { if (shop) api.key({ code: b.dataset.k }); });
   function openShop(kind) {
-    shop = kind; game.busy = 'shop'; msg = bark(kind);
+    shop = kind; game.busy = 'shop'; msg = kind === 'vend' ? 'IT HUMS AT YOU EXPECTANTLY' : bark(kind);
     sel = kind === 'wear' ? Math.max(0, OUTFITS.findIndex((o) => o.id === save.outfit)) : 0;
     el.box.hidden = false; render();
     const bb = el.box.querySelector('[data-k="Enter"]'); if (bb) bb.textContent = kind === 'wear' ? 'WEAR / BUY' : 'BUY';
@@ -148,10 +157,11 @@ export function createPlaces(game, scene, camera) {
       if (game.wanted > 0 && timeU.value > heatCd) { game.wanted--; heatCd = timeU.value + 45; msg += ' · COAST PATROL IS LOOKING FOR THE OLD JACKET: -1 HEAT'; }
       game.persist();
     } else {
-      const o = SNACKS[sel];
-      if (game.health >= 100) { msg = "YOU'RE FULL. GUS LOOKS RELIEVED."; audio.blip(false); return render(); }
+      const o = items()[sel];
+      if (game.health >= 100) { msg = shop === 'vend' ? "YOU'RE FULL. THE MACHINE SULKS." : "YOU'RE FULL. GUS LOOKS RELIEVED."; audio.blip(false); return render(); }
       if (game.money < o.price) { msg = 'NOT ENOUGH CASH'; audio.blip(false); return render(); }
-      game.money -= o.price; game.health = Math.min(100, game.health + o.heal); audio.pickup();
+      game.money -= o.price; game.health = Math.min(100, game.health + o.heal);
+      if (shop === 'vend') { game.loose.drop(vend); audio.cash(); } else audio.pickup();
       msg = `${o.name}: +${o.heal} HEALTH`;
     }
     render();
@@ -159,12 +169,14 @@ export function createPlaces(game, scene, camera) {
 
   const api = {
     list, enter, talk, putOutside, bark,
+    // F at a street vending machine
+    openVend(m) { vend = m; game.act.reset(); player.vel.set(0, 0, 0); player.speed = 0; player.yaw = m.yaw + PI; openShop('vend'); },
     get shop() { return shop; },
     // debug / retry helpers
     warp(key) { const p = L.places[key]; if (game.inside) putOutside(p.x, p.z + 3.4); p.armed = true; player.pos.set(p.x, 0, p.z); },
     warpInside(key) { const p = L.places[key], r = room(p); setInside(p, r.me[0], r.me[1]); },
     key(e) {
-      const n = (shop === 'wear' ? OUTFITS : SNACKS).length;
+      const n = items().length;
       if (e.code === 'Escape' || e.code === 'Backspace' || e.code === 'KeyQ') return closeShop();
       if (e.code === 'ArrowUp' || e.code === 'KeyW') sel = (sel + n - 1) % n;
       else if (e.code === 'ArrowDown' || e.code === 'KeyS') sel = (sel + 1) % n;
@@ -181,8 +193,8 @@ export function createPlaces(game, scene, camera) {
       if (p.key === 'bar') game.story.askDee(); else openShop(p.key);
     },
     hint() {
-      const p = game.inside, r = p.room;
       if (shop) return [['W S', 'choose'], ['Enter', shop === 'wear' ? 'wear / buy' : 'buy'], ['Esc', 'done']];
+      const p = game.inside, r = p.room;
       const ah = game.act.hint();
       if (ah) return ah;
       const near = r.use && Math.hypot(player.pos.x - r.ox - r.use.x, player.pos.z - r.oz - r.use.z) < r.use.r, f = game.act.fHint();
@@ -236,7 +248,7 @@ export function createPlaces(game, scene, camera) {
         local.x = player.pos.x - r.ox + player.vel.x * dt; local.z = player.pos.z - r.oz + player.vel.z * dt;
         for (const b of r.blocks) pushOut(local, 0.42, b);
         if (r.pushPeople) r.pushPeople(local, 0.3);
-        local.x = clamp(local.x, -r.hx + 0.5, r.hx - 0.5); local.z = clamp(local.z, -r.hz + 0.5, r.hz - 0.5);
+        local.x = clamp(local.x, (r.x0 ?? -r.hx) + 0.5, (r.x1 ?? r.hx) - 0.5); local.z = clamp(local.z, -r.hz + 0.5, r.hz - 0.5);
         player.pos.set(r.ox + local.x, OY, r.oz + local.z);
         player.speed = Math.hypot(player.vel.x, player.vel.z);
         let turn = 0;

@@ -9,7 +9,7 @@ const BASS = [0, null, 12, 0, null, 12, 0, 7, 0, null, 12, 0, 7, 12, 0, 12];
 
 export function createAudio() {
   let ctx = null, master, music, mfilt, sfx, noise, arpBus, timer = 0, nextT = 0, stepI = 0, song = 0;
-  let eng, rotor, skate, rain, siren, heyT = 0;
+  let eng, rotor, skate, rain, siren, hum, spray, heyT = 0;
   const A = {
     muted: false, ready: false,
     start() {
@@ -45,6 +45,10 @@ export function createAudio() {
       };
       skate = loop('bandpass', 1500, 0.6);
       rain = loop('highpass', 2600);
+      spray = loop('bandpass', 1900, 0.5);
+      // vending machines hum at night: a low sine pair
+      { const h1 = ctx.createOscillator(), h2 = ctx.createOscillator(), hg = ctx.createGain(); h1.type = 'sine'; h2.type = 'triangle'; h1.frequency.value = 118; h2.frequency.value = 236.6; hg.gain.value = 0;
+        h1.connect(hg); h2.connect(hg); hg.connect(sfx); h1.start(); h2.start(); hum = hg; }
       // rotor: noise chopped by an LFO
       rotor = loop('lowpass', 520);
       rotor.g.disconnect();
@@ -98,10 +102,15 @@ export function createAudio() {
       rotor.g.gain.setTargetAtTime(s.rotor * 0.55, t, 0.15);
       rotor.lfo.frequency.setTargetAtTime(3 + s.rotor * 11, t, 0.2);
       rain.g.gain.setTargetAtTime(s.rain * 0.09, t, 0.4);
+      spray.g.gain.setTargetAtTime((s.spray || 0) * 0.08, t, 0.2);
+      hum.gain.setTargetAtTime((s.hum || 0) * 0.035, t, 0.3);
       siren.gain.setTargetAtTime((s.siren || 0) * 0.07, t, 0.15);
       // room: 0 street, 1 a shop or the bar (radio in the corner), 2 Club Prism (loud)
-      music.gain.setTargetAtTime(s.room === 2 ? (s.duck ? 0.5 : 1.05) : s.duck ? 0.3 : s.room === 1 ? 0.42 : 0.55, t, 0.3);
-      mfilt.frequency.setTargetAtTime(s.room === 1 ? 1500 : 16000, t, 0.25);
+      // Club Prism: s.club scales the system (quiet before the flyers go out, louder at the Dance-Off),
+      // s.lounge is 1 in the booth lounge, where the music is softer and duller
+      const ck = s.club || 1, lg = s.lounge || 0;
+      music.gain.setTargetAtTime(s.room === 2 ? (s.duck ? 0.5 : 1.05) * ck * (1 - lg * 0.4) : s.duck ? 0.3 : s.room === 1 ? 0.42 : 0.55, t, 0.3);
+      mfilt.frequency.setTargetAtTime(s.room === 1 ? 1500 : s.room === 2 ? 16000 - lg * 13000 - (1 - Math.min(ck, 1)) * 9000 : 16000, t, 0.25);
     },
     club: false,
     step(k = 1) { hit(0.035 * k, 0.05, 'bandpass', 2400); },
@@ -127,6 +136,10 @@ export function createAudio() {
     // dancing on the beat: a bright tick for a hit (brighter when perfect), a dull one for a miss
     beatHit(perfect) { tone('triangle', perfect ? 1760 : 1320, perfect ? 1760 : 1320, 0.06, 0.06); if (perfect) tone('sine', 2640, 2640, 0.08, 0.03, 0.03); },
     beatMiss() { tone('square', 140, 90, 0.12, 0.05); },
+    // a lamp post going down, a can dropping out of a vending machine
+    clank() { hit(0.45, 0.35, 'bandpass', 2600, 900); tone('square', 620, 180, 0.3, 0.12); tone('triangle', 1240, 900, 0.5, 0.06, 0.05); },
+    clunk() { hit(0.25, 0.08, 'lowpass', 700); tone('sine', 180, 90, 0.1, 0.18); tone('triangle', 900, 700, 0.06, 0.04, 0.12); },
+    knock(k = 1) { hit(0.12 * k, 0.07, 'bandpass', 900); },
     cash() { tone('square', 1320, 1320, 0.05, 0.05); tone('square', 1760, 1760, 0.09, 0.05, 0.05); },
     pickup() { tone('triangle', 660, 660, 0.08, 0.14); tone('triangle', 990, 990, 0.08, 0.14, 0.07); tone('triangle', 1320, 1320, 0.2, 0.14, 0.14); },
     win() { [0, 4, 7, 12, 16].forEach((n, i) => tone('square', mtof(69 + n), mtof(69 + n), 0.22, 0.07, i * 0.09)); },

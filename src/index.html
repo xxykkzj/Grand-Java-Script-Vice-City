@@ -142,12 +142,21 @@ body.touch #dmoves{display:none}
 #cine::before,#cine::after{content:"";position:absolute;left:0;right:0;height:12vh;background:#000;transition:transform .5s}
 #cine::before{top:0;transform:translateY(-100%)}#cine::after{bottom:0;transform:translateY(100%)}
 #cine.on::before,#cine.on::after{transform:none}
-#sub{position:absolute;left:50%;bottom:calc(12vh + 18px);transform:translateX(-50%);width:min(760px,86vw);text-align:center;
-  font:600 clamp(14px,calc(19 * var(--u)),26px)/1.4 "Trebuchet MS","Segoe UI",system-ui,sans-serif;color:#fff;text-shadow:0 2px 0 #000,0 0 12px #000}
-#sub b{letter-spacing:.2em;font:800 clamp(11px,calc(14 * var(--u)),19px) var(--disp);display:block;margin-bottom:2px;text-shadow:0 2px 0 #000,0 0 14px currentColor}
+/* subtitles: a solid translucent panel above the letterbox, speaker on its own line in their colour,
+   ~60 characters a line with balanced wrapping; body.subL makes them larger (pause / settings) */
+#sub{--subk:1;position:absolute;left:50%;bottom:calc(12vh + 16px);transform:translateX(-50%);box-sizing:border-box;width:max-content;max-width:min(62ch,90vw);
+  padding:calc(10 * var(--u)) calc(18 * var(--u)) calc(9 * var(--u));background:rgba(8,4,22,.84);border:1px solid rgba(255,246,236,.14);border-radius:calc(12 * var(--u));
+  box-shadow:0 6px 24px rgba(0,0,0,.45);text-align:left;font:600 max(15px,calc(20 * var(--u) * var(--subk)))/1.45 "Trebuchet MS","Segoe UI",system-ui,sans-serif;color:#fff;text-shadow:0 1px 2px #000}
+#sub:empty{display:none}
+body.subL #sub{--subk:1.3}
+#sub b{display:block;margin-bottom:3px;font:800 max(11px,calc(13 * var(--u) * var(--subk)))/1.2 var(--disp);letter-spacing:.18em;text-shadow:none}
+#sub .txt{display:block;text-wrap:balance}
 #sub .rest{visibility:hidden}
-body.touch #sub{width:min(760px,calc(100vw - var(--bs) * 2.6 - 40px));left:calc(16px + var(--sal));transform:none;text-align:left}
-@media (orientation:portrait){body.touch #sub{width:92vw;left:4vw;bottom:calc(12vh + var(--bs) * 1.3 + 30px)}}
+#sub .nx{display:block;margin-top:3px;text-align:right;font:700 max(10px,calc(11 * var(--u) * var(--subk)))/1.2 var(--mono);font-style:normal;letter-spacing:.12em;color:rgba(255,246,236,.72);opacity:0;transition:opacity .2s}
+#sub .nx.on{opacity:1}
+body.touch #sub{left:calc(16px + var(--sal));transform:none;max-width:min(62ch,calc(100vw - var(--bs) * 2.6 - 40px - var(--sal) - var(--sar)))}
+@media (orientation:portrait){body.touch #sub{left:4vw;max-width:92vw;bottom:calc(12vh + var(--bs) * 1.3 + 30px)}}
+@media (max-width:520px),(max-height:420px){#sub{font-size:max(15px,calc(20 * var(--u) * var(--subk)));padding:9px 12px 8px}}
 #skip{position:absolute;right:calc(18px + var(--sar));bottom:calc(6vh - 8px);font-size:calc(11 * var(--u));letter-spacing:.14em;color:rgba(255,246,236,.75);opacity:0;transition:opacity .4s}
 #cine.on #skip{opacity:1}
 #fade{position:fixed;inset:0;z-index:5;background:#000;opacity:0;pointer-events:none;transition:opacity .35s}
@@ -297,8 +306,10 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
     <h3>PAUSED</h3>
     <p>CONTROLS</p>
     <div class="pick"><button type="button" data-mode="keys" aria-pressed="false">KEYBOARD &amp; MOUSE</button><button type="button" data-mode="touch" aria-pressed="false">TOUCH CONTROLS</button></div>
+    <p>SUBTITLES</p>
+    <div class="pick" id="subpick"><button type="button" data-sub="n" aria-pressed="true">NORMAL</button><button type="button" data-sub="l" aria-pressed="false">LARGE</button></div>
     <button id="sresume" class="pbtn" type="button">RESUME</button>
-    <small>Your choice is remembered on this device.</small>
+    <small>Your choices are remembered on this device.</small>
   </div>
 </div>
 

@@ -49,15 +49,16 @@ export function createActivity(game) {
   function sitTarget(s, o, t) {
     const H = 0.96, y = s.y + (ground(s.kind) ? 0.12 : 0.06);
     copyPose(stand, o);
-    o.y = y - H; o.hx = 0;
+    o.y = y - H; o.hx = 0; o.knee = 1;
     if (ground(s.kind)) {
       o.rx = -0.3; o.lL[0] = -1.35; o.lR[0] = -1.2; o.lL[1] = 0.12; o.lR[1] = -0.12;
       o.aL[0] = 0.75; o.aL[2] = 0.35; o.aR[0] = 0.75; o.aR[2] = -0.35;
     } else if (s.kind === 'lounger') {
-      o.rx = -0.6; o.lL[0] = o.lR[0] = -1.05; o.lL[1] = 0.05; o.lR[1] = -0.05; o.aL[2] = 0.3; o.aR[2] = -0.3; o.hx = 0.25;
+      o.rx = -0.6; o.lL[0] = o.lR[0] = -1.05; o.lL[1] = 0.05; o.lR[1] = -0.05; o.aL[2] = 0.3; o.aR[2] = -0.3; o.hx = 0.25; o.knee = 0.15;
     } else {
-      const a = Math.max(Math.acos(clamp(y / 0.9, -1, 1)), 0.95);
-      o.rx = -0.06; o.lL[0] = -a; o.lR[0] = -a + 0.12; o.lL[1] = 0.06; o.lR[1] = -0.06;
+      // thighs level on the seat, the knees bend so the feet reach the floor (or dangle off a high seat)
+      const a = y < 0.35 ? Math.max(Math.acos(clamp(y / 0.9, -1, 1)), 0.95) : 1.45;
+      o.rx = -0.06; o.lL[0] = -a; o.lR[0] = -a + 0.1; o.lL[1] = 0.06; o.lR[1] = -0.06;
       o.aL[0] = -0.5; o.aL[2] = 0.18; o.aR[0] = -0.5; o.aR[2] = -0.18;
     }
     if (t === undefined) return o;
@@ -199,6 +200,8 @@ export function createActivity(game) {
       if (A.mode === 'sit') { getUp(); return true; }
       if (game.vehicle || game.busy || !player.onGround) return false;
       if (onFloor()) { startDance(false); return true; }
+      const vm = !game.inside && game.loose && game.loose.vendNear(player.pos);
+      if (vm) { game.places.openVend(vm); return true; }
       const s = candidate();
       if (s) { sit(s); return true; }
       return false;
@@ -226,6 +229,7 @@ export function createActivity(game) {
     fHint() {
       if (game.vehicle || !player.onGround) return null;
       if (onFloor()) return ['F', 'dance'];
+      if (!game.inside && game.loose && game.loose.vendNear(player.pos)) return ['F', 'buy'];
       return candidate() ? ['F', 'sit'] : null;
     },
   });

@@ -18,7 +18,7 @@ export const MOVES = [
 const PI = Math.PI;
 const sm = (k) => (k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k));
 
-export const newPose = () => ({ y: 0, x: 0, rx: 0, ry: 0, rz: 0, spin: 0, hx: 0, hz: 0, aL: [0, 0, 0.1], aR: [0, 0, -0.1], lL: [0, 0], lR: [0, 0] });
+export const newPose = () => ({ knee: 1, y: 0, x: 0, rx: 0, ry: 0, rz: 0, spin: 0, hx: 0, hz: 0, aL: [0, 0, 0.1], aR: [0, 0, -0.1], lL: [0, 0], lR: [0, 0] });
 const A3 = (a, x, y, z) => { a[0] = x; a[1] = y; a[2] = z; };
 const ROBOT = [
   [[-PI / 2, 0, 0], [0, 0, -1.5], 0.35],
@@ -110,7 +110,7 @@ function scale(o, k) {
 }
 // blend a towards b by k (into out; out may be a)
 export function blendPose(a, b, k, out = a) {
-  for (const f of ['y', 'x', 'rx', 'ry', 'rz', 'spin', 'hx', 'hz']) out[f] = a[f] + (b[f] - a[f]) * k;
+  for (const f of ['knee', 'y', 'x', 'rx', 'ry', 'rz', 'spin', 'hx', 'hz']) out[f] = a[f] + (b[f] - a[f]) * k;
   for (const f of ['aL', 'aR']) for (let i = 0; i < 3; i++) out[f][i] = a[f][i] + (b[f][i] - a[f][i]) * k;
   for (const f of ['lL', 'lR']) for (let i = 0; i < 2; i++) out[f][i] = a[f][i] + (b[f][i] - a[f][i]) * k;
   return out;

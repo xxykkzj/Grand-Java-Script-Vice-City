@@ -22,12 +22,15 @@ export function createProps() {
   const P = {
     cols, seats, lines,
     // circle collider (a pole, a trunk, a bin)
-    circle(x, z, r, h = 3) { cols.push({ c: true, x, z, r, h, s: 0 }); },
+    circle(x, z, r, h = 3) { const o = { c: true, x, z, r, h, s: 0, tag: null, off: false }; cols.push(o); return o; },
     // box collider; yaw rounds the box to the nearest quarter turn
     box(x, z, w, d, h = 1, yaw = 0) {
       if (Math.abs(Math.sin(yaw)) > 0.7) { const t = w; w = d; d = t; }
-      cols.push({ c: false, x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, h, s: 0 });
+      const o = { c: false, x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, h, s: 0, tag: null, off: false };
+      cols.push(o); return o;
     },
+    // hook for breakable / special props (lamps, hydrants, palms): onHit(prop, mover) -> 'pass' to ignore the contact
+    onHit: null,
     seat(x, z, yaw, y, kind) { const s = { x, z, yaw, y, kind, taken: null }; seats.push(s); return s; },
     line(x0, z0, x1, z1, yaw, y, kind) { lines.push({ x0, z0, x1, z1, yaw, y, kind }); },
     build() {
@@ -41,7 +44,7 @@ export function createProps() {
     // Push a moving circle (p.x, p.z, radius r, standing at height y) out of every prop it overlaps.
     // vel (optional, with vx/vz or x/z) loses its inward part, plus `bounce` of it reflected.
     // minH skips props lower than that (the helicopter only cares about tall things). Returns the hardest hit.
-    collide(p, r, y = 0, vel = null, bounce = 0, minH = 0) {
+    collide(p, r, y = 0, vel = null, bounce = 0, minH = 0, mover = null) {
       stamp++;
       let hit = 0;
       const i0 = Math.floor((p.x - r) / CELL), i1 = Math.floor((p.x + r) / CELL), j0 = Math.floor((p.z - r) / CELL), j1 = Math.floor((p.z + r) / CELL);
@@ -49,7 +52,7 @@ export function createProps() {
         const a = grid.get(key(i, j));
         if (!a) continue;
         for (const o of a) {
-          if (o.s === stamp || y > o.h || o.h < minH) continue;
+          if (o.s === stamp || o.off || y > o.h || o.h < minH) continue;
           o.s = stamp;
           let nx, nz, pen;
           if (o.c) {
@@ -67,6 +70,7 @@ export function createProps() {
               pen = m + r;
             }
           }
+          if (mover && o.tag && P.onHit && P.onHit(o, mover) === 'pass') continue;
           p.x += nx * pen; p.z += nz * pen;
           if (vel) {
             const vx = vel.vx !== undefined ? 'vx' : 'x', vz = vel.vz !== undefined ? 'vz' : 'z';

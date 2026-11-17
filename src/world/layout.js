@@ -81,9 +81,18 @@ export function makeLayout() {
   for (let x = -280; x <= 285; x += 40) if (!nearSide(x, 10)) lamps.push({ x, z: 3.4, yaw: Math.PI });
   for (let x = -260; x <= 285; x += 50) if (!nearSide(x, 10)) lamps.push({ x, z: -60.6, yaw: Math.PI });
   for (let z = 165; z <= 240; z += 25) lamps.push({ x: PIER.x0 + 0.6, z, yaw: Math.PI / 2 });
+  // the inner city used to go dark at night: lamps down both side-street sidewalks (between the palms)
+  // and on the far side of the two back avenues
+  const onAve = (z) => [ROADS.back1, ROADS.back2].some((rd) => Math.abs(z - rd.z) < rd.w / 2 + 3);
+  for (const s of SIDE_X) for (let z = -125; z <= 30; z += 31) {
+    if (!onAve(z + 15) && z + 15 < 36) lamps.push({ x: s - 7.3, z: z + 15, yaw: Math.PI / 2 });
+    if (!onAve(z + 1) && z + 1 < 36) lamps.push({ x: s + 7.3, z: z + 1, yaw: -Math.PI / 2 });
+  }
+  for (let x = -245; x <= 285; x += 40) if (!nearSide(x, 10)) lamps.push({ x, z: -10.75, yaw: 0 });
+  for (let x = -235; x <= 285; x += 50) if (!nearSide(x, 10)) lamps.push({ x, z: -74.9, yaw: 0 });
 
   // Palms: { x, z, s (scale), yaw }
-  const palm = (x, z) => palms.push({ x, z, s: 0.85 + r() * 0.45, yaw: r() * 6.283 });
+  const palm = (x, z) => { const s = 0.85 + r() * 0.45, yaw = r() * 6.283, at = offRoad(x, z, 0.3 * s); if (at) palms.push({ x: at[0], z: at[1], s, yaw }); };
   for (let x = -292; x <= 292; x += 12) palm(x + (r() - 0.5) * 2, 70 + (r() - 0.5) * 3);
   for (let x = -270; x <= 285; x += 30) if (!nearSide(x, 10)) palm(x, 40.2);
   for (let i = 0; i < 34; i++) palm(-290 + r() * 580, 84 + r() * 40);
@@ -119,8 +128,8 @@ export function makeLayout() {
 
   // Small solid props (spatial grid, see props.js) and the seats around town.
   const props = createProps();
-  for (const p of palms) props.circle(p.x, p.z, 0.3 * p.s, 8);
-  for (const l of lamps) props.circle(l.x, l.z, 0.2, 6.4);
+  palms.forEach((p, i) => { p.col = props.circle(p.x, p.z, 0.3 * p.s, 8); p.col.tag = 'palm'; p.col.i = i; });
+  lamps.forEach((l, i) => { l.col = props.circle(l.x, l.z, 0.2, 6.4); l.col.tag = 'lamp'; l.col.i = i; });
   const rot = (u, lx, lz) => [u.x + lx * Math.cos(u.yaw) + lz * Math.sin(u.yaw), u.z - lx * Math.sin(u.yaw) + lz * Math.cos(u.yaw)];
   for (const u of umbrellas) {
     props.circle(u.x, u.z, 0.12, 2.6);
@@ -134,9 +143,7 @@ export function makeLayout() {
     const x = diner.cx + ox, z = 38.6;
     const bm = ((x + 265) % 60 + 60) % 60;
     if (bm < 2.8 || bm > 57.2 || SIDE_X.some((sx) => Math.abs(x - sx - 13.5) < 2.4)) continue;   // keep clear of the benches and phone booths
-    cafe.push({ x, z });
-    props.circle(x, z, 0.42, 1.1);
-    for (const sx of [-1, 1]) { const s = props.seat(x + sx * 0.95, z, -sx * Math.PI / 2, 0.48, 'chair'); props.circle(s.x + sx * 0.12, z, 0.24, 1); }
+    cafe.push({ x, z });                                 // tables and chairs are loose props (world/loose.js)
   }
   // the seawall: sit on the coping with your back to the railing
   const sw = HX - 1.05;
@@ -183,7 +190,41 @@ export function makeLayout() {
   for (const z of [ROADS.blvd.z - 5.5, ROADS.blvd.z, ROADS.blvd.z + 5.5]) solids.push({ x0: CAUSEWAY.bar + 2.8, x1: CAUSEWAY.bar + 3.4, z0: z - 1.6, z1: z + 1.6, h: 1.3 });
   for (const s of SIDE_X) solids.push({ x0: s - 5.3, x1: s + 5.3, z0: ROADS.sideZ0 - 0.8, z1: ROADS.sideZ0 - 0.4, h: 1 });
 
-  return { buildings, lamps, palms, parking, umbrellas, huts, solids, bar, station, clinic, places, bikes, booths, props, cafe };
+  return { buildings, lamps, palms, parking, umbrellas, huts, solids, bar, station, clinic, places, bikes, booths, props, cafe, loose: [], planters: [] };
+}
+
+// The carriageways (lanes and parking lanes, crossings included): nothing may stand on them.
+export const ROAD_RECTS = [
+  { name: 'Lumina Boulevard', x0: -HX - 60, x1: HX, z0: ROADS.blvd.z - ROADS.blvd.w / 2, z1: ROADS.blvd.z + ROADS.blvd.w / 2 },
+  { name: 'back avenue 1', x0: -HX, x1: HX, z0: ROADS.back1.z - ROADS.back1.w / 2, z1: ROADS.back1.z + ROADS.back1.w / 2 },
+  { name: 'back avenue 2', x0: -HX, x1: HX, z0: ROADS.back2.z - ROADS.back2.w / 2, z1: ROADS.back2.z + ROADS.back2.w / 2 },
+  ...SIDE_X.map((s) => ({ name: 'side street ' + s, x0: s - ROADS.sideW / 2, x1: s + ROADS.sideW / 2, z0: ROADS.sideZ0, z1: ROADS.blvd.z - ROADS.blvd.w / 2 })),
+];
+// Does a footprint (circle of radius r) touch a carriageway? Returns the road or null.
+export function onRoad(x, z, r = 0) {
+  for (const b of ROAD_RECTS) if (x > b.x0 - r && x < b.x1 + r && z > b.z0 - r && z < b.z1 + r) return b;
+  return null;
+}
+// Move a footprint the shortest way off the road (onto the kerb side), or null if it cannot be done.
+export function offRoad(x, z, r = 0, m = 0.3) {
+  const b = onRoad(x, z, r);
+  if (!b) return [x, z];
+  const opts = [[b.x0 - r - m, z, x - b.x0 + r], [b.x1 + r + m, z, b.x1 - x + r], [x, b.z0 - r - m, z - b.z0 + r], [x, b.z1 + r + m, b.z1 - z + r]].sort((p, q) => p[2] - q[2]);
+  for (const o of opts) if (!onRoad(o[0], o[1], r)) return [o[0], o[1]];
+  return null;
+}
+// Startup check: every prop, seat, lamp, palm, planter and loose prop must stand off the carriageways.
+export function propsOnRoad(L) {
+  const bad = [];
+  const t = (what, x, z, r) => { const b = onRoad(x, z, r); if (b) bad.push({ what, x: +x.toFixed(2), z: +z.toFixed(2), road: b.name }); };
+  for (const o of L.props.cols) {
+    if (o.tag === 'mast') continue;                  // signal masts stand at the kerb on purpose
+    if (o.c) t(o.tag || 'prop', o.x, o.z, o.r - 0.05); else t(o.tag || 'box', (o.x0 + o.x1) / 2, (o.z0 + o.z1) / 2, Math.min(o.x1 - o.x0, o.z1 - o.z0) / 2 - 0.05);
+  }
+  for (const s of L.props.seats) if (s.kind !== 'towel' && s.kind !== 'lounger') t('seat:' + s.kind, s.x, s.z, 0.2);
+  for (const b of L.loose) t(b.kind, b.hx, b.hz, b.r || 0.3);
+  for (const p of L.planters) t('planter', p.x, p.z, 0.4);
+  return bad;
 }
 
 // The edge of the island is a seawall (x = ±HX, z = -HZ) and the waterline on the beach (z = +HZ).

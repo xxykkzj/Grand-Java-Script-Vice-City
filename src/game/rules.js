@@ -225,7 +225,7 @@ export function createRules(game, scene) {
         for (const c of vehicles.cars) {
           if (c.off) continue;
           const dx = player.pos.x - c.x, dz = player.pos.z - c.z, d = Math.hypot(dx, dz), sp = Math.hypot(c.vx, c.vz);
-          if (d > c.radius * 0.8 + 0.6 || sp < 4.5 || c.vx * dx + c.vz * dz < 0) continue;
+          if (sp < 4.5 || c.vx * dx + c.vz * dz < 0 || d > 5 || vehicles.bodyDist(c, player.pos.x, player.pos.z) > 0.5) continue;
           hurtCd = 0.9;
           player.vel.x += c.vx * 0.9; player.vel.z += c.vz * 0.9; player.vy = 5.5; player.pos.y += 0.05;
           audio.thud(0.7);

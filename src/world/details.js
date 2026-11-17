@@ -4,7 +4,7 @@
 // Gulls and boats move, so they get one draw call each.
 import * as THREE from 'three';
 import { box, cyl, tint, merge, rng, PI, timeU } from '../core/util.js';
-import { PIER, ADS } from './layout.js';
+import { PIER, ADS, offRoad } from './layout.js';
 
 const INK = '#1d1630', CREAM = '#fbf7f0', STEEL = '#b9bcc8';
 const NEON = ['#ff2bd1', '#18f0ff', '#ffe14a', '#8dff5a', '#ff6a3d', '#b388ff'];
@@ -116,17 +116,41 @@ export function addDetails(L, S, N, glows, addWin, signs) {
   // --- billboards on stilts where the promenade meets the sand (they face the boulevard)
   [[-152, 6], [118, 7], [248, 5]].forEach(([x, i]) => billboard(ADS[i], x, 6.2, 80.5, PI, 11, NEON[(i + 2) % 6]));
 
-  // --- street furniture
-  const bench = (x, z, yaw) => {
-    const s = Math.sin(yaw), c = Math.cos(yaw);
-    S.push(box(2, 0.1, 0.55, x, 0.5, z, '#f7b3c6', 0, yaw), box(2, 0.5, 0.1, x - s * 0.28, 0.85, z - c * 0.28, '#f7b3c6', 0, yaw),
-      box(0.1, 0.5, 0.5, x + c * 0.85, 0.25, z - s * 0.85, '#3b3350', 0, yaw), box(0.1, 0.5, 0.5, x - c * 0.85, 0.25, z + s * 0.85, '#3b3350', 0, yaw));
-    // solid, and room for two: you sit facing the way the bench faces (its back is behind you)
-    P.box(x - s * 0.05, z - c * 0.05, 2, 0.62, 1, yaw);
-    for (const o of [-0.5, 0.5]) P.seat(x + c * o + s * 0.08, z - s * o + c * 0.08, yaw, 0.55, 'bench');
+  // --- street furniture. Everything that can be knocked about (benches, bins, café tables and chairs,
+  // vending machines, pots, newspaper boxes, sandwich boards, cones, crates, beach balls) is a loose
+  // prop: it is listed in L.loose and drawn and simulated by world/loose.js. Hydrants, planting beds and
+  // bike racks are part of the static town. Every spot is checked against the carriageways (offRoad)
+  // and against what is already standing there, so nothing ends up in a lane or on top of a lamp.
+  const used = [];
+  const mark = (x, z, rr) => used.push([x, z, rr]);
+  const free = (x, z, rr) => used.every(([a, b, c]) => Math.hypot(a - x, b - z) > c + rr + 0.15);
+  for (const l of L.lamps) mark(l.x, l.z, 0.3);
+  for (const p of L.palms) mark(p.x, p.z, 0.45);
+  for (const b of L.booths) mark(b.x, b.z, 0.85);
+  for (const k in L.places) mark(L.places[k].x, L.places[k].z, 2.4);
+  const spot = (x, z, rr) => { const a = offRoad(x, z, rr); if (!a || !free(a[0], a[1], rr)) return null; mark(a[0], a[1], rr); return a; };
+  const loose = (kind, x, z, yaw = 0, rr = 0.4, extra = {}) => {
+    const a = spot(x, z, rr);
+    if (!a) return null;
+    const b = { kind, hx: a[0], hz: a[1], yaw, r: rr, seats: [], ...extra };
+    L.loose.push(b);
+    return b;
   };
-  const bin = (x, z, hex) => { S.push(cyl(0.34, 0.28, 0.85, 8, x, 0.43, z, hex), cyl(0.37, 0.37, 0.08, 8, x, 0.88, z, '#3b3350')); P.circle(x, z, 0.36, 0.95); };
-  const hydrant = (x, z) => { S.push(cyl(0.16, 0.19, 0.6, 7, x, 0.3, z, '#ff4f6a'), cyl(0.12, 0.16, 0.14, 7, x, 0.67, z, '#ffd447'), box(0.5, 0.12, 0.12, x, 0.42, z, '#ff4f6a')); P.circle(x, z, 0.24, 0.75); };
+  const bench = (x, z, yaw) => {
+    const b = loose('bench', x, z, yaw, 1.05);
+    if (!b) return;
+    const s = Math.sin(yaw), c = Math.cos(yaw);
+    // room for two: you sit facing the way the bench faces (its back is behind you)
+    for (const o of [-0.5, 0.5]) b.seats.push(P.seat(b.hx + c * o + s * 0.08, b.hz - s * o + c * 0.08, yaw, 0.55, 'bench'));
+  };
+  const bin = (x, z, hex) => loose('bin', x, z, 0, 0.36, { color: hex });
+  const hydrant = (x, z) => {
+    const a = spot(x, z, 0.24);
+    if (!a) return;
+    [x, z] = a;
+    S.push(cyl(0.16, 0.19, 0.6, 7, x, 0.3, z, '#ff4f6a'), cyl(0.12, 0.16, 0.14, 7, x, 0.67, z, '#ffd447'), box(0.5, 0.12, 0.12, x, 0.42, z, '#ff4f6a'));
+    P.circle(x, z, 0.24, 0.75).tag = 'hydrant';
+  };
   for (let x = -255; x <= 285; x += 30) { bench(x, 76.2, 0); bin(x + 13.6, 63.7, '#27c9bf'); }
   for (let x = -265; x <= 285; x += 60) { bench(x, 37.4, 0); hydrant(x + 22, 43.3); bin(x - 8, 43.2, '#ff8fc4'); }
   for (let x = -250; x <= 285; x += 50) { hydrant(x + 9, -10.9); bin(x + 20, -11.2, '#ffd447'); }
@@ -137,17 +161,66 @@ export function addDetails(L, S, N, glows, addWin, signs) {
     glows.push([b.x, 2.3, b.z, '#bff4ff', 3.2, 0.05]);
   }
 
-  // --- café tables with parasols outside the Sunset Strip Diner
+  // --- café tables with parasols outside the Sunset Strip Diner (tables are medium, chairs light)
   L.cafe.forEach((t, i) => {
     const c = ['#ff5fa8', '#27d8cf', '#ffd447', '#ff8a4c'][i % 4];
-    S.push(cyl(0.45, 0.45, 0.05, 10, t.x, 0.76, t.z, CREAM), cyl(0.05, 0.05, 0.74, 5, t.x, 0.37, t.z, STEEL), cyl(0.28, 0.3, 0.04, 8, t.x, 0.02, t.z, STEEL),
-      cyl(0.03, 0.03, 1.6, 4, t.x, 1.55, t.z, CREAM), tint(new THREE.ConeGeometry(1.25, 0.45, 8).translate(t.x, 2.45, t.z), c));
+    if (!loose('table', t.x, t.z, 0, 0.45, { color: c })) return;
     for (const sx of [-1, 1]) {
-      const x = t.x + sx * 0.95;
-      S.push(box(0.46, 0.06, 0.46, x, 0.46, t.z, c), box(0.06, 0.5, 0.46, x + sx * 0.22, 0.72, t.z, c));
-      for (const [a, b] of [[-0.18, -0.18], [0.18, -0.18], [-0.18, 0.18], [0.18, 0.18]]) S.push(box(0.04, 0.44, 0.04, x + a, 0.22, t.z + b, STEEL));
+      const ch = loose('chair', t.x + sx * 1.07, t.z, -sx * PI / 2, 0.3, { color: c });
+      if (ch) ch.seats.push(P.seat(t.x + sx * 0.95, t.z, -sx * PI / 2, 0.48, 'chair'));
     }
   });
+
+  // --- vending machines: drinks (Coolwave) and snacks (Snaxx 24), against walls and on the promenade
+  const front = L.buildings.filter((b) => b.row === 0 && !b.place && b.name !== 'Sunset Strip Diner').sort((a, b) => Math.abs(a.cx) - Math.abs(b.cx));
+  const mid = L.buildings.filter((b) => b.row === 1 && !b.place).sort((a, b) => Math.abs(a.cx) - Math.abs(b.cx));
+  const back = L.buildings.filter((b) => b.row === 2).sort((a, b) => Math.abs(a.cx) - Math.abs(b.cx));
+  let vn = 0;
+  const vend = (x, z, yaw) => { if (loose('vend', x, z, yaw, 0.62, { brand: vn % 2 ? 'snaxx' : 'coolwave' })) vn++; };
+  for (const b of [front[0], front[3], front[6]]) if (b) vend(b.x0 + 1.4, b.z1 + 0.5, 0);
+  for (const b of [mid[1], mid[4], mid[7]]) if (b) vend(b.x1 - 1.4, b.z1 + 0.5, 0);
+  for (const b of [back[2], back[5]]) if (b) vend(b.x1 - 1.4, b.z1 + 0.5, 0);
+  vend(-40, 72.6, PI); vend(100, 72.6, PI);
+  vend(PIER.x1 - 0.8, 203, -PI / 2);
+
+  // --- raised planting beds (static concrete, plants are one InstancedMesh in city.js) and potted plants
+  const FLOWERS = ['#ff4fa3', '#ffd447', '#ff8a3d', '#b388ff', '#ffffff', '#ff6a8a'];
+  const bed = (x, z, w, d) => {
+    const a = spot(x, z, Math.max(w, d) / 2);
+    if (!a) return;
+    [x, z] = a;
+    S.push(box(w, 0.55, d, x, 0.275, z, '#d8d2c8'), box(w + 0.12, 0.08, d + 0.12, x, 0.58, z, '#efe9de'), box(w - 0.2, 0.05, d - 0.2, x, 0.53, z, '#5a3d2a'));
+    P.box(x, z, w, d, 0.6);
+    const n = Math.max(2, Math.round(w / 0.55));
+    for (let i = 0; i < n; i++) for (const row of d > 0.95 ? [-0.22, 0.22] : [0]) {
+      L.planters.push({ x: x - w / 2 + (i + 0.5) * w / n + (r() - 0.5) * 0.15, z: z + row + (r() - 0.5) * 0.1, y: 0.55, s: 0.7 + r() * 0.5, yaw: r() * 6.28, c: FLOWERS[Math.floor(r() * FLOWERS.length)], grass: r() < 0.35 });
+    }
+  };
+  for (let x = -240; x <= 285; x += 60) bed(x, 73.2, 3.2, 1.1);
+  for (const b of front) if (b.w > 20) bed(b.x1 - 2.6, b.z1 + 0.55, 2.6, 0.9);
+  bed(PIER.x0 - 3.4, 147.6, 2.4, 1); bed(PIER.x1 + 3.4, 147.6, 2.4, 1);
+  const pot = (x, z) => loose('pot', x, z, r() * 6.28, 0.32, { color: FLOWERS[Math.floor(r() * FLOWERS.length)] });
+  for (const [i, b] of [...mid, ...back].entries()) if (i % 2 === 0) { const dx = b.cx - b.w * 0.2; pot(dx - 1.9, b.z1 + 0.45); pot(dx + 1.9, b.z1 + 0.45); }
+  for (const b of front) if (b.w > 20 && b.place !== 'bar') { pot(b.cx - 4.7, b.z1 + 0.5); pot(b.cx + 4.7, b.z1 + 0.5); }
+  if (L.cafe.length) { pot(L.cafe[0].x - 2.2, 37.2); pot(L.cafe[L.cafe.length - 1].x + 2.2, 37.2); }
+
+  // --- newspaper boxes by the kerb, bike racks on the promenade, sandwich boards outside shops
+  L.lamps.forEach((l, i) => { if ((l.z === 42.6 || l.z === -10.75) && i % 3 === 0) loose('news', l.x + 2.1, l.z === 42.6 ? 42.8 : -11.0, l.z === 42.6 ? 0 : PI, 0.32, { color: ['#ff4f6a', '#27c9bf', '#ffd447'][i % 3] }); });
+  for (const x of [-130, -10, 130, 250]) {
+    const a = spot(x, 67.2, 1);
+    if (!a) continue;
+    for (let k = 0; k < 4; k++) S.push(box(0.06, 0.8, 0.06, a[0] - 0.75 + k * 0.5, 0.4, a[1] - 0.25, STEEL), box(0.06, 0.8, 0.06, a[0] - 0.75 + k * 0.5, 0.4, a[1] + 0.25, STEEL), box(0.06, 0.06, 0.56, a[0] - 0.75 + k * 0.5, 0.8, a[1], STEEL));
+    S.push(box(1.7, 0.05, 0.06, a[0], 0.15, a[1] - 0.25, STEEL), box(1.7, 0.05, 0.06, a[0], 0.15, a[1] + 0.25, STEEL));
+    P.box(a[0], a[1], 1.7, 0.6, 0.85);
+  }
+  for (const [i, b] of back.entries()) if (i % 2) loose('board', b.cx - b.w * 0.2 + 1.6, b.z1 + 1.3, 0.3, 0.35, { color: NEON[i % 6] });
+  const diner = L.buildings.find((b) => b.name === 'Sunset Strip Diner');
+  if (diner) loose('board', diner.cx - 9, 39.6, -0.4, 0.35, { color: '#ff5fa8' });
+  if (L.places.mart) loose('board', L.places.mart.x - 3.4, 38.4, 0.3, 0.35, { color: '#5dff9a' });
+
+  // --- cones round the volleyball court and the west lifeguard hut, beach balls by the umbrellas
+  for (const [x, z] of [[-45.5, 97], [-34.5, 97], [-45.5, 108], [-34.5, 108], [-124, 95], [-116, 95]]) loose('cone', x, z, 0, 0.24);
+  for (const u of L.umbrellas.filter((u, i) => i % 8 === 3)) loose('ball', u.x + 2.6, u.z - 1.4, 0, 0.3, { color: ['#ff4fa3', '#27d8cf', '#ffd447'][Math.floor(u.x) & 1] });
 
   // --- beach: volleyball net, surfboards, a tall lifeguard chair
   P.circle(-40, 97.6, 0.15, 2.6); P.circle(-40, 107.4, 0.15, 2.6);
@@ -173,8 +246,7 @@ export function addDetails(L, S, N, glows, addWin, signs) {
   const px = (PIER.x0 + PIER.x1) / 2;
   for (let z = 170; z < 236; z += 22) {
     bench(PIER.x1 - 1, z, -PI / 2); bench(PIER.x0 + 1, z + 11, PI / 2);
-    S.push(box(0.9, 0.9, 0.9, PIER.x0 + 1.2, 0.45, z + 6, '#c98d62'), box(0.7, 0.7, 0.7, PIER.x0 + 1.3, 1.25, z + 6.1, '#e0a878', 0, 0.4));
-    P.box(PIER.x0 + 1.2, z + 6, 1, 1, 1.6);
+    loose('crate', PIER.x0 + 1.2, z + 6, 0, 0.5); loose('crate', PIER.x0 + 1.4, z + 7.3, 0.4, 0.5);
   }
   // benches on the sand either side of the pier, looking out to sea
   for (const x of [PIER.x0 - 5, PIER.x1 + 5, PIER.x0 - 12, PIER.x1 + 12]) bench(x, 143, 0);

@@ -14,10 +14,10 @@ Saturday is the Neon Coast Dance-Off at Club Prism. The prize is $5,000. Dee has
 
 | Who | Where | What they are like |
 | --- | --- | --- |
-| **Skye** | everywhere | The courier you play. Roller skates, bomber jacket, a smart answer for everything and a soft spot for robots with feelings. |
+| **Skye** | everywhere | The courier you play. Roller skates, a bomber jacket or a party dress depending on the day, a smart answer for everything and a soft spot for robots with feelings. |
 | **Dee Marlowe** | The Velvet Flamingo | Owner and bartender. Pink beehive, never stops polishing a glass. Back Bay roller-disco champion, 1979. Bad at business, good at people. |
 | **Marty Glitz** | Club Prism | Promoter. Purple suit, gold tie, mirrored shades indoors. Believes in reach, shoulders and filling in paperwork ahead of time. |
-| **Gus Pibble** | Pelican Pantry 24 | Night clerk. Paper hat, green apron, permanently startled. Owes Marty for the slush machine. Owns a Comet sport bike that is his whole savings. |
+| **Gus Pibble** | Pelican Pantry 24 | Night clerk. Maroon Pantry polo with a name badge, a shop cap, permanently startled. Owes Marty for the slush machine. Owns a Comet sport bike that is his whole savings. |
 | **DJ Kilowatt** | Club Prism, the booth | Headphones, yellow cap, one hand always in the air. Has not forgiven Marty for the smoke machine incident. |
 | **Mimi Zig** | Zigzag Threads | Sells jackets. Has opinions about your shorts. |
 
@@ -30,13 +30,25 @@ Saturday is the Neon Coast Dance-Off at Club Prism. The prize is $5,000. Dee has
 
 Payoff: the Flamingo keeps its lease, Skye gets a cut of the prize and Dee's 1979 jacket (the Flamingo Royale outfit at Zigzag Threads), and Dee's odd jobs pay better from then on.
 
+## Club Prism fills up with the story
+
+The flyers are what bring people in. The club's crowd is data in `CLUB_CROWD` (story.js), picked by `clubTier()` from how far the story has got:
+
+| When | Crowd | Room |
+| --- | --- | --- |
+| Before **Paper Trail** is finished | quiet: 3 dancers, a regular at the bar, one on a stool, one couple in the lounge, the coat check (7) | DJ Kilowatt warming up (one hand on the deck), music quieter and duller, lights dimmed |
+| After Paper Trail | busy: 18 dancers and a full bar, lounge and VIP corner (29) | full system, full light show |
+| During **Last Dance** | packed: 28 dancers and every stool (45) | a touch louder and brighter |
+
+New arrivals walk in from the door. The club's conversations are played sitting down in the far booth of the lounge: Skye and the speaker face each other across the table, a second speaker takes the back of the booth, and the dancers keep out of the space round the booth while anyone is talking.
+
 ## How a job plays
 
 - The pulsing star on the minimap is where the next job starts. Skate into the ring at that door.
 - Every job is a few steps with one objective each, shown under the minimap. A clock only appears on the legs where it matters: the melting ice, the flyer run, the bouncers, the song.
 - Steps marked as checkpoints are where a retry puts you. Run out of time, get knocked out or get caught and you see JOB BLOWN: `Enter` retries from the last checkpoint, `Esc` drops the job (it is offered again at the same door).
 - Finish the last step and the pass card shows the reward.
-- In a scene, `Space` or `Enter` finishes the line being typed, then moves to the next one. `X` skips the scene.
+- In a scene, `Space`, `Enter`, a click or a tap finishes the line being typed, then moves to the next one; otherwise a line stays up for about 1 s plus 60 ms a character once it is fully shown. `X` skips the scene.
 
 ## Full script
 
@@ -205,6 +217,11 @@ Payoff: the Flamingo keeps its lease, Skye gets a cut of the prize and Dee's 197
 | MIDNIGHT ARCADE | $180 | Deep violet, cyan trim, black shorts. |
 | MINT CONDITION | $150 | Pistachio and peach. Very poolside. |
 | CHERRY BOMB | $220 | Lipstick red, white stripes, no apologies. |
+| NEON SLIP | $200 | A hot-pink slip dress with cyan straps. Glows under a mirror ball. |
+| TIE-BREAK | $170 | Pleated white tennis skirt, cropped mint jacket. Game, set, skate. |
+| MIRRORBALL | $320 | Sequinned lilac party dress. Every light in the room finds you. |
+| BOARDWALK SUNDRESS | $140 | Lemon sundress with a tangerine hem. Made for the promenade. |
+| SEA BREEZE SLACKS | $160 | Navy bomber, wide cream trousers. Yacht club, no yacht. |
 | FLAMINGO ROYALE | $750 | Dee's 1979 roller-disco jacket. Pink and gold. Free once the story is finished. |
 
 | Pelican Pantry 24 | Price | Notes |
@@ -212,3 +229,15 @@ Payoff: the Flamingo keeps its lease, Skye gets a cut of the prize and Dee's 197
 | PELICAN POP | $5 | Fizzy, blue, suspiciously cold. +15 health |
 | BOARDWALK HOT DOG | $12 | From today. Mostly. +35 health |
 | TURBO CRUNCH BAR | $20 | Oats, glucose and optimism. +60 health |
+
+| Coolwave (vending) | Price | Notes |
+| --- | --- | --- |
+| COOLWAVE CLASSIC | $3 | Blue, fizzy, tastes like a sea breeze. +10 health |
+| COOLWAVE ZERO | $3 | All of the wave, none of the sugar. +8 health |
+| TIDAL ICED TEA | $4 | Peach and lemon. Very refreshing, very orange. +14 health |
+
+| Snaxx 24 (vending) | Price | Notes |
+| --- | --- | --- |
+| SNAXX CHEESE CURLS | $3 | Crunchy, glowing slightly. +12 health |
+| STARDUST GUMMIES | $2 | Shaped like little comets. +6 health |
+| SNAXX TRAIL MIX | $5 | Nuts, raisins and a single heroic chocolate drop. +20 health |

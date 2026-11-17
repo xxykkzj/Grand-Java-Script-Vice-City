@@ -214,10 +214,10 @@ export function createPeds(scene, R, grid, game) {
   // traffic and the player's own wheels
   function hitCheck(p) {
     if (p.state !== DOWN) {
-      grid.query(p.x, p.z, 3, (o) => {
+      grid.query(p.x, p.z, 4, (o) => {
         if (o.isPed) return;
         const ddx = p.x - o.x, ddz = p.z - o.z, d = Math.hypot(ddx, ddz), sp = Math.hypot(o.vx, o.vz);
-        if (d > o.radius * 0.75 + 0.4 || sp < 3 || o.y > 1.5) return;
+        if (sp < 3 || o.y > 1.5 || game.vehicles.bodyDist(o, p.x, p.z) > 0.35) return;
         if (knock(p, o.vx * 0.55 + ddx / (d + 0.1) * 3, o.vz * 0.55 + ddz / (d + 0.1) * 3)) { shout(p); game.pedHit(p, o); }
       });
     }
@@ -360,6 +360,8 @@ export function createPeds(scene, R, grid, game) {
         if (knock(p, player.vel.x * 0.5, player.vel.z * 0.5, 1.3)) { shout(p); player.vel.x *= 0.4; player.vel.z *= 0.4; }
       }
     },
+    // a bench or café chair got knocked over: whoever was sitting on it goes flying
+    knockOff(seat, vx, vz) { const p = seat && seat.taken; if (p && p.i !== undefined && p.state === SIT) { knock(p, vx, vz, 2); shout(p); } },
     get active() { return active; },
     get target() { return target; },
     update(dt, t, frame, cars) {
