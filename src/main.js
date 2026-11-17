@@ -12,6 +12,7 @@ import { createFx } from './vehicles/effects.js';
 import { createVehicles } from './vehicles/vehicles.js';
 import { createPlayer } from './player/player.js';
 import { createFollowCamera } from './player/camera.js';
+import { createCockpit } from './player/cockpit.js';
 import { createAudio } from './audio/audio.js';
 import { createHud } from './ui/hud.js';
 import { createCheats } from './cheats/cheats.js';
@@ -44,6 +45,8 @@ async function boot() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(62, 1, 0.12, 2600);
+  scene.add(camera);                       // so the first-person cockpit can ride on it
+  const cockpit = createCockpit(camera);
   const resize = () => {
     renderer.setSize(window.innerWidth, window.innerHeight, false);
     camera.aspect = window.innerWidth / Math.max(1, window.innerHeight);
@@ -243,6 +246,7 @@ async function boot() {
     else if (game.inside) { /* places.update owns the camera indoors */ }
     else cam.update(dt, input, game.mode, game.focus(), game.heading(), speed, fx, player.phase);
     // in first person on foot the courier's own body would sit inside the camera
+    cockpit.update(dt, v, cam.first && !cut.active && !game.inside && !!v, ctl.steer);
     const hideBody = cam.first && !cut.active && !game.inside && game.mode === 'foot';
     if (player.model.root.visible === hideBody && !player.hidden) player.model.root.visible = !hideBody;
     pointScaleU.value = renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360));

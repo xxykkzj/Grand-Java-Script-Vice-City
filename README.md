@@ -110,7 +110,7 @@ Anywhere:
 | `Enter` / `Esc` | on the JOB BLOWN card: retry from the checkpoint / drop the job |
 | `M` | mute |
 | `P` | perf panel (FPS, draw calls, triangles, AI cars and pedestrians with the target for the hour, animals, page size) |
-| `V` | switch camera: third person, close third person, first person (remembered between visits) |
+| `V` | switch camera: third person, close third person, first person (remembered between visits). In first person, vehicles get a cockpit: pillars and a dashboard with live gauges in cars, handlebars and a speedo on the bike, canopy frame and altimeter in the helicopter, a vision slit and reticle in the tank |
 
 Tip: in the helicopter prefer `C` to descend. `Ctrl` works too, but `Ctrl+W` is still the browser's "close tab" shortcut.
 
