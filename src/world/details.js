@@ -4,7 +4,7 @@
 // Gulls and boats move, so they get one draw call each.
 import * as THREE from 'three';
 import { box, cyl, tint, merge, rng, PI, timeU } from '../core/util.js';
-import { PIER, ADS, offRoad } from './layout.js';
+import { PIER, ADS, offRoad, inJunction } from './layout.js';
 
 const INK = '#1d1630', CREAM = '#fbf7f0', STEEL = '#b9bcc8';
 const NEON = ['#ff2bd1', '#18f0ff', '#ffe14a', '#8dff5a', '#ff6a3d', '#b388ff'];
@@ -128,7 +128,7 @@ export function addDetails(L, S, N, glows, addWin, signs) {
   for (const p of L.palms) mark(p.x, p.z, 0.45);
   for (const b of L.booths) mark(b.x, b.z, 0.85);
   for (const k in L.places) mark(L.places[k].x, L.places[k].z, 2.4);
-  const spot = (x, z, rr) => { const a = offRoad(x, z, rr); if (!a || !free(a[0], a[1], rr)) return null; mark(a[0], a[1], rr); return a; };
+  const spot = (x, z, rr) => { const a = offRoad(x, z, rr); if (!a || inJunction(a[0], a[1], rr) || !free(a[0], a[1], rr)) return null; mark(a[0], a[1], rr); return a; };
   const loose = (kind, x, z, yaw = 0, rr = 0.4, extra = {}) => {
     const a = spot(x, z, rr);
     if (!a) return null;
@@ -148,8 +148,11 @@ export function addDetails(L, S, N, glows, addWin, signs) {
     const a = spot(x, z, 0.24);
     if (!a) return;
     [x, z] = a;
-    S.push(cyl(0.16, 0.19, 0.6, 7, x, 0.3, z, '#ff4f6a'), cyl(0.12, 0.16, 0.14, 7, x, 0.67, z, '#ffd447'), box(0.5, 0.12, 0.12, x, 0.42, z, '#ff4f6a'));
-    P.circle(x, z, 0.24, 0.75).tag = 'hydrant';
+    // drawn and simulated as a loose body (world/loose.js); the static circle keeps it bolted down
+    // until a fast vehicle shears it off
+    const c = P.circle(x, z, 0.24, 0.75); c.tag = 'hydrant';
+    const d = { kind: 'hydrant', hx: x, hz: z, yaw: 0, r: 0.24, seats: [] };
+    L.loose.push(d); c.hyd = d;
   };
   for (let x = -255; x <= 285; x += 30) { bench(x, 76.2, 0); bin(x + 13.6, 63.7, '#27c9bf'); }
   for (let x = -265; x <= 285; x += 60) { bench(x, 37.4, 0); hydrant(x + 22, 43.3); bin(x - 8, 43.2, '#ff8fc4'); }

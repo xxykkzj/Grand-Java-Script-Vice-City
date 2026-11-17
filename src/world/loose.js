@@ -13,13 +13,15 @@
 // is looking. Nothing here ever raises the heat.
 import * as THREE from 'three';
 import { box, cyl, tint, merge, PI, nightU, unseen, pushOut } from '../core/util.js';
-import { clampToWorld } from './layout.js';
+import { clampToWorld, onRoad } from './layout.js';
 import { circlesOf } from '../vehicles/vehicles.js';
 import { createGlow } from './glow.js';
 
 const CELL = 8, key = (i, j) => (i + 512) * 1024 + (j + 512);
 export const LAMP_BREAK = 12.5;                    // m/s (45 km/h): a car this fast takes a lamp post down
-const RESET = 150;                                  // seconds before a knocked prop may go home (unseen)
+const RESET = 150;
+const HYD_BREAK = 7;                                // m/s (~25 km/h): faster than this shears a hydrant off
+const ROAD_CLEAR = 12;                              // s: a knocked prop resting in a traffic lane is cleared sooner                                  // seconds before a knocked prop may go home (unseen)
 const CAR_M = 1200, BIKE_M = 260, TANK_M = 40000;
 // mass class, mass (kg), half extents [x, y, z] (resting on the ground), footprint circles [offset on local x, r],
 // topple speed (m/s, medium props), bounce
@@ -36,6 +38,8 @@ export const KINDS = {
   table: { cls: 'medium', m: 25, he: [0.55, 1.35, 0.55], fp: [[0, 0.45]], topple: 7 },
   vend: { cls: 'medium', m: 300, he: [0.48, 0.95, 0.38], fp: [[0, 0.62]], topple: 14 },
   board: { cls: 'medium', m: 8, he: [0.3, 0.45, 0.28], fp: [[0, 0.35]], topple: 4 },
+  // bolted down (a static collider holds it) until a fast hit shears it off; then it flies like a light prop
+  hydrant: { cls: 'fixed', m: 110, he: [0.25, 0.37, 0.25], fp: [[0, 0.24]] },
 };
 export const BRANDS = {
   coolwave: { name: 'COOLWAVE', body: '#1d4f8a', accent: '#27e8ff', glow: '#7fe8ff', items: ['#27e8ff', '#ff4fa3', '#ffd447', '#8dff5a'] },
@@ -69,6 +73,7 @@ function template(b) {
       for (let i = 0; i < col.count; i += 3) if ((i / 3) % 3 === 0) for (let j = 0; j < 3; j++) col.setXYZ(i + j, k.r, k.g, k.b);
       add(g); break;
     }
+    case 'hydrant': add(cyl(0.16, 0.19, 0.6, 7, 0, 0.3, 0, '#ff4f6a')); add(cyl(0.12, 0.16, 0.14, 7, 0, 0.67, 0, '#ffd447')); add(box(0.5, 0.12, 0.12, 0, 0.42, 0, '#ff4f6a')); break;
     case 'can': add(cyl(0.035, 0.035, 0.12, 6, 0, 0.065, 0, c)); add(cyl(0.03, 0.03, 0.012, 6, 0, 0.13, 0, '#c9c0d8')); break;
     case 'bench':
       add(box(2, 0.1, 0.55, 0, 0.5, 0, '#f7b3c6')); add(box(2, 0.5, 0.1, 0, 0.85, -0.28, '#f7b3c6'));
@@ -102,7 +107,9 @@ function template(b) {
 export function createLoose(scene, game, city, fx, audio) {
   const { L, camera } = game, props = L.props;
   const bodies = [], vends = [], cans = [];
-  for (const d of L.loose) { const b = mk(d); bodies.push(b); if (b.kind === 'vend') vends.push(b); }
+  const byD = new Map();
+  for (const d of L.loose) { const b = mk(d); bodies.push(b); byD.set(d, b); if (b.kind === 'vend') vends.push(b); }
+  for (const o of props.cols) if (o.hyd) o.body = byD.get(o.hyd);
   for (let i = 0; i < 4; i++) { const b = mk({ kind: 'can', hx: 0, hz: 0, yaw: 0, color: ['#27e8ff', '#ff4fa3', '#ffd447', '#8dff5a'][i], seats: [] }); b.hidden = true; bodies.push(b); cans.push(b); }
   function mk(d) {
     const K = KINDS[d.kind];
@@ -206,27 +213,29 @@ export function createLoose(scene, game, city, fx, audio) {
   // ---- a mover (vehicle circle or the courier) meets a body
   function contact(b, mv, nx, nz, ov, isPlayer) {
     const K = b.K, tank = mv.kind === 'tank', rails = !!mv.ai && !(mv.ai.stun > 0) && !mv.ai.pursuit;
+    if (K.cls === 'fixed' && !b.free) return;                    // still bolted: the static collider handles it
+    const cls = K.cls === 'fixed' ? 'light' : K.cls;
     const vx = isPlayer ? mv.vel.x : mv.vx, vz = isPlayer ? mv.vel.z : mv.vz, sp = tank ? Math.abs(mv.speed) : Math.hypot(vx, vz);
     const mm = isPlayer ? 70 : tank ? TANK_M : mv.kind === 'bike' ? BIKE_M : CAR_M;
-    if (K.cls === 'medium' && isPlayer) {                     // benches & co block the courier
+    if (cls === 'medium' && isPlayer) {                     // benches & co block the courier
       mv.pos.x += nx * ov; mv.pos.z += nz * ov;
       const vn = mv.vel.x * nx + mv.vel.z * nz;
       if (vn < 0) { mv.vel.x -= vn * nx; mv.vel.z -= vn * nz; }
       return;
     }
-    const fling = tank || (K.cls === 'light' ? sp > (isPlayer ? 4.5 : 1.5) : sp > K.topple);
+    const fling = tank || (cls === 'light' ? sp > (isPlayer ? 4.5 : 1.5) : sp > K.topple);
     if (fling && b.cool <= 0) {
       wake(b);
-      const k = K.cls === 'light' ? 1.15 + Math.random() * 0.35 : 0.8 + Math.random() * 0.2, s = Math.min(sp, 30);
+      const k = cls === 'light' ? 1.15 + Math.random() * 0.35 : 0.8 + Math.random() * 0.2, s = Math.min(sp, 30);
       b.vx = vx * k - nx * 1.5; b.vz = vz * k - nz * 1.5;
-      b.vy = K.cls === 'light' ? 2 + s * (isPlayer ? 0.18 : 0.3) : 1.5 + s * 0.16;
-      const spin = s * (K.cls === 'light' ? 0.9 : 0.45);
+      b.vy = cls === 'light' ? 2 + s * (isPlayer ? 0.18 : 0.3) : 1.5 + s * 0.16;
+      const spin = s * (cls === 'light' ? 0.9 : 0.45);
       b.wx = (Math.random() - 0.5) * spin; b.wy = (Math.random() - 0.5) * spin; b.wz = (Math.random() - 0.5) * spin;
       // turn the impact into a tip-over about the axis across the hit direction
       b.wx += vz / (s + 1e-3) * spin * 0.5; b.wz -= vx / (s + 1e-3) * spin * 0.5;
       b.y += 0.05; b.cool = 0.35;
       // the mover pays a little for it
-      const loss = Math.min(K.cls === 'light' ? 0.08 : 0.35, (K.m / (mm + K.m)) * 1.6);
+      const loss = Math.min(cls === 'light' ? 0.08 : 0.35, (K.m / (mm + K.m)) * 1.6);
       if (isPlayer) { mv.vel.x *= 0.85; mv.vel.z *= 0.85; } else if (!tank && !rails) { mv.vx *= 1 - loss; mv.vz *= 1 - loss; }
       audio.knock(Math.min(1.2, 0.4 + K.m / 60));
       return;
@@ -333,9 +342,22 @@ export function createLoose(scene, game, city, fx, audio) {
       return 'pass';
     }
     if (o.tag === 'hydrant') {
-      if (mv.kind !== 'heli' && (tank || sp > 6) && !o.spray) { o.spray = 22; o.sprayT = 0; sprays.push(o); dead.push(o); o.t = 0; audio.clank(); }
-      if (tank) { o.off = true; return 'pass'; }
-      return null;
+      // slow: it's bolted to the kerb and stops you. Fast (or a tank): it shears off its base and
+      // flies, a water spout comes up where it stood, and the vehicle only loses a little speed.
+      if (mv.kind === 'heli' || !(tank || sp > HYD_BREAK)) return null;
+      o.off = true; o.t = 0; dead.push(o);
+      o.spray = 22; o.sprayT = 0; sprays.push(o);
+      const hb = o.body;
+      if (hb) {
+        hb.free = true; wake(hb);
+        const s2 = Math.min(sp, 30), k = 0.9 + Math.random() * 0.3;
+        hb.vx = mv.vx * k + (Math.random() - 0.5) * 2; hb.vz = mv.vz * k + (Math.random() - 0.5) * 2;
+        hb.vy = 3 + s2 * 0.22; hb.y += 0.1; hb.cool = 0.4;
+        hb.wx = (Math.random() - 0.5) * s2 * 0.8 + mv.vz / (s2 + 1e-3) * s2 * 0.4; hb.wz = (Math.random() - 0.5) * s2 * 0.8 - mv.vx / (s2 + 1e-3) * s2 * 0.4;
+      }
+      if (!tank) { mv.vx *= 0.86; mv.vz *= 0.86; }
+      audio.clank(); audio.knock(1);
+      return 'pass';
     }
     if (o.tag === 'palm' && tank) {
       o.off = true; o.t = 0; dead.push(o);
@@ -356,6 +378,7 @@ export function createLoose(scene, game, city, fx, audio) {
   }
   function restore(o) {
     o.off = false; o.spray = 0;
+    if (o.body) { o.body.free = false; home(o.body); }
     if (o.tag === 'lamp') { city.tipLamp(o.i, 0, 0); city.lampLight(o.i, true); }
     if (o.tag === 'palm') city.tipPalm(o.i, 0, 0);
   }
@@ -427,14 +450,16 @@ export function createLoose(scene, game, city, fx, audio) {
       if (glowDirty) vendGlow();
       // back home after a few minutes, once out of sight (both where it lies and where it belongs)
       for (const b of bodies) {
-        if (!b.moved || b.awake) continue;
+        if (!b.moved || b.awake || b.kind === 'hydrant') continue;
         b.resetT += dt;
+        // knocked into a traffic lane: cleared once you've moved on (out of sight, or 25 m away)
+        if (b.resetT > ROAD_CLEAR && onRoad(b.x, b.z, 0) && (unseen(camera, b.x, b.z, 30) || Math.hypot(foc.x - b.x, foc.z - b.z) > 25)) { home(b); continue; }
         if (b.resetT > RESET && (b.kind === 'can' || (unseen(camera, b.x, b.z, 50) && unseen(camera, b.hx, b.hz, 50)))) home(b);
       }
       for (let i = dead.length - 1; i >= 0; i--) {
         const o = dead[i];
         o.t += dt;
-        if (o.t > RESET && !o.spray && !falling.some((f) => f.o === o) && unseen(camera, o.x, o.z, 60)) { restore(o); dead.splice(i, 1); }
+        if (o.t > RESET && !o.spray && !falling.some((f) => f.o === o) && unseen(camera, o.x, o.z, 60) && (!o.body || unseen(camera, o.body.x, o.body.z, 50))) { restore(o); dead.splice(i, 1); }
       }
     },
   };

@@ -92,7 +92,7 @@ export function makeLayout() {
   for (let x = -235; x <= 285; x += 50) if (!nearSide(x, 10)) lamps.push({ x, z: -74.9, yaw: 0 });
 
   // Palms: { x, z, s (scale), yaw }
-  const palm = (x, z) => { const s = 0.85 + r() * 0.45, yaw = r() * 6.283, at = offRoad(x, z, 0.3 * s); if (at) palms.push({ x: at[0], z: at[1], s, yaw }); };
+  const palm = (x, z) => { const s = 0.85 + r() * 0.45, yaw = r() * 6.283, at = offRoad(x, z, 0.3 * s); if (at && !inJunction(at[0], at[1], 0.6)) palms.push({ x: at[0], z: at[1], s, yaw }); };
   for (let x = -292; x <= 292; x += 12) palm(x + (r() - 0.5) * 2, 70 + (r() - 0.5) * 3);
   for (let x = -270; x <= 285; x += 30) if (!nearSide(x, 10)) palm(x, 40.2);
   for (let i = 0; i < 34; i++) palm(-290 + r() * 580, 84 + r() * 40);
@@ -201,6 +201,12 @@ export const ROAD_RECTS = [
   ...SIDE_X.map((s) => ({ name: 'side street ' + s, x0: s - ROADS.sideW / 2, x1: s + ROADS.sideW / 2, z0: ROADS.sideZ0, z1: ROADS.blvd.z - ROADS.blvd.w / 2 })),
 ];
 // Does a footprint (circle of radius r) touch a carriageway? Returns the road or null.
+// The crossing and corner area of every side-street junction: palms and street furniture stay out of it.
+const JUNCTIONS = [];
+for (const sx of SIDE_X) for (const [rz, hz] of [[ROADS.blvd.z, 13.8], [ROADS.back1.z, 10.2], [ROADS.back2.z, 10.2]]) JUNCTIONS.push({ x0: sx - 12, x1: sx + 12, z0: rz - hz, z1: rz + hz });
+export function inJunction(x, z, r = 0) {
+  return JUNCTIONS.some((j) => x > j.x0 - r && x < j.x1 + r && z > j.z0 - r && z < j.z1 + r);
+}
 export function onRoad(x, z, r = 0) {
   for (const b of ROAD_RECTS) if (x > b.x0 - r && x < b.x1 + r && z > b.z0 - r && z < b.z1 + r) return b;
   return null;
@@ -224,6 +230,8 @@ export function propsOnRoad(L) {
   for (const s of L.props.seats) if (s.kind !== 'towel' && s.kind !== 'lounger') t('seat:' + s.kind, s.x, s.z, 0.2);
   for (const b of L.loose) t(b.kind, b.hx, b.hz, b.r || 0.3);
   for (const p of L.planters) t('planter', p.x, p.z, 0.4);
+  for (const p of L.palms) { t('palm', p.x, p.z, 0.4); if (inJunction(p.x, p.z, 0.6)) bad.push({ what: 'palm', x: +p.x.toFixed(2), z: +p.z.toFixed(2), road: 'junction' }); }
+  for (const b of L.loose) if (inJunction(b.hx, b.hz, 0)) bad.push({ what: b.kind, x: +b.hx.toFixed(2), z: +b.hz.toFixed(2), road: 'junction' });
   return bad;
 }
 
