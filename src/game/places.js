@@ -117,14 +117,18 @@ export function createPlaces(game, scene, camera) {
       pr.textContent = wear ? (save.outfit === o.id ? 'WEARING' : owns(o) ? 'OWNED' : '$' + o.price) : '$' + o.price;
       if (wear && o.gift && !owns(o)) s.textContent += ' (' + o.gift + ', or buy it)';
       if (i === sel) li.className = 'sel';
+      // tap / click: the first tap picks, a tap on the picked line buys or wears it
+      li.addEventListener('click', () => { if (!shop) return; if (sel === i) buy(); else { sel = i; msg = ''; audio.step(1); if (wear) player.model.setOutfit(OUTFITS[i]); render(); } });
       li.append(b, pr, s); el.l.appendChild(li);
     });
-    el.f.textContent = msg || (wear ? 'W/S choose · Enter wear or buy · Esc done · a new look sheds one star of heat' : 'W/S choose · Enter buy · Esc done');
+    el.f.textContent = msg || (game.input.touchMode ? (wear ? 'Tap to try on · tap again or WEAR / BUY · DONE to leave' : 'Tap to choose · tap again or BUY · DONE to leave') : wear ? 'W/S choose · Enter wear or buy · Esc done · a new look sheds one star of heat' : 'W/S choose · Enter buy · Esc done');
   }
+  for (const b of el.box.querySelectorAll('[data-k]')) b.addEventListener('click', () => { if (shop) api.key({ code: b.dataset.k }); });
   function openShop(kind) {
     shop = kind; game.busy = 'shop'; msg = bark(kind);
     sel = kind === 'wear' ? Math.max(0, OUTFITS.findIndex((o) => o.id === save.outfit)) : 0;
     el.box.hidden = false; render();
+    const bb = el.box.querySelector('[data-k="Enter"]'); if (bb) bb.textContent = kind === 'wear' ? 'WEAR / BUY' : 'BUY';
     audio.blip(true);
   }
   function closeShop() {
@@ -227,7 +231,7 @@ export function createPlaces(game, scene, camera) {
       if (!game.busy) {
         let dx = ctl.strafe, dz = -ctl.move;
         const len = Math.hypot(dx, dz), top = ctl.sprint ? 7 : 4.6;
-        if (len > 0) { dx = dx / len * top; dz = dz / len * top; }
+        if (len > 0) { const k = top * Math.min(1, len) / len; dx *= k; dz *= k; }
         player.vel.x = damp(player.vel.x, dx, len > 0 ? 7 : 4, dt); player.vel.z = damp(player.vel.z, dz, len > 0 ? 7 : 4, dt);
         local.x = player.pos.x - r.ox + player.vel.x * dt; local.z = player.pos.z - r.oz + player.vel.z * dt;
         for (const b of r.blocks) pushOut(local, 0.42, b);

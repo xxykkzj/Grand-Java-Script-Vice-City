@@ -26,13 +26,27 @@ export function createHud(L, groundCanvas, renderer) {
     b.fillStyle = s.bar ? '#ff2bd1' : s.hotel ? '#ff7ac8' : '#c9a6ff';
     b.fillRect(PAD + s.x0 + HX, PAD + s.z0 + HZ, s.w, s.d);
   }
+  // the minimap is drawn in a fixed 312-unit space; the canvas backing store follows its CSS size
+  // times the device pixel ratio (re-read on every resize), so it stays sharp at any window size
   const g = el.map.getContext('2d');
-  const R = el.map.width / 2, SCALE = 1.5, VIEW = R / SCALE - 9;
+  const R = 156, SCALE = 1.5, VIEW = R / SCALE - 9;
+  let mk = 1;
+  const fitMap = () => {
+    const css = el.map.clientWidth || 156;
+    const px = Math.round(Math.min(640, Math.max(160, css * Math.min(window.devicePixelRatio || 1, 2))));
+    if (el.map.width !== px) { el.map.width = el.map.height = px; }
+    mk = px / (R * 2);
+  };
+  fitMap();
+  // touch mode: only hints that match an on-screen button (E, F, the door) are worth showing
+  const TOUCH_KEY = { E: 'E', F: 'F', 'F / E / WASD': 'F', 'F / WASD': 'F', '1-8': '1-8', Door: 'DOOR' };
 
   let toastT = 0, lastHint = '', lastClock = '', frames = 0, fpsT = 0, fps = 0, pageKB = 0, perfOn = false;
   let shown = -1, lastHp = -1, lastStars = -1, lastObj = '', tick = 0;
   const hud = {
-    show() { el.hud.hidden = false; },
+    show() { el.hud.hidden = false; fitMap(); },
+    resize() { fitMap(); lastHint = ''; },
+    touch: false,
     toast(title, sub = '') {
       el.toast.textContent = title;
       if (sub) { const s = document.createElement('small'); s.textContent = sub; el.toast.appendChild(s); }
@@ -42,7 +56,8 @@ export function createHud(L, groundCanvas, renderer) {
     },
     // hints: array of [key, text]
     setHint(items) {
-      const key = items.map((i) => i.join(':')).join('|');
+      if (hud.touch) items = items.filter((i) => TOUCH_KEY[i[0]]).map((i) => [TOUCH_KEY[i[0]], i[1]]);
+      const key = items.map((i) => i.join(':')).join('|') + hud.touch;
       if (key === lastHint) return;
       lastHint = key;
       el.hint.textContent = '';
@@ -111,7 +126,7 @@ export function createHud(L, groundCanvas, renderer) {
       // minimap, redrawn every third frame; "up" is where the camera looks
       if (frames % 3 !== 0) return;
       const rot = st.camYaw + Math.PI, cs = Math.cos(rot), sn = Math.sin(rot);
-      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.setTransform(mk, 0, 0, mk, 0, 0);
       g.clearRect(0, 0, R * 2, R * 2);
       g.save();
       g.beginPath(); g.arc(R, R, R, 0, 6.2832); g.clip();

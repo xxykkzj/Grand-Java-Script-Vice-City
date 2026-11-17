@@ -9,7 +9,9 @@ An original homage to 80s open-world games. Not affiliated with or using assets 
 ## Play
 
 Just double-click `dist/index.html` (any current desktop Chrome, Edge, Firefox or Safari). No server, no install, no network. Click to start; that also unlocks audio.
-The `index.html` in the repo root only redirects there, so GitHub Pages serves the game from the repo root.
+The `index.html` in the repo root only redirects there, so GitHub Pages serves the game from the repo root. **That GitHub Pages link also works on phones and tablets** (portrait or landscape) with the on-screen touch controls.
+
+**Choosing controls.** The title screen has a *Keyboard & mouse* / *Touch controls* choice. It is pre-selected for your device (touch on phones and tablets) and remembered on that device. You can change it any time with the gear button under the clock (top right), which also pauses the game.
 
 To rebuild it yourself: `npm install && npm run build`, then open `dist/index.html`.
 
@@ -114,6 +116,16 @@ Anywhere:
 
 Tip: in the helicopter prefer `C` to descend. `Ctrl` works too, but `Ctrl+W` is still the browser's "close tab" shortcut.
 
+## Touch controls
+
+- **Left thumb:** touch anywhere on the left half and a stick appears under your thumb. It skates or walks; in a car, on the Comet, in the tank or the helicopter it steers and gives throttle (pull back to brake or reverse). Push it all the way out to sprint on foot.
+- **Right side:** swipe on the empty right half to turn the camera (or look around in first person, or aim the tank's turret).
+- **Buttons, bottom right:** they change with what you are doing and match the keyboard: **Jump**; **Enter / Ride / Take** (`E`) next to a vehicle; **Sit / Dance** (`F`) near a seat or on the club floor; **Use** (`E`) at a counter; in a car **Drift** (handbrake), **Brake** and **Exit**; on the bike **Brake** and **Get off**; in the tank **Fire**; in the helicopter **Up**, **Down** and **Exit** (**Land** in the air); in a scene **Next** and **Skip**; on the JOB BLOWN card **Retry** and **Drop**.
+- **Top right:** **View** (camera view, like `V`), **Codes** (the cheat console with a tappable list of every code; tap the input line if you would rather type), **Mute**, and the gear (pause + controls).
+- **Dancing:** a ring of eight move buttons round a **Stop** button. Tap a move on the beat, just like the number keys; the beat panel sits bottom left.
+- **Shops:** tap a line to pick it (and try it on), tap it again or **Buy** to buy, **Done** to leave.
+- The page doesn't scroll, zoom or show long-press menus while you play. Touch mode hides the keyboard hints and shows only the ones that match a button. Keyboard mode hides all the touch controls, and the mouse still works in touch mode.
+
 ## Cheat codes
 
 Press `~` or `T`, type a code (not case-sensitive), press Enter.
@@ -141,11 +153,11 @@ A forced weather holds for about four game hours before the sky starts making it
 ## Hardware notes
 
 - Built for integrated laptop graphics: a typical street frame is about 45 to 50 draw calls and roughly 240k triangles with all traffic, pedestrians, beach animals and the horizon on screen. Indoors the camera only renders the room's layer (the room, the courier, the rings), so Club Prism with its whole crowd, lasers and lights is about 22 draw calls. No shadow maps, no post-processing. Interiors are built the first time you walk in and hidden when you leave.
-- The pixel ratio is capped at 2. If it still struggles on a high-DPI screen, zoom the page in (`Ctrl` / `Cmd` + `+`) or shrink the window: fewer pixels is the big lever.
+- The pixel ratio is capped at 2 (1.5 on phones and tablets), and it is checked again whenever the window, the zoom or the screen changes. If it still struggles on a high-DPI screen, zoom the page in (`Ctrl` / `Cmd` + `+`) or shrink the window: fewer pixels is the big lever.
 - Needs WebGL 2. Without it you get a plain explanatory message instead of a black page. Make sure hardware acceleration is switched on in the browser.
 - Rendering and audio pause while the tab is hidden.
 - With `prefers-reduced-motion` there are no lightning flashes, no camera bob or shake, no wheelies, steady patrol lights, static cutscene cameras and subtitles that appear whole instead of being typed.
-- Keyboard and mouse only; no touch controls.
+- The HUD (minimap, info stack, hints, dance panel, console, toasts, title screen, scene subtitles) scales and moves with the window in CSS, from small phones in portrait up to 1440p desktops. It keeps clear of notches and rounded corners (`viewport-fit=cover` and the safe-area insets).
 
 ## Build
 
@@ -179,9 +191,9 @@ then open `dist/index.html`. `npm run dev` rebuilds (unminified) whenever a file
 | Part | Minified |
 | --- | --- |
 | three.js 0.187.0 (tree-shaken) | about 576 KB |
-| Game code | about 223 KB |
-| HTML + CSS | about 17 KB |
-| **`dist/index.html`** | **about 816 KB** |
+| Game code | about 238 KB |
+| HTML + CSS | about 29 KB |
+| **`dist/index.html`** | **about 845 KB** |
 
 ### Source layout
 
@@ -201,5 +213,6 @@ src/
   vehicles/         car / bike / tank / helicopter models and physics, explosion particles
   cheats/           cheat console and codes
   audio/            synthesised music and effects
-  ui/               minimap, cash / health / heat / clock, objective, hints, toast, perf panel
+  ui/               minimap, cash / health / heat / clock, objective, hints, toast, perf panel; touch.js: touch controls,
+                    control-mode choice, pause + settings
 ```

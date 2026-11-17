@@ -75,7 +75,7 @@ export function createCheats(game) {
     open: false,
     toggle(on = !api.open) {
       api.open = on; box.hidden = !on; input.typing = on;
-      if (on) { input.clearKeys(); cmd.value = ''; setTimeout(() => cmd.focus(), 0); if (!lines.length) print('NEON-DOS 1.986 READY. Type HELP for codes.'); }
+      if (on) { input.clearKeys(); cmd.value = ''; if (!input.touchMode) setTimeout(() => cmd.focus(), 0); if (!lines.length) print('NEON-DOS 1.986 READY. Type HELP for codes.'); }
       else cmd.blur();
     },
     exec(raw) {
@@ -99,6 +99,16 @@ export function createCheats(game) {
       return false;
     },
   };
+
+  // tappable list of codes (shown in touch mode, works with a mouse too) and a close button
+  const codes = $('codes');
+  for (const k of Object.keys(CODES)) {
+    if (k === 'HELP') continue;
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = k; b.title = CODES[k];
+    b.addEventListener('click', () => { if (api.exec(k)) api.toggle(false); });
+    codes.appendChild(b);
+  }
+  $('cclose').addEventListener('click', () => api.toggle(false));
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();

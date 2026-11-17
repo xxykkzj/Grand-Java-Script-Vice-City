@@ -15,6 +15,7 @@ import { createFollowCamera } from './player/camera.js';
 import { createCockpit } from './player/cockpit.js';
 import { createAudio } from './audio/audio.js';
 import { createHud } from './ui/hud.js';
+import { createTouch, coarse } from './ui/touch.js';
 import { createCheats } from './cheats/cheats.js';
 import { makeRoads, buildSignals, signal } from './world/roads.js';
 import { createTraffic } from './actors/traffic.js';
@@ -42,17 +43,40 @@ async function boot() {
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   } catch (e) { noWebGL(); return; }
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(62, 1, 0.12, 2600);
   const cockpit = createCockpit(scene);     // first-person dashboards, fixed to the vehicle
-  const resize = () => {
-    renderer.setSize(window.innerWidth, window.innerHeight, false);
-    camera.aspect = window.innerWidth / Math.max(1, window.innerHeight);
+  // Follow the window live: size, orientation, the phone's visual viewport and the device pixel
+  // ratio (browser zoom, moving to another monitor) are all re-read on every change, not once at load.
+  // Phones and tablets get a slightly lower pixel ratio cap (1.5) to stay smooth.
+  let fitQueued = 0, fitKey = '';
+  const fit = () => {
+    fitQueued = 0;
+    const w = Math.max(1, canvas.clientWidth || innerWidth), h = Math.max(1, canvas.clientHeight || innerHeight);
+    const pr = Math.min(window.devicePixelRatio || 1, coarse() ? 1.5 : 2);
+    const key = w + 'x' + h + '@' + pr;
+    if (key === fitKey) return;
+    fitKey = key;
+    renderer.setPixelRatio(pr);
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    if (game && game.hud) game.hud.resize();
   };
-  resize();
-  addEventListener('resize', resize);
+  const refit = () => { if (!fitQueued) fitQueued = requestAnimationFrame(fit); };
+  let game = null;
+  fit();
+  addEventListener('resize', refit);
+  addEventListener('orientationchange', () => { refit(); setTimeout(refit, 250); setTimeout(refit, 700); });
+  if (window.visualViewport) visualViewport.addEventListener('resize', refit);
+  if (window.ResizeObserver) new ResizeObserver(refit).observe(canvas);
+  // devicePixelRatio changes do not always fire 'resize' (dragging to another monitor): watch it directly
+  const watchDpr = () => {
+    const mq = matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+    const on = () => { mq.removeEventListener('change', on); refit(); watchDpr(); };
+    mq.addEventListener('change', on);
+  };
+  try { watchDpr(); } catch (e) { /* old browsers: the resize event still covers zoom */ }
 
   await progress(0.06, 'MIXING THE SUNSET…');
   const sky = createSky(scene), ocean = createOcean(scene);
@@ -77,8 +101,8 @@ async function boot() {
   L.props.build();
   const grid = createGrid(14);
 
-  const game = {
-    mode: 'foot', vehicle: null, started: false,
+  game = {
+    mode: 'foot', paused: false, vehicle: null, started: false,
     input, hud, audio, env, vehicles, player, L, cam, camera, renderer, scene, fx, R, grid, wanted: 0, busy: null,
     focus: () => (game.vehicle ? game.vehicle : player.pos),
     heading: () => (game.vehicle ? game.vehicle.yaw : player.yaw),
@@ -105,6 +129,7 @@ async function boot() {
   player.model.root.traverse((o) => o.layers.enable(1)); player.shadow.layers.enable(1);
   const cheats = createCheats(game);
   game.cheats = cheats;
+  const touch = game.touch = createTouch(game);
   const me = { x: 0, z: 0, isPed: true, isPlayer: true };
   window.__neon = game;                       // handy for poking around in devtools
   // debug helpers (devtools / automated checks): __neon.debug.warp('club'), .skip(), .bike()
@@ -195,6 +220,7 @@ async function boot() {
   const hudState = { env, game, vehicles, counts: [0, peds.count], blips: [], focus: null, heading: 0, camYaw: 0, inVehicle: null };
   function frame(now) {
     raf = requestAnimationFrame(frame);
+    if (game.paused) { last = now; renderer.render(scene, camera); input.endFrame(); return; }
     const raw = Math.min(Math.max((now - last) / 1000, 0), 0.5), dt = Math.min(raw, 0.05);
     last = now;
     timeU.value += dt;
@@ -212,6 +238,13 @@ async function boot() {
     ctl.strafe = live ? input.axis(['KeyA', 'ArrowLeft'], ['KeyD', 'ArrowRight']) : 0;
     ctl.sprint = live && input.isDown('ShiftLeft', 'ShiftRight');
     ctl.jump = live && game.mode === 'foot' && input.isDown('Space');
+    // the touch stick: analog, used whenever no movement key (or on-screen brake) is held
+    const st = input.stick;
+    if (live && st.on) {
+      if (!ctl.move) ctl.move = -st.y;
+      if (!ctl.strafe) ctl.strafe = st.x;
+      if (game.mode === 'foot' && Math.hypot(st.x, st.y) > 0.92) ctl.sprint = true;
+    }
     ctl.throttle = ctl.move; ctl.steer = -ctl.strafe;
     ctl.hand = live && game.mode === 'car' && input.isDown('Space');
     ctl.up = live && input.isDown('Space');
@@ -275,6 +308,7 @@ async function boot() {
       hudState.counts[0] = traffic.count(); hudState.counts[1] = peds.active; hudState.blips = rules.blips;
       hudState.counts[2] = traffic.target; hudState.counts[3] = peds.target; hudState.counts[4] = animals.count();
       hud.update(dt, hudState);
+      touch.update();
     }
 
     sound.engine = v && v.kind !== 'heli' ? 1 : 0;
@@ -300,13 +334,14 @@ async function boot() {
 
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { cancelAnimationFrame(raf); raf = 0; audio.suspend(); input.clearKeys(); }
-    else if (!raf) { last = performance.now(); raf = requestAnimationFrame(frame); if (game.started) audio.resume(); }
+    else if (!raf) { last = performance.now(); raf = requestAnimationFrame(frame); if (game.started && !game.paused) audio.resume(); }
   });
 
   const title = $('title'), go = $('go');
-  $('bar').hidden = true; $('status').hidden = true; go.hidden = false; $('keys').hidden = false;
+  $('bar').hidden = true; $('status').hidden = true; go.hidden = false; $('keys').hidden = false; $('tkeys').hidden = false; $('ctlpick').hidden = false;
   const start = () => {
     if (game.started) return;
+    touch.save();
     game.started = true;
     audio.start();
     cam.yaw = Math.PI / 2; cam.pitch = 0.2;
@@ -314,11 +349,11 @@ async function boot() {
     title.classList.add('out');
     setTimeout(() => { title.hidden = true; }, 700);
     hud.show();
-    hud.toast('HELICOPTER PARKED NEARBY', 'WALK UP AND PRESS E · CODES: PRESS T');
+    hud.toast('HELICOPTER PARKED NEARBY', input.touchMode ? 'WALK UP AND TAP E · CODES: TAP CODES' : 'WALK UP AND PRESS E · CODES: PRESS T');
     input.enabled = true;
     go.blur();
   };
-  title.addEventListener('click', start);
+  title.addEventListener('click', (e) => { if (!e.target.closest('#ctlpick')) start(); });
   go.focus({ preventScroll: true });
 }
 

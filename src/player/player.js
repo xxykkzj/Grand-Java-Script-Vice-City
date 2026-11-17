@@ -86,7 +86,7 @@ export function createPlayer(scene, L) {
       const fx = Math.sin(camYaw), fz = Math.cos(camYaw);
       let dx = fx * inp.move - fz * inp.strafe, dz = fz * inp.move + fx * inp.strafe;
       const len = Math.hypot(dx, dz), top = inp.sprint ? 13.5 : 7.5;
-      if (len > 0) { dx = dx / len * top; dz = dz / len * top; }
+      if (len > 0) { const k = top * Math.min(1, len) / len; dx *= k; dz *= k; }   // keys give len >= 1, the touch stick less
       const rate = P.onGround ? (len > 0 ? 5 : 1.7) : 1;
       P.vel.x = damp(P.vel.x, dx, rate, dt); P.vel.z = damp(P.vel.z, dz, rate, dt);
       if (inp.jump && P.onGround) { P.vy = 8.4; P.onGround = false; audio.jump(); }

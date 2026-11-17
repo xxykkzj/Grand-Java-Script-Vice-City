@@ -1,7 +1,11 @@
 // Keyboard + mouse-drag state. Gameplay keys are ignored while the cheat console has focus.
+// The touch controls (ui/touch.js) feed the same state: virtual keys through vkey(), the stick
+// through `stick`, and look-drags through look(), so the game logic only ever sees "keys".
 export function createInput(canvas) {
   const down = new Set();
   const pressed = new Set();
+  const vdown = new Set(), vrelease = new Set(), vframe = new Map();
+  let frameNo = 0;
   const input = {
     enabled: false,
     typing: false,
@@ -10,9 +14,29 @@ export function createInput(canvas) {
     lastDrag: -10,
     clicked: false,
     onKey: null,
-    isDown: (...codes) => codes.some((c) => down.has(c)),
+    touchMode: false,
+    // analog stick from the touch controls: x right, y down, -1..1
+    stick: { on: false, x: 0, y: 0 },
+    isDown: (...codes) => codes.some((c) => down.has(c) || vdown.has(c)),
     wasPressed: (c) => pressed.has(c),
-    endFrame() { pressed.clear(); input.dragDX = 0; input.dragDY = 0; input.clicked = false; },
+    // an on-screen button acting as a key: down = keydown (fires onKey once), up = keyup.
+    // A tap shorter than a frame is held until the end of the next frame so it is never lost.
+    vkey(code, on) {
+      if (on) {
+        if (!input.enabled) return;
+        vrelease.delete(code);
+        if (!vdown.has(code)) { pressed.add(code); vframe.set(code, frameNo); if (input.onKey) input.onKey({ code, key: code, repeat: false, preventDefault() {} }); }
+        vdown.add(code);
+      } else if (vdown.has(code)) {
+        if (vframe.get(code) === frameNo) vrelease.add(code); else vdown.delete(code);
+      }
+    },
+    look(dx, dy) { input.dragDX += dx; input.dragDY += dy; input.dragging = true; input.lastDrag = performance.now() / 1000; },
+    endFrame() {
+      pressed.clear(); input.dragDX = 0; input.dragDY = 0; input.clicked = false;
+      for (const c of vrelease) vdown.delete(c);
+      vrelease.clear(); frameNo++;
+    },
     axis(neg, pos) { return (input.isDown(...pos) ? 1 : 0) - (input.isDown(...neg) ? 1 : 0); },
   };
   const BLOCK = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Backquote']);
@@ -30,7 +54,7 @@ export function createInput(canvas) {
 
   let px = 0, py = 0, moved = 0, active = false;
   canvas.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || (input.touchMode && e.pointerType === 'touch')) return;
     active = true; moved = 0; px = e.clientX; py = e.clientY;
     canvas.setPointerCapture(e.pointerId);
   });
@@ -48,6 +72,6 @@ export function createInput(canvas) {
   canvas.addEventListener('pointerup', up);
   canvas.addEventListener('pointercancel', () => { active = false; input.dragging = false; });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-  input.clearKeys = () => down.clear();
+  input.clearKeys = () => { down.clear(); vdown.clear(); vrelease.clear(); input.stick.on = false; input.stick.x = input.stick.y = 0; };
   return input;
 }
