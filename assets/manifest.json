@@ -1,5 +1,1808 @@
 [
   {
+    "id": "kenney-car-kit/ambulance",
+    "file": "models/kenney-car-kit/ambulance.glb",
+    "packed": "packed/kenney-car-kit/ambulance.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle",
+    "tags": [
+      "ambulance",
+      "vehicle",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 2804,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 228.1,
+    "packed_kb": 239.3,
+    "bbox": {
+      "min": [
+        -0.75,
+        0,
+        -1.65
+      ],
+      "max": [
+        0.75,
+        1.8,
+        1.6
+      ],
+      "size": [
+        1.5,
+        1.8,
+        3.25
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/box",
+    "file": "models/kenney-car-kit/box.glb",
+    "packed": "packed/kenney-car-kit/box.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "prop",
+    "tags": [
+      "box",
+      "prop",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 124,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 13.8,
+    "packed_kb": 25.2,
+    "bbox": {
+      "min": [
+        -0.357,
+        0,
+        -0.357
+      ],
+      "max": [
+        0.357,
+        0.715,
+        0.357
+      ],
+      "size": [
+        0.715,
+        0.715,
+        0.715
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/cone-flat",
+    "file": "models/kenney-car-kit/cone-flat.glb",
+    "packed": "packed/kenney-car-kit/cone-flat.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "prop",
+    "tags": [
+      "cone",
+      "flat",
+      "prop",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 172,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 16.3,
+    "packed_kb": 27.7,
+    "bbox": {
+      "min": [
+        -0.238,
+        0,
+        -0.238
+      ],
+      "max": [
+        0.238,
+        0.281,
+        0.238
+      ],
+      "size": [
+        0.476,
+        0.281,
+        0.476
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/cone",
+    "file": "models/kenney-car-kit/cone.glb",
+    "packed": "packed/kenney-car-kit/cone.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "prop",
+    "tags": [
+      "cone",
+      "prop",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 172,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 16.3,
+    "packed_kb": 27.7,
+    "bbox": {
+      "min": [
+        -0.238,
+        0,
+        -0.238
+      ],
+      "max": [
+        0.238,
+        0.595,
+        0.238
+      ],
+      "size": [
+        0.476,
+        0.595,
+        0.476
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/debris-bolt",
+    "file": "models/kenney-car-kit/debris-bolt.glb",
+    "packed": "packed/kenney-car-kit/debris-bolt.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle-part",
+    "tags": [
+      "debris",
+      "bolt",
+      "vehicle-part",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 36,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 4.7,
+    "packed_kb": 16.1,
+    "bbox": {
+      "min": [
+        -0.087,
+        0,
+        -0.1
+      ],
+      "max": [
+        0.087,
+        0.26,
+        0.1
+      ],
+      "size": [
+        0.173,
+        0.26,
+        0.2
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/debris-bumper",
+    "file": "models/kenney-car-kit/debris-bumper.glb",
+    "packed": "packed/kenney-car-kit/debris-bumper.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle-part",
+    "tags": [
+      "debris",
+      "bumper",
+      "vehicle-part",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 116,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 11.1,
+    "packed_kb": 22.4,
+    "bbox": {
+      "min": [
+        -0.65,
+        0,
+        -0.225
+      ],
+      "max": [
+        0.65,
+        0.4,
+        0.225
+      ],
+      "size": [
+        1.3,
+        0.4,
+        0.45
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/debris-door-window",
+    "file": "models/kenney-car-kit/debris-door-window.glb",
+    "packed": "packed/kenney-car-kit/debris-door-window.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle-part",
+    "tags": [
+      "debris",
+      "door",
+      "window",
+      "vehicle-part",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 74,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 7.4,
+    "packed_kb": 18.8,
+    "bbox": {
+      "min": [
+        -0.094,
+        0,
+        -0.4
+      ],
+      "max": [
+        0.094,
+        0.9,
+        0.4
+      ],
+      "size": [
+        0.188,
+        0.9,
+        0.8
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/debris-door",
+    "file": "models/kenney-car-kit/debris-door.glb",
+    "packed": "packed/kenney-car-kit/debris-door.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle-part",
+    "tags": [
+      "debris",
+      "door",
+      "vehicle-part",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 68,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 6.9,
+    "packed_kb": 18.3,
+    "bbox": {
+      "min": [
+        -0.094,
+        0,
+        -0.4
+      ],
+      "max": [
+        0.094,
+        0.9,
+        0.4
+      ],
+      "size": [
+        0.188,
+        0.9,
+        0.8
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/debris-drivetrain-axle",
+    "file": "models/kenney-car-kit/debris-drivetrain-axle.glb",
+    "packed": "packed/kenney-car-kit/debris-drivetrain-axle.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle-part",
+    "tags": [
+      "debris",
+      "drivetrain",
+      "axle",
+      "vehicle-part",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 200,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 18.3,
+    "packed_kb": 29.7,
+    "bbox": {
+      "min": [
+        -0.602,
+        0,
+        -0.174
+      ],
+      "max": [
+        0.602,
+        0.296,
+        0.174
+      ],
+      "size": [
+        1.204,
+        0.296,
+        0.348
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/debris-drivetrain",
+    "file": "models/kenney-car-kit/debris-drivetrain.glb",
+    "packed": "packed/kenney-car-kit/debris-drivetrain.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle-part",
+    "tags": [
+      "debris",
+      "drivetrain",
+      "vehicle-part",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 412,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 36,
+    "packed_kb": 47.4,
+    "bbox": {
+      "min": [
+        -0.602,
+        0,
+        -0.96
+      ],
+      "max": [
+        0.602,
+        0.296,
+        0.96
+      ],
+      "size": [
+        1.204,
+        0.296,
+        1.92
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/debris-nut",
+    "file": "models/kenney-car-kit/debris-nut.glb",
+    "packed": "packed/kenney-car-kit/debris-nut.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle-part",
+    "tags": [
+      "debris",
+      "nut",
+      "vehicle-part",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 40,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 4.6,
+    "packed_kb": 16,
+    "bbox": {
+      "min": [
+        -0.087,
+        0,
+        -0.1
+      ],
+      "max": [
+        0.087,
+        0.1,
+        0.1
+      ],
+      "size": [
+        0.173,
+        0.1,
+        0.2
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/debris-plate-a",
+    "file": "models/kenney-car-kit/debris-plate-a.glb",
+    "packed": "packed/kenney-car-kit/debris-plate-a.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle-part",
+    "tags": [
+      "debris",
+      "plate",
+      "a",
+      "vehicle-part",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 40,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 4.9,
+    "packed_kb": 16.3,
+    "bbox": {
+      "min": [
+        -0.45,
+        0,
+        -0.45
+      ],
+      "max": [
+        0.45,
+        0.1,
+        0.45
+      ],
+      "size": [
+        0.9,
+        0.1,
+        0.9
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/debris-plate-b",
+    "file": "models/kenney-car-kit/debris-plate-b.glb",
+    "packed": "packed/kenney-car-kit/debris-plate-b.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle-part",
+    "tags": [
+      "debris",
+      "plate",
+      "b",
+      "vehicle-part",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 44,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 5.3,
+    "packed_kb": 16.7,
+    "bbox": {
+      "min": [
+        -0.45,
+        0,
+        -0.45
+      ],
+      "max": [
+        0.45,
+        0.2,
+        0.45
+      ],
+      "size": [
+        0.9,
+        0.2,
+        0.9
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/debris-plate-small-a",
+    "file": "models/kenney-car-kit/debris-plate-small-a.glb",
+    "packed": "packed/kenney-car-kit/debris-plate-small-a.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle-part",
+    "tags": [
+      "debris",
+      "plate",
+      "small",
+      "a",
+      "vehicle-part",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 28,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 4.1,
+    "packed_kb": 15.5,
+    "bbox": {
+      "min": [
+        -0.225,
+        0,
+        -0.225
+      ],
+      "max": [
+        0.225,
+        0.1,
+        0.225
+      ],
+      "size": [
+        0.45,
+        0.1,
+        0.45
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/debris-plate-small-b",
+    "file": "models/kenney-car-kit/debris-plate-small-b.glb",
+    "packed": "packed/kenney-car-kit/debris-plate-small-b.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle-part",
+    "tags": [
+      "debris",
+      "plate",
+      "small",
+      "b",
+      "vehicle-part",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 44,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 5.3,
+    "packed_kb": 16.7,
+    "bbox": {
+      "min": [
+        -0.225,
+        0,
+        -0.225
+      ],
+      "max": [
+        0.225,
+        0.2,
+        0.225
+      ],
+      "size": [
+        0.45,
+        0.2,
+        0.45
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/debris-spoiler-a",
+    "file": "models/kenney-car-kit/debris-spoiler-a.glb",
+    "packed": "packed/kenney-car-kit/debris-spoiler-a.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle-part",
+    "tags": [
+      "debris",
+      "spoiler",
+      "a",
+      "vehicle-part",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 48,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 5.5,
+    "packed_kb": 16.9,
+    "bbox": {
+      "min": [
+        -0.55,
+        0,
+        -0.119
+      ],
+      "max": [
+        0.55,
+        0.3,
+        0.119
+      ],
+      "size": [
+        1.1,
+        0.3,
+        0.237
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/debris-spoiler-b",
+    "file": "models/kenney-car-kit/debris-spoiler-b.glb",
+    "packed": "packed/kenney-car-kit/debris-spoiler-b.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle-part",
+    "tags": [
+      "debris",
+      "spoiler",
+      "b",
+      "vehicle-part",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 88,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 8.4,
+    "packed_kb": 19.8,
+    "bbox": {
+      "min": [
+        -0.5,
+        0,
+        -0.169
+      ],
+      "max": [
+        0.5,
+        0.35,
+        0.169
+      ],
+      "size": [
+        1,
+        0.35,
+        0.337
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/debris-tire",
+    "file": "models/kenney-car-kit/debris-tire.glb",
+    "packed": "packed/kenney-car-kit/debris-tire.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle-part",
+    "tags": [
+      "debris",
+      "tire",
+      "vehicle-part",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 288,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 25.9,
+    "packed_kb": 37.3,
+    "bbox": {
+      "min": [
+        -0.175,
+        -0.3,
+        -0.3
+      ],
+      "max": [
+        0.175,
+        0.3,
+        0.3
+      ],
+      "size": [
+        0.35,
+        0.6,
+        0.6
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/delivery-flat",
+    "file": "models/kenney-car-kit/delivery-flat.glb",
+    "packed": "packed/kenney-car-kit/delivery-flat.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle",
+    "tags": [
+      "delivery",
+      "flat",
+      "vehicle",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 2574,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 209.4,
+    "packed_kb": 220.7,
+    "bbox": {
+      "min": [
+        -0.75,
+        0,
+        -1.65
+      ],
+      "max": [
+        0.75,
+        1.35,
+        1.6
+      ],
+      "size": [
+        1.5,
+        1.35,
+        3.25
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/delivery",
+    "file": "models/kenney-car-kit/delivery.glb",
+    "packed": "packed/kenney-car-kit/delivery.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle",
+    "tags": [
+      "delivery",
+      "vehicle",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 2476,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 234.7,
+    "packed_kb": 245.9,
+    "bbox": {
+      "min": [
+        -0.75,
+        0,
+        -1.65
+      ],
+      "max": [
+        0.75,
+        1.65,
+        1.6
+      ],
+      "size": [
+        1.5,
+        1.65,
+        3.25
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/firetruck",
+    "file": "models/kenney-car-kit/firetruck.glb",
+    "packed": "packed/kenney-car-kit/firetruck.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle",
+    "tags": [
+      "firetruck",
+      "vehicle",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 2767,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 227,
+    "packed_kb": 238.3,
+    "bbox": {
+      "min": [
+        -0.75,
+        0,
+        -1.7
+      ],
+      "max": [
+        0.75,
+        1.7,
+        1.7
+      ],
+      "size": [
+        1.5,
+        1.7,
+        3.4
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/garbage-truck",
+    "file": "models/kenney-car-kit/garbage-truck.glb",
+    "packed": "packed/kenney-car-kit/garbage-truck.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle",
+    "tags": [
+      "garbage",
+      "truck",
+      "vehicle",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 3124,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 262,
+    "packed_kb": 273.2,
+    "bbox": {
+      "min": [
+        -0.8,
+        0,
+        -1.7
+      ],
+      "max": [
+        0.8,
+        1.6,
+        1.75
+      ],
+      "size": [
+        1.6,
+        1.6,
+        3.45
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/hatchback-sports",
+    "file": "models/kenney-car-kit/hatchback-sports.glb",
+    "packed": "packed/kenney-car-kit/hatchback-sports.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle",
+    "tags": [
+      "hatchback",
+      "sports",
+      "vehicle",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 2088,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 193.2,
+    "packed_kb": 204.5,
+    "bbox": {
+      "min": [
+        -0.65,
+        0,
+        -1.45
+      ],
+      "max": [
+        0.65,
+        1.1,
+        1.4
+      ],
+      "size": [
+        1.3,
+        1.1,
+        2.85
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/police",
+    "file": "models/kenney-car-kit/police.glb",
+    "packed": "packed/kenney-car-kit/police.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle",
+    "tags": [
+      "police",
+      "vehicle",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 2304,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 190.8,
+    "packed_kb": 202,
+    "bbox": {
+      "min": [
+        -0.75,
+        0,
+        -1.55
+      ],
+      "max": [
+        0.75,
+        1.3,
+        1.55
+      ],
+      "size": [
+        1.5,
+        1.3,
+        3.1
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/race-future",
+    "file": "models/kenney-car-kit/race-future.glb",
+    "packed": "packed/kenney-car-kit/race-future.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle",
+    "tags": [
+      "race",
+      "future",
+      "vehicle",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 2068,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 169.1,
+    "packed_kb": 180.4,
+    "bbox": {
+      "min": [
+        -0.6,
+        0,
+        -1.33
+      ],
+      "max": [
+        0.6,
+        0.833,
+        1.33
+      ],
+      "size": [
+        1.2,
+        0.833,
+        2.66
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/race",
+    "file": "models/kenney-car-kit/race.glb",
+    "packed": "packed/kenney-car-kit/race.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle",
+    "tags": [
+      "race",
+      "vehicle",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 1952,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 163.4,
+    "packed_kb": 174.6,
+    "bbox": {
+      "min": [
+        -0.65,
+        0,
+        -1.28
+      ],
+      "max": [
+        0.65,
+        0.733,
+        1.28
+      ],
+      "size": [
+        1.3,
+        0.733,
+        2.56
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/sedan-sports",
+    "file": "models/kenney-car-kit/sedan-sports.glb",
+    "packed": "packed/kenney-car-kit/sedan-sports.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle",
+    "tags": [
+      "sedan",
+      "sports",
+      "vehicle",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 2088,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 173.5,
+    "packed_kb": 184.8,
+    "bbox": {
+      "min": [
+        -0.65,
+        0,
+        -1.3
+      ],
+      "max": [
+        0.65,
+        1.1,
+        1.25
+      ],
+      "size": [
+        1.3,
+        1.1,
+        2.55
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/sedan",
+    "file": "models/kenney-car-kit/sedan.glb",
+    "packed": "packed/kenney-car-kit/sedan.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle",
+    "tags": [
+      "sedan",
+      "vehicle",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 2032,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 168.2,
+    "packed_kb": 179.5,
+    "bbox": {
+      "min": [
+        -0.75,
+        0,
+        -1.3
+      ],
+      "max": [
+        0.75,
+        1.3,
+        1.25
+      ],
+      "size": [
+        1.5,
+        1.3,
+        2.55
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/suv-luxury",
+    "file": "models/kenney-car-kit/suv-luxury.glb",
+    "packed": "packed/kenney-car-kit/suv-luxury.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle",
+    "tags": [
+      "suv",
+      "luxury",
+      "vehicle",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 2086,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 171.8,
+    "packed_kb": 183.1,
+    "bbox": {
+      "min": [
+        -0.75,
+        0,
+        -1.4
+      ],
+      "max": [
+        0.75,
+        1.3,
+        1.45
+      ],
+      "size": [
+        1.5,
+        1.3,
+        2.85
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/suv",
+    "file": "models/kenney-car-kit/suv.glb",
+    "packed": "packed/kenney-car-kit/suv.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle",
+    "tags": [
+      "suv",
+      "vehicle",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 2474,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 202.7,
+    "packed_kb": 214,
+    "bbox": {
+      "min": [
+        -0.75,
+        0,
+        -1.35
+      ],
+      "max": [
+        0.75,
+        1.3,
+        1.35
+      ],
+      "size": [
+        1.5,
+        1.3,
+        2.7
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/taxi",
+    "file": "models/kenney-car-kit/taxi.glb",
+    "packed": "packed/kenney-car-kit/taxi.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle",
+    "tags": [
+      "taxi",
+      "vehicle",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 2072,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 171.5,
+    "packed_kb": 182.8,
+    "bbox": {
+      "min": [
+        -0.75,
+        0,
+        -1.4
+      ],
+      "max": [
+        0.75,
+        1.5,
+        1.35
+      ],
+      "size": [
+        1.5,
+        1.5,
+        2.75
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/tractor-police",
+    "file": "models/kenney-car-kit/tractor-police.glb",
+    "packed": "packed/kenney-car-kit/tractor-police.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle",
+    "tags": [
+      "tractor",
+      "police",
+      "vehicle",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 2278,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 191.7,
+    "packed_kb": 203,
+    "bbox": {
+      "min": [
+        -0.671,
+        0,
+        -1.101
+      ],
+      "max": [
+        0.671,
+        1.702,
+        1.201
+      ],
+      "size": [
+        1.342,
+        1.702,
+        2.302
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/tractor-shovel",
+    "file": "models/kenney-car-kit/tractor-shovel.glb",
+    "packed": "packed/kenney-car-kit/tractor-shovel.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle",
+    "tags": [
+      "tractor",
+      "shovel",
+      "vehicle",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 2646,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 217.4,
+    "packed_kb": 228.6,
+    "bbox": {
+      "min": [
+        -0.83,
+        0,
+        -1.235
+      ],
+      "max": [
+        0.83,
+        1.512,
+        1.235
+      ],
+      "size": [
+        1.661,
+        1.512,
+        2.47
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/tractor",
+    "file": "models/kenney-car-kit/tractor.glb",
+    "packed": "packed/kenney-car-kit/tractor.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle",
+    "tags": [
+      "tractor",
+      "vehicle",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 2044,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 171.9,
+    "packed_kb": 183.1,
+    "bbox": {
+      "min": [
+        -0.671,
+        0,
+        -1.101
+      ],
+      "max": [
+        0.671,
+        1.602,
+        1.101
+      ],
+      "size": [
+        1.342,
+        1.602,
+        2.202
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/truck-flat",
+    "file": "models/kenney-car-kit/truck-flat.glb",
+    "packed": "packed/kenney-car-kit/truck-flat.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle",
+    "tags": [
+      "truck",
+      "flat",
+      "vehicle",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 2488,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 202.6,
+    "packed_kb": 213.8,
+    "bbox": {
+      "min": [
+        -0.75,
+        0,
+        -1.373
+      ],
+      "max": [
+        0.75,
+        1.3,
+        1.373
+      ],
+      "size": [
+        1.5,
+        1.3,
+        2.745
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/truck",
+    "file": "models/kenney-car-kit/truck.glb",
+    "packed": "packed/kenney-car-kit/truck.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle",
+    "tags": [
+      "truck",
+      "vehicle",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 2082,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 172.2,
+    "packed_kb": 183.5,
+    "bbox": {
+      "min": [
+        -0.75,
+        0,
+        -1.5
+      ],
+      "max": [
+        0.75,
+        1.3,
+        1.45
+      ],
+      "size": [
+        1.5,
+        1.3,
+        2.95
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/van",
+    "file": "models/kenney-car-kit/van.glb",
+    "packed": "packed/kenney-car-kit/van.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle",
+    "tags": [
+      "van",
+      "vehicle",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 2082,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 171.6,
+    "packed_kb": 182.9,
+    "bbox": {
+      "min": [
+        -0.75,
+        0,
+        -1.4
+      ],
+      "max": [
+        0.75,
+        1.35,
+        1.35
+      ],
+      "size": [
+        1.5,
+        1.35,
+        2.75
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/wheel-dark",
+    "file": "models/kenney-car-kit/wheel-dark.glb",
+    "packed": "packed/kenney-car-kit/wheel-dark.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle-part",
+    "tags": [
+      "wheel",
+      "dark",
+      "vehicle-part",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 332,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 28.4,
+    "packed_kb": 39.8,
+    "bbox": {
+      "min": [
+        -0.2,
+        -0.3,
+        -0.3
+      ],
+      "max": [
+        0.2,
+        0.3,
+        0.3
+      ],
+      "size": [
+        0.4,
+        0.6,
+        0.6
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/wheel-default",
+    "file": "models/kenney-car-kit/wheel-default.glb",
+    "packed": "packed/kenney-car-kit/wheel-default.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle-part",
+    "tags": [
+      "wheel",
+      "default",
+      "vehicle-part",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 332,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 26.2,
+    "packed_kb": 37.6,
+    "bbox": {
+      "min": [
+        -0.2,
+        -0.3,
+        -0.3
+      ],
+      "max": [
+        0.2,
+        0.3,
+        0.3
+      ],
+      "size": [
+        0.4,
+        0.6,
+        0.6
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/wheel-racing",
+    "file": "models/kenney-car-kit/wheel-racing.glb",
+    "packed": "packed/kenney-car-kit/wheel-racing.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle-part",
+    "tags": [
+      "wheel",
+      "racing",
+      "vehicle-part",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 332,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 28.5,
+    "packed_kb": 39.8,
+    "bbox": {
+      "min": [
+        -0.2,
+        -0.3,
+        -0.3
+      ],
+      "max": [
+        0.2,
+        0.3,
+        0.3
+      ],
+      "size": [
+        0.4,
+        0.6,
+        0.6
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/wheel-tractor-back",
+    "file": "models/kenney-car-kit/wheel-tractor-back.glb",
+    "packed": "packed/kenney-car-kit/wheel-tractor-back.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle-part",
+    "tags": [
+      "wheel",
+      "tractor",
+      "back",
+      "vehicle-part",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 428,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 35.8,
+    "packed_kb": 47.2,
+    "bbox": {
+      "min": [
+        -0.269,
+        -0.438,
+        -0.438
+      ],
+      "max": [
+        0.269,
+        0.438,
+        0.438
+      ],
+      "size": [
+        0.538,
+        0.875,
+        0.875
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/wheel-tractor-dark-back",
+    "file": "models/kenney-car-kit/wheel-tractor-dark-back.glb",
+    "packed": "packed/kenney-car-kit/wheel-tractor-dark-back.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle-part",
+    "tags": [
+      "wheel",
+      "tractor",
+      "dark",
+      "back",
+      "vehicle-part",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 428,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 35.8,
+    "packed_kb": 47.2,
+    "bbox": {
+      "min": [
+        -0.269,
+        -0.438,
+        -0.438
+      ],
+      "max": [
+        0.269,
+        0.438,
+        0.438
+      ],
+      "size": [
+        0.538,
+        0.875,
+        0.875
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/wheel-tractor-dark-front",
+    "file": "models/kenney-car-kit/wheel-tractor-dark-front.glb",
+    "packed": "packed/kenney-car-kit/wheel-tractor-dark-front.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle-part",
+    "tags": [
+      "wheel",
+      "tractor",
+      "dark",
+      "front",
+      "vehicle-part",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 332,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 28.5,
+    "packed_kb": 39.9,
+    "bbox": {
+      "min": [
+        -0.185,
+        -0.269,
+        -0.269
+      ],
+      "max": [
+        0.185,
+        0.269,
+        0.269
+      ],
+      "size": [
+        0.369,
+        0.539,
+        0.539
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/wheel-tractor-front",
+    "file": "models/kenney-car-kit/wheel-tractor-front.glb",
+    "packed": "packed/kenney-car-kit/wheel-tractor-front.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle-part",
+    "tags": [
+      "wheel",
+      "tractor",
+      "front",
+      "vehicle-part",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 332,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 28.5,
+    "packed_kb": 39.9,
+    "bbox": {
+      "min": [
+        -0.185,
+        -0.269,
+        -0.269
+      ],
+      "max": [
+        0.185,
+        0.269,
+        0.269
+      ],
+      "size": [
+        0.369,
+        0.539,
+        0.539
+      ]
+    }
+  },
+  {
+    "id": "kenney-car-kit/wheel-truck",
+    "file": "models/kenney-car-kit/wheel-truck.glb",
+    "packed": "packed/kenney-car-kit/wheel-truck.glb",
+    "source": "Kenney Car Kit",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/car-kit",
+    "category": "vehicle-part",
+    "tags": [
+      "wheel",
+      "truck",
+      "vehicle-part",
+      "cars",
+      "lowpoly"
+    ],
+    "tris": 428,
+    "materials": 1,
+    "textures": 1,
+    "animations": [],
+    "size_kb": 33.5,
+    "packed_kb": 44.9,
+    "bbox": {
+      "min": [
+        -0.175,
+        -0.3,
+        -0.3
+      ],
+      "max": [
+        0.175,
+        0.3,
+        0.3
+      ],
+      "size": [
+        0.35,
+        0.6,
+        0.6
+      ]
+    }
+  },
+  {
     "id": "kenney-city-builder/building-garage",
     "file": "models/kenney-city-builder/building-garage.glb",
     "packed": "packed/kenney-city-builder/building-garage.glb",
@@ -590,6 +2393,1439 @@
         1,
         0.05,
         1
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/driveway_long",
+    "file": "models/kenney-city-suburban/driveway_long.glb",
+    "packed": "packed/kenney-city-suburban/driveway_long.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "road",
+    "tags": [
+      "driveway",
+      "long",
+      "road",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 12,
+    "materials": 2,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 2.7,
+    "packed_kb": 2.7,
+    "bbox": {
+      "min": [
+        -0.18,
+        0,
+        -0.2
+      ],
+      "max": [
+        0.18,
+        0.01,
+        0.2
+      ],
+      "size": [
+        0.36,
+        0.01,
+        0.4
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/driveway_short",
+    "file": "models/kenney-city-suburban/driveway_short.glb",
+    "packed": "packed/kenney-city-suburban/driveway_short.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "road",
+    "tags": [
+      "driveway",
+      "short",
+      "road",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 12,
+    "materials": 2,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 2.7,
+    "packed_kb": 2.7,
+    "bbox": {
+      "min": [
+        -0.18,
+        0,
+        -0.1
+      ],
+      "max": [
+        0.18,
+        0.01,
+        0.1
+      ],
+      "size": [
+        0.36,
+        0.01,
+        0.2
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/fence_large",
+    "file": "models/kenney-city-suburban/fence_large.glb",
+    "packed": "packed/kenney-city-suburban/fence_large.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "fence",
+    "tags": [
+      "fence",
+      "large",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 64,
+    "materials": 1,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 5.3,
+    "packed_kb": 5.3,
+    "bbox": {
+      "min": [
+        -0.6,
+        0,
+        -0.6
+      ],
+      "max": [
+        0.6,
+        0.265,
+        0.6
+      ],
+      "size": [
+        1.2,
+        0.265,
+        1.2
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/fence_medium",
+    "file": "models/kenney-city-suburban/fence_medium.glb",
+    "packed": "packed/kenney-city-suburban/fence_medium.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "fence",
+    "tags": [
+      "fence",
+      "medium",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 64,
+    "materials": 1,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 5.3,
+    "packed_kb": 5.3,
+    "bbox": {
+      "min": [
+        -0.4,
+        0,
+        -0.4
+      ],
+      "max": [
+        0.4,
+        0.265,
+        0.4
+      ],
+      "size": [
+        0.8,
+        0.265,
+        0.8
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/fence_open",
+    "file": "models/kenney-city-suburban/fence_open.glb",
+    "packed": "packed/kenney-city-suburban/fence_open.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "fence",
+    "tags": [
+      "fence",
+      "open",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 56,
+    "materials": 1,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 4.9,
+    "packed_kb": 4.9,
+    "bbox": {
+      "min": [
+        -0.6,
+        0,
+        -0.4
+      ],
+      "max": [
+        0.6,
+        0.165,
+        0.4
+      ],
+      "size": [
+        1.2,
+        0.165,
+        0.8
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/fence_rectangle",
+    "file": "models/kenney-city-suburban/fence_rectangle.glb",
+    "packed": "packed/kenney-city-suburban/fence_rectangle.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "fence",
+    "tags": [
+      "fence",
+      "rectangle",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 64,
+    "materials": 1,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 5.4,
+    "packed_kb": 5.4,
+    "bbox": {
+      "min": [
+        -0.6,
+        0,
+        -0.4
+      ],
+      "max": [
+        0.6,
+        0.265,
+        0.4
+      ],
+      "size": [
+        1.2,
+        0.265,
+        0.8
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/fence_short",
+    "file": "models/kenney-city-suburban/fence_short.glb",
+    "packed": "packed/kenney-city-suburban/fence_short.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "fence",
+    "tags": [
+      "fence",
+      "short",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 64,
+    "materials": 1,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 5.3,
+    "packed_kb": 5.3,
+    "bbox": {
+      "min": [
+        -0.6,
+        0,
+        -0.2
+      ],
+      "max": [
+        0.6,
+        0.265,
+        0.2
+      ],
+      "size": [
+        1.2,
+        0.265,
+        0.4
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/fence_small",
+    "file": "models/kenney-city-suburban/fence_small.glb",
+    "packed": "packed/kenney-city-suburban/fence_small.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "fence",
+    "tags": [
+      "fence",
+      "small",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 64,
+    "materials": 1,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 5.3,
+    "packed_kb": 5.3,
+    "bbox": {
+      "min": [
+        -0.4,
+        0,
+        -0.2
+      ],
+      "max": [
+        0.4,
+        0.265,
+        0.2
+      ],
+      "size": [
+        0.8,
+        0.265,
+        0.4
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/fence_wide",
+    "file": "models/kenney-city-suburban/fence_wide.glb",
+    "packed": "packed/kenney-city-suburban/fence_wide.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "fence",
+    "tags": [
+      "fence",
+      "wide",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 64,
+    "materials": 1,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 5.3,
+    "packed_kb": 5.3,
+    "bbox": {
+      "min": [
+        -0.8,
+        0,
+        -0.2
+      ],
+      "max": [
+        0.8,
+        0.265,
+        0.2
+      ],
+      "size": [
+        1.6,
+        0.265,
+        0.4
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/house_type01",
+    "file": "models/kenney-city-suburban/house_type01.glb",
+    "packed": "packed/kenney-city-suburban/house_type01.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "building",
+    "tags": [
+      "house",
+      "type01",
+      "building",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 340,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 21.6,
+    "packed_kb": 21.6,
+    "bbox": {
+      "min": [
+        0,
+        0,
+        -0.916
+      ],
+      "max": [
+        1.3,
+        0.738,
+        0
+      ],
+      "size": [
+        1.3,
+        0.738,
+        0.916
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/house_type02",
+    "file": "models/kenney-city-suburban/house_type02.glb",
+    "packed": "packed/kenney-city-suburban/house_type02.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "building",
+    "tags": [
+      "house",
+      "type02",
+      "building",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 766,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 50.1,
+    "packed_kb": 50.1,
+    "bbox": {
+      "min": [
+        -0.654,
+        0,
+        -0.703
+      ],
+      "max": [
+        0.654,
+        1.137,
+        0.703
+      ],
+      "size": [
+        1.308,
+        1.137,
+        1.406
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/house_type03",
+    "file": "models/kenney-city-suburban/house_type03.glb",
+    "packed": "packed/kenney-city-suburban/house_type03.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "building",
+    "tags": [
+      "house",
+      "type03",
+      "building",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 580,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 37.2,
+    "packed_kb": 37.2,
+    "bbox": {
+      "min": [
+        -0.854,
+        0,
+        -0.458
+      ],
+      "max": [
+        0.854,
+        1.137,
+        0.458
+      ],
+      "size": [
+        1.708,
+        1.137,
+        0.916
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/house_type04",
+    "file": "models/kenney-city-suburban/house_type04.glb",
+    "packed": "packed/kenney-city-suburban/house_type04.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "building",
+    "tags": [
+      "house",
+      "type04",
+      "building",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 344,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 24.8,
+    "packed_kb": 24.8,
+    "bbox": {
+      "min": [
+        0,
+        0,
+        -0.916
+      ],
+      "max": [
+        1.286,
+        0.738,
+        0
+      ],
+      "size": [
+        1.286,
+        0.738,
+        0.916
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/house_type05",
+    "file": "models/kenney-city-suburban/house_type05.glb",
+    "packed": "packed/kenney-city-suburban/house_type05.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "building",
+    "tags": [
+      "house",
+      "type05",
+      "building",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 381,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 27.7,
+    "packed_kb": 27.7,
+    "bbox": {
+      "min": [
+        -0.654,
+        0,
+        -0.654
+      ],
+      "max": [
+        0.654,
+        0.738,
+        0.654
+      ],
+      "size": [
+        1.308,
+        0.738,
+        1.308
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/house_type06",
+    "file": "models/kenney-city-suburban/house_type06.glb",
+    "packed": "packed/kenney-city-suburban/house_type06.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "building",
+    "tags": [
+      "house",
+      "type06",
+      "building",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 776,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 48.4,
+    "packed_kb": 48.4,
+    "bbox": {
+      "min": [
+        -0.65,
+        0,
+        -0.658
+      ],
+      "max": [
+        0.65,
+        1.137,
+        0.658
+      ],
+      "size": [
+        1.3,
+        1.137,
+        1.316
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/house_type07",
+    "file": "models/kenney-city-suburban/house_type07.glb",
+    "packed": "packed/kenney-city-suburban/house_type07.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "building",
+    "tags": [
+      "house",
+      "type07",
+      "building",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 298,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 21.9,
+    "packed_kb": 21.9,
+    "bbox": {
+      "min": [
+        -0.65,
+        0,
+        -0.458
+      ],
+      "max": [
+        0.65,
+        0.738,
+        0.458
+      ],
+      "size": [
+        1.3,
+        0.738,
+        0.916
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/house_type08",
+    "file": "models/kenney-city-suburban/house_type08.glb",
+    "packed": "packed/kenney-city-suburban/house_type08.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "building",
+    "tags": [
+      "house",
+      "type08",
+      "building",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 688,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 48,
+    "packed_kb": 48,
+    "bbox": {
+      "min": [
+        -0.868,
+        0,
+        -0.503
+      ],
+      "max": [
+        0.868,
+        1.2,
+        0.503
+      ],
+      "size": [
+        1.736,
+        1.2,
+        1.006
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/house_type09",
+    "file": "models/kenney-city-suburban/house_type09.glb",
+    "packed": "packed/kenney-city-suburban/house_type09.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "building",
+    "tags": [
+      "house",
+      "type09",
+      "building",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 428,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 29.4,
+    "packed_kb": 29.4,
+    "bbox": {
+      "min": [
+        -0.65,
+        0,
+        -0.458
+      ],
+      "max": [
+        0.65,
+        0.834,
+        0.458
+      ],
+      "size": [
+        1.3,
+        0.834,
+        0.916
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/house_type10",
+    "file": "models/kenney-city-suburban/house_type10.glb",
+    "packed": "packed/kenney-city-suburban/house_type10.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "building",
+    "tags": [
+      "house",
+      "type10",
+      "building",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 718,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 47.2,
+    "packed_kb": 47.2,
+    "bbox": {
+      "min": [
+        -0.903,
+        0,
+        -0.699
+      ],
+      "max": [
+        0.903,
+        1.137,
+        0.699
+      ],
+      "size": [
+        1.806,
+        1.137,
+        1.398
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/house_type11",
+    "file": "models/kenney-city-suburban/house_type11.glb",
+    "packed": "packed/kenney-city-suburban/house_type11.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "building",
+    "tags": [
+      "house",
+      "type11",
+      "building",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 470,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 32.5,
+    "packed_kb": 32.5,
+    "bbox": {
+      "min": [
+        -0.629,
+        0,
+        -0.543
+      ],
+      "max": [
+        0.629,
+        1.137,
+        0.543
+      ],
+      "size": [
+        1.258,
+        1.137,
+        1.086
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/house_type12",
+    "file": "models/kenney-city-suburban/house_type12.glb",
+    "packed": "packed/kenney-city-suburban/house_type12.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "building",
+    "tags": [
+      "house",
+      "type12",
+      "building",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 630,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 40.6,
+    "packed_kb": 40.6,
+    "bbox": {
+      "min": [
+        -0.65,
+        0,
+        -0.503
+      ],
+      "max": [
+        0.65,
+        1.137,
+        0.503
+      ],
+      "size": [
+        1.3,
+        1.137,
+        1.006
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/house_type13",
+    "file": "models/kenney-city-suburban/house_type13.glb",
+    "packed": "packed/kenney-city-suburban/house_type13.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "building",
+    "tags": [
+      "house",
+      "type13",
+      "building",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 576,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 37.8,
+    "packed_kb": 37.8,
+    "bbox": {
+      "min": [
+        -0.675,
+        0,
+        -0.458
+      ],
+      "max": [
+        0.675,
+        1,
+        0.458
+      ],
+      "size": [
+        1.35,
+        1,
+        0.916
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/house_type14",
+    "file": "models/kenney-city-suburban/house_type14.glb",
+    "packed": "packed/kenney-city-suburban/house_type14.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "building",
+    "tags": [
+      "house",
+      "type14",
+      "building",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 442,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 31.8,
+    "packed_kb": 31.8,
+    "bbox": {
+      "min": [
+        -0.654,
+        0,
+        -0.458
+      ],
+      "max": [
+        0.654,
+        1.034,
+        0.458
+      ],
+      "size": [
+        1.308,
+        1.034,
+        0.916
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/house_type15",
+    "file": "models/kenney-city-suburban/house_type15.glb",
+    "packed": "packed/kenney-city-suburban/house_type15.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "building",
+    "tags": [
+      "house",
+      "type15",
+      "building",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 316,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 23,
+    "packed_kb": 23,
+    "bbox": {
+      "min": [
+        -0.452,
+        0,
+        -0.45
+      ],
+      "max": [
+        0.452,
+        1.15,
+        0.45
+      ],
+      "size": [
+        0.904,
+        1.15,
+        0.9
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/house_type16",
+    "file": "models/kenney-city-suburban/house_type16.glb",
+    "packed": "packed/kenney-city-suburban/house_type16.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "building",
+    "tags": [
+      "house",
+      "type16",
+      "building",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 346,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 25.9,
+    "packed_kb": 25.9,
+    "bbox": {
+      "min": [
+        -0.458,
+        0,
+        -0.45
+      ],
+      "max": [
+        0.458,
+        1.137,
+        0.45
+      ],
+      "size": [
+        0.916,
+        1.137,
+        0.9
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/house_type17",
+    "file": "models/kenney-city-suburban/house_type17.glb",
+    "packed": "packed/kenney-city-suburban/house_type17.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "building",
+    "tags": [
+      "house",
+      "type17",
+      "building",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 572,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 39,
+    "packed_kb": 39,
+    "bbox": {
+      "min": [
+        -0.703,
+        0,
+        -0.554
+      ],
+      "max": [
+        0.703,
+        1.137,
+        0.554
+      ],
+      "size": [
+        1.406,
+        1.137,
+        1.108
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/house_type18",
+    "file": "models/kenney-city-suburban/house_type18.glb",
+    "packed": "packed/kenney-city-suburban/house_type18.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "building",
+    "tags": [
+      "house",
+      "type18",
+      "building",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 496,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 31.8,
+    "packed_kb": 31.8,
+    "bbox": {
+      "min": [
+        -0.625,
+        0,
+        -0.458
+      ],
+      "max": [
+        0.625,
+        1.137,
+        0.458
+      ],
+      "size": [
+        1.25,
+        1.137,
+        0.916
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/house_type19",
+    "file": "models/kenney-city-suburban/house_type19.glb",
+    "packed": "packed/kenney-city-suburban/house_type19.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "building",
+    "tags": [
+      "house",
+      "type19",
+      "building",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 398,
+    "materials": 4,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 25.5,
+    "packed_kb": 25.5,
+    "bbox": {
+      "min": [
+        -0.6,
+        0,
+        -0.405
+      ],
+      "max": [
+        0.6,
+        0.85,
+        0.405
+      ],
+      "size": [
+        1.2,
+        0.85,
+        0.81
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/house_type20",
+    "file": "models/kenney-city-suburban/house_type20.glb",
+    "packed": "packed/kenney-city-suburban/house_type20.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "building",
+    "tags": [
+      "house",
+      "type20",
+      "building",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 460,
+    "materials": 4,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 28,
+    "packed_kb": 28,
+    "bbox": {
+      "min": [
+        -0.6,
+        0,
+        -0.405
+      ],
+      "max": [
+        0.6,
+        0.85,
+        0.405
+      ],
+      "size": [
+        1.2,
+        0.85,
+        0.81
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/house_type21",
+    "file": "models/kenney-city-suburban/house_type21.glb",
+    "packed": "packed/kenney-city-suburban/house_type21.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "building",
+    "tags": [
+      "house",
+      "type21",
+      "building",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 400,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 23.4,
+    "packed_kb": 23.4,
+    "bbox": {
+      "min": [
+        -0.429,
+        0,
+        -0.45
+      ],
+      "max": [
+        0.429,
+        1.034,
+        0.45
+      ],
+      "size": [
+        0.858,
+        1.034,
+        0.9
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/path_long",
+    "file": "models/kenney-city-suburban/path_long.glb",
+    "packed": "packed/kenney-city-suburban/path_long.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "road",
+    "tags": [
+      "path",
+      "long",
+      "road",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 12,
+    "materials": 2,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 2.7,
+    "packed_kb": 2.7,
+    "bbox": {
+      "min": [
+        -0.1,
+        0,
+        -0.2
+      ],
+      "max": [
+        0.1,
+        0.01,
+        0.2
+      ],
+      "size": [
+        0.2,
+        0.01,
+        0.4
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/path_short",
+    "file": "models/kenney-city-suburban/path_short.glb",
+    "packed": "packed/kenney-city-suburban/path_short.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "road",
+    "tags": [
+      "path",
+      "short",
+      "road",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 12,
+    "materials": 2,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 2.7,
+    "packed_kb": 2.7,
+    "bbox": {
+      "min": [
+        -0.1,
+        0,
+        -0.1
+      ],
+      "max": [
+        0.1,
+        0.01,
+        0.1
+      ],
+      "size": [
+        0.2,
+        0.01,
+        0.2
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/path_tilesLong",
+    "file": "models/kenney-city-suburban/path_tilesLong.glb",
+    "packed": "packed/kenney-city-suburban/path_tilesLong.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "road",
+    "tags": [
+      "path",
+      "tileslong",
+      "road",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 76,
+    "materials": 2,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 6.5,
+    "packed_kb": 6.5,
+    "bbox": {
+      "min": [
+        -0.07,
+        0,
+        -0.2
+      ],
+      "max": [
+        0.07,
+        0.01,
+        0.2
+      ],
+      "size": [
+        0.14,
+        0.01,
+        0.4
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/path_tilesShort",
+    "file": "models/kenney-city-suburban/path_tilesShort.glb",
+    "packed": "packed/kenney-city-suburban/path_tilesShort.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "road",
+    "tags": [
+      "path",
+      "tilesshort",
+      "road",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 44,
+    "materials": 2,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 4.7,
+    "packed_kb": 4.7,
+    "bbox": {
+      "min": [
+        -0.07,
+        0,
+        -0.1
+      ],
+      "max": [
+        0.07,
+        0.01,
+        0.1
+      ],
+      "size": [
+        0.14,
+        0.01,
+        0.2
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/tree_large",
+    "file": "models/kenney-city-suburban/tree_large.glb",
+    "packed": "packed/kenney-city-suburban/tree_large.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "nature",
+    "tags": [
+      "tree",
+      "large",
+      "nature",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 48,
+    "materials": 2,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 5,
+    "packed_kb": 5,
+    "bbox": {
+      "min": [
+        -0.105,
+        0,
+        -0.121
+      ],
+      "max": [
+        0.105,
+        0.767,
+        0.121
+      ],
+      "size": [
+        0.21,
+        0.767,
+        0.243
+      ]
+    }
+  },
+  {
+    "id": "kenney-city-suburban/tree_small",
+    "file": "models/kenney-city-suburban/tree_small.glb",
+    "packed": "packed/kenney-city-suburban/tree_small.glb",
+    "source": "Kenney City Kit Suburban",
+    "license": "CC0-1.0",
+    "author": "Kenney",
+    "url": "https://www.kenney.nl/assets/city-kit-suburban",
+    "category": "nature",
+    "tags": [
+      "tree",
+      "small",
+      "nature",
+      "suburban",
+      "lowpoly"
+    ],
+    "tris": 48,
+    "materials": 2,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 5,
+    "packed_kb": 5,
+    "bbox": {
+      "min": [
+        -0.105,
+        0,
+        -0.121
+      ],
+      "max": [
+        0.105,
+        0.567,
+        0.121
+      ],
+      "size": [
+        0.21,
+        0.567,
+        0.243
       ]
     }
   },
@@ -1804,6 +5040,954 @@
         6.619,
         5.104,
         1.782
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/Sign_NoParking",
+    "file": "models/quaternius-street/Sign_NoParking.glb",
+    "packed": "packed/quaternius-street/Sign_NoParking.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "sign",
+    "tags": [
+      "sign",
+      "noparking",
+      "street",
+      "lowpoly"
+    ],
+    "tris": 244,
+    "materials": 4,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 14,
+    "packed_kb": 14,
+    "bbox": {
+      "min": [
+        -0.008,
+        0,
+        -0.07
+      ],
+      "max": [
+        0.019,
+        0.539,
+        0.07
+      ],
+      "size": [
+        0.027,
+        0.539,
+        0.139
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/Sign_Stop",
+    "file": "models/quaternius-street/Sign_Stop.glb",
+    "packed": "packed/quaternius-street/Sign_Stop.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "sign",
+    "tags": [
+      "sign",
+      "stop",
+      "street",
+      "lowpoly"
+    ],
+    "tris": 300,
+    "materials": 3,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 16,
+    "packed_kb": 16,
+    "bbox": {
+      "min": [
+        -0.008,
+        0,
+        -0.069
+      ],
+      "max": [
+        0.016,
+        0.538,
+        0.069
+      ],
+      "size": [
+        0.023,
+        0.538,
+        0.138
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/Sign_Triangle",
+    "file": "models/quaternius-street/Sign_Triangle.glb",
+    "packed": "packed/quaternius-street/Sign_Triangle.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "sign",
+    "tags": [
+      "sign",
+      "triangle",
+      "street",
+      "lowpoly"
+    ],
+    "tris": 60,
+    "materials": 3,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 5.9,
+    "packed_kb": 5.9,
+    "bbox": {
+      "min": [
+        -0.008,
+        0,
+        -0.077
+      ],
+      "max": [
+        0.027,
+        0.534,
+        0.077
+      ],
+      "size": [
+        0.035,
+        0.534,
+        0.155
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/Street_3Way",
+    "file": "models/quaternius-street/Street_3Way.glb",
+    "packed": "packed/quaternius-street/Street_3Way.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "road",
+    "tags": [
+      "street",
+      "3way",
+      "road",
+      "lowpoly"
+    ],
+    "tris": 672,
+    "materials": 3,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 29.7,
+    "packed_kb": 29.7,
+    "bbox": {
+      "min": [
+        -1,
+        -0.1,
+        -1
+      ],
+      "max": [
+        1,
+        0.15,
+        1
+      ],
+      "size": [
+        2,
+        0.25,
+        2
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/Street_3Way_2",
+    "file": "models/quaternius-street/Street_3Way_2.glb",
+    "packed": "packed/quaternius-street/Street_3Way_2.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "road",
+    "tags": [
+      "street",
+      "3way",
+      "2",
+      "road",
+      "lowpoly"
+    ],
+    "tris": 188,
+    "materials": 3,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 9.9,
+    "packed_kb": 9.9,
+    "bbox": {
+      "min": [
+        -1,
+        -0.1,
+        -1
+      ],
+      "max": [
+        1,
+        0.15,
+        1
+      ],
+      "size": [
+        2,
+        0.25,
+        2
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/Street_4Way",
+    "file": "models/quaternius-street/Street_4Way.glb",
+    "packed": "packed/quaternius-street/Street_4Way.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "road",
+    "tags": [
+      "street",
+      "4way",
+      "road",
+      "lowpoly"
+    ],
+    "tris": 896,
+    "materials": 3,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 38.4,
+    "packed_kb": 38.4,
+    "bbox": {
+      "min": [
+        -1,
+        -0.1,
+        -1
+      ],
+      "max": [
+        1,
+        0.15,
+        1
+      ],
+      "size": [
+        2,
+        0.25,
+        2
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/Street_4Way_2",
+    "file": "models/quaternius-street/Street_4Way_2.glb",
+    "packed": "packed/quaternius-street/Street_4Way_2.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "road",
+    "tags": [
+      "street",
+      "4way",
+      "2",
+      "road",
+      "lowpoly"
+    ],
+    "tris": 232,
+    "materials": 3,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 11.6,
+    "packed_kb": 11.6,
+    "bbox": {
+      "min": [
+        -1,
+        -0.1,
+        -1
+      ],
+      "max": [
+        1,
+        0.15,
+        1
+      ],
+      "size": [
+        2,
+        0.25,
+        2
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/Street_Bridge",
+    "file": "models/quaternius-street/Street_Bridge.glb",
+    "packed": "packed/quaternius-street/Street_Bridge.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "road",
+    "tags": [
+      "street",
+      "bridge",
+      "road",
+      "lowpoly"
+    ],
+    "tris": 1412,
+    "materials": 4,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 45.9,
+    "packed_kb": 45.9,
+    "bbox": {
+      "min": [
+        -1,
+        -0.1,
+        -1
+      ],
+      "max": [
+        1,
+        0.666,
+        1
+      ],
+      "size": [
+        2,
+        0.766,
+        2
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/Street_Bridge_Ramp",
+    "file": "models/quaternius-street/Street_Bridge_Ramp.glb",
+    "packed": "packed/quaternius-street/Street_Bridge_Ramp.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "road",
+    "tags": [
+      "street",
+      "bridge",
+      "ramp",
+      "road",
+      "lowpoly"
+    ],
+    "tris": 1618,
+    "materials": 4,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 54.1,
+    "packed_kb": 54.1,
+    "bbox": {
+      "min": [
+        -1,
+        -0.1,
+        -1
+      ],
+      "max": [
+        1,
+        0.664,
+        1
+      ],
+      "size": [
+        2,
+        0.764,
+        2
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/Street_Bridge_Underpass",
+    "file": "models/quaternius-street/Street_Bridge_Underpass.glb",
+    "packed": "packed/quaternius-street/Street_Bridge_Underpass.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "road",
+    "tags": [
+      "street",
+      "bridge",
+      "underpass",
+      "road",
+      "lowpoly"
+    ],
+    "tris": 1084,
+    "materials": 4,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 38.2,
+    "packed_kb": 38.2,
+    "bbox": {
+      "min": [
+        -1,
+        -0.1,
+        -1
+      ],
+      "max": [
+        1,
+        0.666,
+        1
+      ],
+      "size": [
+        2,
+        0.766,
+        2
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/Street_Bridge_Water",
+    "file": "models/quaternius-street/Street_Bridge_Water.glb",
+    "packed": "packed/quaternius-street/Street_Bridge_Water.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "road",
+    "tags": [
+      "street",
+      "bridge",
+      "water",
+      "road",
+      "lowpoly"
+    ],
+    "tris": 1412,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 46.8,
+    "packed_kb": 46.8,
+    "bbox": {
+      "min": [
+        -1,
+        -0.1,
+        -1
+      ],
+      "max": [
+        1,
+        0.666,
+        1
+      ],
+      "size": [
+        2,
+        0.766,
+        2
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/Street_Bridge_WaterRamp",
+    "file": "models/quaternius-street/Street_Bridge_WaterRamp.glb",
+    "packed": "packed/quaternius-street/Street_Bridge_WaterRamp.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "road",
+    "tags": [
+      "street",
+      "bridge",
+      "waterramp",
+      "road",
+      "lowpoly"
+    ],
+    "tris": 1104,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 42.9,
+    "packed_kb": 42.9,
+    "bbox": {
+      "min": [
+        -1,
+        -0.1,
+        -1
+      ],
+      "max": [
+        1,
+        0.664,
+        1
+      ],
+      "size": [
+        2,
+        0.764,
+        2
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/Street_Curve",
+    "file": "models/quaternius-street/Street_Curve.glb",
+    "packed": "packed/quaternius-street/Street_Curve.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "road",
+    "tags": [
+      "street",
+      "curve",
+      "road",
+      "lowpoly"
+    ],
+    "tris": 290,
+    "materials": 3,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 14.8,
+    "packed_kb": 14.8,
+    "bbox": {
+      "min": [
+        -1,
+        -0.1,
+        -1
+      ],
+      "max": [
+        1,
+        0.15,
+        1
+      ],
+      "size": [
+        2,
+        0.25,
+        2
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/Street_Deadend",
+    "file": "models/quaternius-street/Street_Deadend.glb",
+    "packed": "packed/quaternius-street/Street_Deadend.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "road",
+    "tags": [
+      "street",
+      "deadend",
+      "road",
+      "lowpoly"
+    ],
+    "tris": 308,
+    "materials": 3,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 12,
+    "packed_kb": 12,
+    "bbox": {
+      "min": [
+        -1,
+        -0.1,
+        -1
+      ],
+      "max": [
+        1,
+        0.15,
+        1
+      ],
+      "size": [
+        2,
+        0.25,
+        2
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/Street_Elevated",
+    "file": "models/quaternius-street/Street_Elevated.glb",
+    "packed": "packed/quaternius-street/Street_Elevated.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "road",
+    "tags": [
+      "street",
+      "elevated",
+      "road",
+      "lowpoly"
+    ],
+    "tris": 394,
+    "materials": 3,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 14.9,
+    "packed_kb": 14.9,
+    "bbox": {
+      "min": [
+        -1,
+        -0.1,
+        -1
+      ],
+      "max": [
+        1,
+        0.48,
+        1
+      ],
+      "size": [
+        2,
+        0.58,
+        2
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/Street_Elevated_Ramp",
+    "file": "models/quaternius-street/Street_Elevated_Ramp.glb",
+    "packed": "packed/quaternius-street/Street_Elevated_Ramp.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "road",
+    "tags": [
+      "street",
+      "elevated",
+      "ramp",
+      "road",
+      "lowpoly"
+    ],
+    "tris": 362,
+    "materials": 3,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 19.8,
+    "packed_kb": 19.8,
+    "bbox": {
+      "min": [
+        -1,
+        -0.102,
+        -1.001
+      ],
+      "max": [
+        1,
+        0.48,
+        1
+      ],
+      "size": [
+        2,
+        0.582,
+        2.001
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/Street_Empty",
+    "file": "models/quaternius-street/Street_Empty.glb",
+    "packed": "packed/quaternius-street/Street_Empty.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "road",
+    "tags": [
+      "street",
+      "empty",
+      "road",
+      "lowpoly"
+    ],
+    "tris": 12,
+    "materials": 1,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 2,
+    "packed_kb": 2,
+    "bbox": {
+      "min": [
+        -1,
+        -0.1,
+        -1
+      ],
+      "max": [
+        1,
+        0.15,
+        1
+      ],
+      "size": [
+        2,
+        0.25,
+        2
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/Street_Empty_Water",
+    "file": "models/quaternius-street/Street_Empty_Water.glb",
+    "packed": "packed/quaternius-street/Street_Empty_Water.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "road",
+    "tags": [
+      "street",
+      "empty",
+      "water",
+      "road",
+      "lowpoly"
+    ],
+    "tris": 44,
+    "materials": 1,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 3,
+    "packed_kb": 3,
+    "bbox": {
+      "min": [
+        -1,
+        -0.1,
+        -1
+      ],
+      "max": [
+        1,
+        0.021,
+        1
+      ],
+      "size": [
+        2,
+        0.121,
+        2
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/Street_Straight",
+    "file": "models/quaternius-street/Street_Straight.glb",
+    "packed": "packed/quaternius-street/Street_Straight.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "road",
+    "tags": [
+      "street",
+      "straight",
+      "road",
+      "lowpoly"
+    ],
+    "tris": 356,
+    "materials": 3,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 14,
+    "packed_kb": 14,
+    "bbox": {
+      "min": [
+        -1,
+        -0.1,
+        -1
+      ],
+      "max": [
+        1,
+        0.15,
+        1
+      ],
+      "size": [
+        2,
+        0.25,
+        2
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/Streetlight_Double",
+    "file": "models/quaternius-street/Streetlight_Double.glb",
+    "packed": "packed/quaternius-street/Streetlight_Double.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "light",
+    "tags": [
+      "streetlight",
+      "double",
+      "light",
+      "street",
+      "lowpoly"
+    ],
+    "tris": 2486,
+    "materials": 3,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 124.4,
+    "packed_kb": 124.4,
+    "bbox": {
+      "min": [
+        -0.066,
+        0,
+        -0.158
+      ],
+      "max": [
+        0.066,
+        1.1,
+        0.158
+      ],
+      "size": [
+        0.132,
+        1.1,
+        0.316
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/Streetlight_Single",
+    "file": "models/quaternius-street/Streetlight_Single.glb",
+    "packed": "packed/quaternius-street/Streetlight_Single.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "light",
+    "tags": [
+      "streetlight",
+      "single",
+      "light",
+      "street",
+      "lowpoly"
+    ],
+    "tris": 1028,
+    "materials": 3,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 54.3,
+    "packed_kb": 54.3,
+    "bbox": {
+      "min": [
+        -0.066,
+        0,
+        -0.066
+      ],
+      "max": [
+        0.066,
+        1.09,
+        0.066
+      ],
+      "size": [
+        0.132,
+        1.09,
+        0.132
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/Streetlight_Triple",
+    "file": "models/quaternius-street/Streetlight_Triple.glb",
+    "packed": "packed/quaternius-street/Streetlight_Triple.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "light",
+    "tags": [
+      "streetlight",
+      "triple",
+      "light",
+      "street",
+      "lowpoly"
+    ],
+    "tris": 2792,
+    "materials": 3,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 139.1,
+    "packed_kb": 139.1,
+    "bbox": {
+      "min": [
+        -0.066,
+        0,
+        -0.158
+      ],
+      "max": [
+        0.066,
+        1.09,
+        0.158
+      ],
+      "size": [
+        0.132,
+        1.09,
+        0.316
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/TrafficLight",
+    "file": "models/quaternius-street/TrafficLight.glb",
+    "packed": "packed/quaternius-street/TrafficLight.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "light",
+    "tags": [
+      "trafficlight",
+      "light",
+      "street",
+      "lowpoly"
+    ],
+    "tris": 352,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 26,
+    "packed_kb": 26,
+    "bbox": {
+      "min": [
+        -0.035,
+        0,
+        -0.045
+      ],
+      "max": [
+        0.088,
+        0.871,
+        0.045
+      ],
+      "size": [
+        0.123,
+        0.871,
+        0.09
+      ]
+    }
+  },
+  {
+    "id": "quaternius-street/TrafficLight_2",
+    "file": "models/quaternius-street/TrafficLight_2.glb",
+    "packed": "packed/quaternius-street/TrafficLight_2.glb",
+    "source": "Quaternius Street Pack",
+    "license": "CC0-1.0",
+    "author": "Quaternius (converted OBJ to GLB with obj2gltf)",
+    "url": "https://www.patreon.com/quaternius",
+    "category": "light",
+    "tags": [
+      "trafficlight",
+      "2",
+      "light",
+      "street",
+      "lowpoly"
+    ],
+    "tris": 398,
+    "materials": 5,
+    "textures": 0,
+    "animations": [],
+    "size_kb": 28,
+    "packed_kb": 28,
+    "bbox": {
+      "min": [
+        -0.035,
+        0,
+        -0.028
+      ],
+      "max": [
+        0.088,
+        1.134,
+        0.643
+      ],
+      "size": [
+        0.123,
+        1.134,
+        0.671
       ]
     }
   }
