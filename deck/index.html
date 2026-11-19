@@ -3,185 +3,242 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>3D on the Web</title>
+<title>three.js and the Web</title>
 <style>
 :root{
-  /* Neon Coast night palette; one slide fills the viewport, arrow keys move between them */
-  --bg:#0b0a1c; --panel:#15122e; --ink:#eef1ff; --muted:#a9b0d0; --cyan:#2ff3ff; --pink:#ff4fae; --gold:#ffd23f;
+  /* Night-studio palette: deep indigo ground, cyan and magenta light, gold for numbers and emphasis */
+  --bg:#08071a; --panel:rgba(255,255,255,.045); --line:rgba(255,255,255,.12); --ink:#f1f3ff; --muted:#a7aed0;
+  --cyan:#2ff3ff; --pink:#ff4fae; --gold:#ffd23f;
   --display:"Avenir Next","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
-  --body:system-ui,-apple-system,"Segoe UI",sans-serif;
+  --body:system-ui,-apple-system,"Segoe UI",sans-serif; --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --ease:cubic-bezier(.2,.7,.2,1);
   color-scheme:dark;
 }
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:18px/1.5 var(--body);overflow:hidden}
-.slide{position:absolute;inset:0;padding:clamp(20px,5vw,72px);display:none;flex-direction:column;justify-content:center;gap:18px;
-  background:radial-gradient(ellipse at 80% 10%,rgba(255,79,174,.14),transparent 55%),radial-gradient(ellipse at 10% 90%,rgba(47,243,255,.12),transparent 50%),var(--bg)}
-.slide.on{display:flex}
-.eye{margin:0;color:var(--pink);font:700 13px var(--body);letter-spacing:.16em;text-transform:uppercase}
-h1,h2{margin:0;font-family:var(--display);line-height:1.05;text-wrap:balance}
-h1{font-size:clamp(40px,7vw,92px)} h2{font-size:clamp(28px,4.4vw,56px)}
-p.lead{margin:0;max-width:62ch;color:var(--muted);font-size:clamp(17px,1.6vw,22px)}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
-.card{background:var(--panel);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:18px}
-.card h3{margin:0 0 6px;font-size:19px}.card p{margin:0;color:var(--muted);font-size:16px}
-.card.hi{border-color:rgba(47,243,255,.5);background:rgba(47,243,255,.07)}
-.split{display:grid;grid-template-columns:1fr 1.25fr;gap:24px;align-items:center;min-height:0;flex:1}
-.stage{position:relative;height:min(62vh,560px);border-radius:16px;overflow:hidden;border:1px solid rgba(47,243,255,.35);background:#05040f}
-.stage iframe,.stage canvas{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
-.load{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;color:var(--muted)}
-.btn{display:inline-block;font:700 14px var(--body);letter-spacing:.1em;text-transform:uppercase;color:#0b0a1c;background:var(--cyan);border:0;border-radius:999px;padding:12px 20px;cursor:pointer;text-decoration:none}
-.btn.ghost{background:transparent;color:var(--ink);border:1px solid rgba(255,255,255,.35)}
-.btn:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
-ul.pts{margin:0;padding-left:20px;display:grid;gap:8px;color:var(--ink)} ul.pts b{color:var(--cyan)}
-.stat{font:800 clamp(30px,4vw,48px) var(--display);color:var(--gold)} .stat small{display:block;font:500 14px var(--body);color:var(--muted)}
-.credit{font-size:13px;color:var(--muted)} .credit a{color:var(--cyan)}
-#hot{position:absolute;left:12px;bottom:12px;right:12px;background:rgba(11,10,28,.85);border:1px solid rgba(255,210,63,.5);border-radius:10px;padding:10px 12px;font-size:15px;min-height:44px}
-nav{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;z-index:5;font:600 13px var(--body);color:var(--muted)}
-nav button{width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(11,10,28,.7);color:var(--ink);font-size:16px;cursor:pointer}
-@media (max-width:820px){.split{grid-template-columns:1fr}.stage{height:46vh}body{overflow:auto}.slide{position:relative;display:none;min-height:100vh}.slide.on{display:flex}}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+#bgfx{position:fixed;inset:0;width:100%;height:100%;display:block;opacity:.55}
+.deck{position:fixed;inset:0}
+.slide{position:absolute;inset:0;padding:clamp(22px,5vw,80px) clamp(22px,6vw,96px) 90px;display:flex;flex-direction:column;justify-content:center;gap:22px;
+  opacity:0;visibility:hidden;transform:translateX(60px) scale(.985);transition:opacity .6s var(--ease),transform .7s var(--ease),visibility 0s .7s}
+.slide.on{opacity:1;visibility:visible;transform:none;transition:opacity .6s var(--ease),transform .7s var(--ease),visibility 0s}
+.slide.back{transform:translateX(-60px) scale(.985)}
+.slide .r{opacity:0;transform:translateY(18px);transition:opacity .6s var(--ease),transform .6s var(--ease)}
+.slide.on .r{opacity:1;transform:none}
+.slide.on .r:nth-child(1){transition-delay:.12s}.slide.on .r:nth-child(2){transition-delay:.22s}.slide.on .r:nth-child(3){transition-delay:.32s}
+.slide.on .r:nth-child(4){transition-delay:.42s}.slide.on .r:nth-child(5){transition-delay:.52s}.slide.on .r:nth-child(6){transition-delay:.62s}
+.eye{margin:0;color:var(--pink);font:700 13px var(--body);letter-spacing:.18em;text-transform:uppercase}
+h1,h2{margin:0;font-family:var(--display);line-height:1.02;letter-spacing:-.02em;text-wrap:balance}
+h1{font-size:clamp(46px,8vw,112px)} h2{font-size:clamp(30px,4.6vw,62px)}
+.grad{background:linear-gradient(90deg,var(--cyan),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{margin:0;max-width:60ch;color:var(--muted);font-size:clamp(17px,1.55vw,22px)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;backdrop-filter:blur(6px)}
+.card h3{margin:0 0 6px;font-size:19px;font-family:var(--display)} .card p{margin:0;color:var(--muted);font-size:16px}
+.card .k{font:700 12px var(--mono);color:var(--cyan);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;display:block}
+.two{display:grid;grid-template-columns:1fr 1.1fr;gap:28px;align-items:center}
+pre{margin:0;padding:18px 20px;border-radius:14px;background:#0d0b24;border:1px solid var(--line);font:14.5px/1.6 var(--mono);color:#dfe6ff;overflow:auto}
+pre .c{color:#7f88b8} pre .k{color:var(--pink)} pre .s{color:var(--gold)} pre .f{color:var(--cyan)}
+.live{position:relative;height:min(56vh,520px);border-radius:16px;overflow:hidden;border:1px solid rgba(47,243,255,.35);background:#05040f}
+.live canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.tag{position:absolute;left:12px;top:12px;font:700 11px var(--mono);letter-spacing:.12em;color:#0b0a1c;background:var(--cyan);padding:5px 9px;border-radius:999px}
+/* full-bleed showcase slides: the work fills the slide, a caption floats over it */
+.slide.show{padding:0;justify-content:flex-end}
+.slide.show .frame{position:absolute;inset:0;border:0;width:100%;height:100%;background:#000}
+.slide.show .cap{position:relative;z-index:2;margin:0 0 76px clamp(18px,4vw,56px);max-width:min(560px,90vw);padding:18px 22px;border-radius:16px;
+  background:rgba(8,7,26,.72);border:1px solid var(--line);backdrop-filter:blur(10px)}
+.cap h2{font-size:clamp(26px,3.4vw,44px)} .cap p{margin:6px 0 0;color:var(--muted);font-size:16px}
+.cap a{color:var(--cyan)}
+.frame ~ .hint{display:none}
+body.showing nav{top:16px;bottom:auto;left:auto;right:16px;transform:none}
+.hint{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:15px}
+.stat{font:800 clamp(34px,4.6vw,60px)/1 var(--display);color:var(--gold)} .stat small{display:block;margin-top:6px;font:500 14px var(--body);color:var(--muted)}
+#hot{position:absolute;left:12px;right:12px;bottom:12px;background:rgba(8,7,26,.85);border:1px solid rgba(255,210,63,.5);border-radius:12px;padding:10px 14px;font-size:15px}
+.bar{position:fixed;left:0;top:0;height:3px;background:linear-gradient(90deg,var(--cyan),var(--pink));transition:width .6s var(--ease);z-index:10}
+nav{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);display:flex;align-items:center;gap:12px;z-index:10;font:600 13px var(--mono);color:var(--muted)}
+nav button{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:rgba(8,7,26,.75);color:var(--ink);font-size:16px;cursor:pointer;transition:border-color .2s,color .2s}
+nav button:hover,nav button:focus-visible{border-color:var(--cyan);color:var(--cyan);outline:none}
+@media (max-width:860px){.two{grid-template-columns:1fr}.live{height:40vh}.slide{overflow:auto;justify-content:flex-start}}
+@media (prefers-reduced-motion:reduce){.slide,.slide .r{transition:none!important;transform:none!important}}
 </style>
 </head>
 <body>
+<canvas id="bgfx" aria-hidden="true"></canvas>
+<div class="bar" id="bar"></div>
+<main class="deck" id="deck">
 
-<section class="slide on" aria-label="Slide 1">
-  <p class="eye">Show &amp; tell · digital experience</p>
-  <h1>3D on the web,<br>without the app</h1>
-  <p class="lead">What three.js lets a plain web page do today, and where it could make public information pages feel like places worth visiting.</p>
-  <div><a class="btn ghost" href="../">Back to Neon Coast</a></div>
+<section class="slide" aria-label="Title">
+  <p class="eye r">Show &amp; tell · digital experience</p>
+  <h1 class="r">three.js:<br><span class="grad">the web, in 3D</span></h1>
+  <p class="lead r">What a free JavaScript library lets an ordinary web page do, and why it matters for the sites we build.</p>
 </section>
 
-<section class="slide" aria-label="Slide 2">
-  <p class="eye">Why now</p>
-  <h2>The browser is a 3D engine already</h2>
-  <div class="grid">
-    <div class="card"><h3>No install</h3><p>A link opens it. No app store, no plugin, works on phones and laptops.</p></div>
-    <div class="card"><h3>Small</h3><p>A whole world can ship in one HTML file of a megabyte or two, because shapes, textures and sound can be generated by code.</p></div>
-    <div class="card"><h3>Web skills we have</h3><p>It's JavaScript, HTML and CSS: the same tools our team uses every day, with three.js handling WebGL.</p></div>
-    <div class="card"><h3>Mixes with the page</h3><p>Real HTML text, buttons and forms sit on top of the 3D, so accessibility and SEO still work.</p></div>
+<section class="slide" aria-label="What is three.js">
+  <p class="eye r">What it is</p>
+  <h2 class="r">A 3D engine that runs in every browser</h2>
+  <div class="grid r">
+    <div class="card"><span class="k">Scene</span><h3>Things in a world</h3><p>Meshes, lights, fog and particles arranged in a scene graph, like a DOM for 3D.</p></div>
+    <div class="card"><span class="k">Camera</span><h3>A point of view</h3><p>Perspective or orthographic cameras that you can fly, orbit or tie to scroll.</p></div>
+    <div class="card"><span class="k">Renderer</span><h3>The GPU does the work</h3><p>Draws with WebGL today, with a WebGPU renderer for the next generation of browsers.</p></div>
+    <div class="card"><span class="k">Ecosystem</span><h3>Open and mature</h3><p>MIT-licensed, years of examples, loaders for standard 3D files, physics and post-processing add-ons.</p></div>
   </div>
 </section>
 
-<section class="slide" aria-label="Slide 3">
-  <p class="eye">Example 1 · ours</p>
-  <div class="split">
+<section class="slide" aria-label="Ten lines">
+  <p class="eye r">How little it takes</p>
+  <div class="two r">
     <div>
-      <h2>Neon Coast</h2>
-      <p class="lead">An 80s neon open-world game we built for this show &amp; tell: two districts, traffic, the sea, cutscenes and touch controls, in one HTML file.</p>
-      <div class="grid" style="margin-top:16px">
-        <div class="stat">~0.5 MB<small>our minified game code</small></div>
-        <div class="stat">~1.4 MB<small>whole file incl. three.js</small></div>
-        <div class="stat">40–57<small>draw calls in any district</small></div>
-      </div>
-      <p class="credit" style="margin-top:12px">Click the stage to load it. Controls are on its start screen.</p>
+      <h2>A few lines to a live scene</h2>
+      <pre style="margin-top:18px"><span class="k">import</span> * <span class="k">as</span> THREE <span class="k">from</span> <span class="s">'three'</span>;
+<span class="k">const</span> scene = <span class="k">new</span> THREE.<span class="f">Scene</span>();
+<span class="k">const</span> camera = <span class="k">new</span> THREE.<span class="f">PerspectiveCamera</span>(<span class="s">50</span>, w / h);
+<span class="k">const</span> renderer = <span class="k">new</span> THREE.<span class="f">WebGLRenderer</span>({ canvas });
+<span class="k">const</span> knot = <span class="k">new</span> THREE.<span class="f">Mesh</span>(
+  <span class="k">new</span> THREE.<span class="f">TorusKnotGeometry</span>(<span class="s">1</span>, <span class="s">.32</span>, <span class="s">200</span>, <span class="s">24</span>),
+  <span class="k">new</span> THREE.<span class="f">MeshStandardMaterial</span>({ color: <span class="s">'#2ff3ff'</span> }));
+scene.<span class="f">add</span>(knot, <span class="k">new</span> THREE.<span class="f">HemisphereLight</span>());
+renderer.<span class="f">setAnimationLoop</span>(t =&gt; {
+  knot.rotation.y = t / <span class="s">1000</span>;  <span class="c">// spin it</span>
+  renderer.<span class="f">render</span>(scene, camera);
+});</pre>
     </div>
-    <div class="stage" id="gameStage"><div class="load"><div><p>Live game, loads on demand</p><button class="btn" data-load="game">Load Neon Coast</button></div></div></div>
+    <div class="live"><span class="tag">LIVE · DRAG ME</span><canvas id="knotcv" aria-label="A spinning neon knot you can drag"></canvas></div>
   </div>
 </section>
 
-<section class="slide" aria-label="Slide 4">
-  <p class="eye">Example 2 · from the community</p>
-  <div class="split">
-    <div>
-      <h2>Crimson Loong</h2>
-      <p class="lead">A 90-second dragon film that plays live in the browser from a single HTML file. Every mesh, texture and sound is generated by code, with three.js as the only library.</p>
-      <p class="credit" style="margin-top:12px">By ChetasLua · <a href="https://github.com/ChetasLua/crimson-loong">source on GitHub</a> · shown from its own live demo, <a href="https://chetaslua.github.io/crimson-loong/">chetaslua.github.io/crimson-loong</a></p>
-    </div>
-    <div class="stage" id="loongStage"><div class="load"><div><p>Plays the author's hosted demo</p><button class="btn" data-load="loong">Play Crimson Loong</button></div></div></div>
+<section class="slide" aria-label="What it brings">
+  <p class="eye r">What it brings to digital experience</p>
+  <h2 class="r">From reading about it to <span class="grad">being there</span></h2>
+  <div class="grid r">
+    <div class="card"><h3>Explore, don't scroll</h3><p>Walk a place, turn an object, see it from any side instead of a fixed photo.</p></div>
+    <div class="card"><h3>Explain the complex</h3><p>Show how a building, machine or process fits together, layer by layer.</p></div>
+    <div class="card"><h3>Configure and compare</h3><p>Try options live: colours, sizes, routes, before you commit.</p></div>
+    <div class="card"><h3>Tell a story</h3><p>Scroll-driven cameras, light and sound turn a page into an experience people remember.</p></div>
+  </div>
+  <div class="grid r" style="max-width:820px">
+    <div class="stat">0<small>installs or plugins</small></div>
+    <div class="stat">1<small>link that works on phone and desktop</small></div>
+    <div class="stat">~1 MB<small>for a whole code-generated world</small></div>
   </div>
 </section>
 
-<section class="slide" aria-label="Slide 5">
-  <p class="eye">Example 3 · from the community</p>
-  <h2>Lumen Isles</h2>
-  <p class="lead">A night flight over glowing floating islands, written in one HTML file with raw WebGL2 and no libraries at all. Ideas worth borrowing:</p>
-  <div class="grid">
-    <div class="card"><h3>Adaptive quality</h3><p>It lowers its own resolution when frames run slow, so weaker devices stay smooth.</p></div>
-    <div class="card"><h3>Light that spreads</h3><p>Glowing plants are painted into a top-down light map that tints the ground around them.</p></div>
-    <div class="card"><h3>Cinematic mode</h3><p>A slow camera orbit for presenting, plus bloom and soft god-rays for atmosphere.</p></div>
-  </div>
-  <p class="credit">By moritzkremb · <a href="https://github.com/moritzkremb/lumen-isles">source on GitHub</a></p>
+<section class="slide show" aria-label="Harbour Lights" data-src="harbour-lights.html">
+  <div class="hint">Loading Harbour Lights…</div>
+  <div class="cap r"><p class="eye">Showcase · ours</p><h2>Harbour Lights</h2><p>A rainy container port at dusk: towers, cranes, water, rain and sound, all generated in code in one HTML file. Drag to look around.</p></div>
 </section>
 
-<section class="slide" aria-label="Slide 6">
-  <p class="eye">Use case · government information pages</p>
-  <div class="split">
+<section class="slide show" aria-label="Crimson Loong" data-src="https://chetaslua.github.io/crimson-loong/">
+  <div class="hint">Loading Crimson Loong…</div>
+  <div class="cap r"><p class="eye">Showcase · community</p><h2>Crimson Loong</h2><p>A 90-second dragon film that plays live from a single HTML file, every mesh, texture and sound generated by code. By ChetasLua · <a href="https://github.com/ChetasLua/crimson-loong">source</a></p></div>
+</section>
+
+<section class="slide show" aria-label="Lumen Isles" data-src="https://moritzkremb.github.io/lumen-isles/">
+  <div class="hint">Loading Lumen Isles…</div>
+  <div class="cap r"><p class="eye">Showcase · community</p><h2>Lumen Isles</h2><p>A night flight over glowing floating islands in one HTML file. Click inside, then fly with the mouse and W/A/S/D. By moritzkremb · <a href="https://github.com/moritzkremb/lumen-isles">source</a></p></div>
+</section>
+
+<section class="slide" aria-label="Museum use case">
+  <p class="eye r">Use case · a government information page</p>
+  <div class="two r">
     <div>
       <h2>The state museum, in the browser</h2>
-      <ul class="pts" style="margin-top:14px">
-        <li><b>Today:</b> text, opening hours, a PDF, a small photo carousel.</li>
-        <li><b>Turn the object:</b> 3D artefacts you can rotate, zoom and relight.</li>
-        <li><b>Hotspots:</b> tap for captions, audio guide and sign-language video.</li>
-        <li><b>Plan the visit:</b> walk the galleries, check lifts and accessible routes.</li>
-        <li><b>Exhibits that can't travel:</b> fragile pieces shown to regional schools.</li>
-      </ul>
-      <p class="credit" style="margin-top:12px">Live demo: a vase made entirely in code. Drag to turn it, tap the gold dots.</p>
+      <div class="grid" style="margin-top:18px;grid-template-columns:1fr">
+        <div class="card"><h3>Today</h3><p>Text, opening hours, a PDF brochure and a small photo carousel.</p></div>
+        <div class="card" style="border-color:rgba(47,243,255,.45)"><h3>With three.js</h3><p>Turn 3D scans of artefacts, tap hotspots for captions and audio, walk the galleries to plan an accessible visit, and bring fragile pieces to regional schools.</p></div>
+      </div>
     </div>
-    <div class="stage" id="museum"><canvas id="mcv" aria-label="3D vase you can rotate"></canvas><div id="hot" aria-live="polite">Tap a gold dot to read about that part of the vase.</div></div>
+    <div class="live"><span class="tag">LIVE · DRAG, TAP THE GOLD DOTS</span><canvas id="mcv" aria-label="3D vase you can rotate"></canvas><div id="hot" aria-live="polite">Tap a gold dot to read about that part of the vase.</div></div>
   </div>
 </section>
 
-<section class="slide" aria-label="Slide 7">
-  <p class="eye">Doing it responsibly</p>
-  <h2>3D that still meets the bar</h2>
-  <div class="grid">
-    <div class="card hi"><h3>Accessible</h3><p>Real HTML text beside the 3D, keyboard controls, captions, reduced-motion support.</p></div>
-    <div class="card hi"><h3>Fallback</h3><p>A plain 2D page or images when WebGL is missing or the device is slow.</p></div>
-    <div class="card hi"><h3>Budget</h3><p>Set a size and draw-call budget, cap pixel ratio, pause when the tab is hidden.</p></div>
-    <div class="card hi"><h3>Licensed assets</h3><p>Code-generated or CC0/MIT models with credits recorded; never ripped content.</p></div>
+<section class="slide" aria-label="Responsibly">
+  <p class="eye r">Doing it well</p>
+  <h2 class="r">3D that still meets the bar</h2>
+  <div class="grid r">
+    <div class="card"><span class="k">Access</span><h3>Real text first</h3><p>Keep content in HTML for screen readers and search; add captions, keyboard control and reduced motion.</p></div>
+    <div class="card"><span class="k">Fallback</span><h3>Works everywhere</h3><p>A plain 2D page when WebGL is missing or the device is slow.</p></div>
+    <div class="card"><span class="k">Budget</span><h3>Fast on phones</h3><p>Size and draw-call budgets, capped pixel ratio, pause when the tab is hidden.</p></div>
+    <div class="card"><span class="k">Rights</span><h3>Licensed assets</h3><p>Code-generated or CC0/MIT models with credits recorded.</p></div>
   </div>
 </section>
 
-<section class="slide" aria-label="Slide 8">
-  <p class="eye">More places it fits</p>
-  <h2>Beyond the museum</h2>
-  <div class="grid">
-    <div class="card"><h3>Heritage sites</h3><p>Walk a restored building as it was.</p></div>
-    <div class="card"><h3>Planning and zoning</h3><p>See a proposed development in its street.</p></div>
-    <div class="card"><h3>Station wayfinding</h3><p>Find the lift and platform before you arrive.</p></div>
-    <div class="card"><h3>Emergency drills</h3><p>Rehearse evacuation routes in a safe 3D space.</p></div>
-  </div>
-  <div style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn" href="../">Play Neon Coast</a><a class="btn ghost" href="../assets/gallery/">Browse our model library</a></div>
+<section class="slide" aria-label="Close">
+  <p class="eye r">Where else</p>
+  <h2 class="r">Heritage sites, planning maps, station wayfinding, emergency drills…</h2>
+  <p class="lead r">Anywhere people need to understand a place or an object before they arrive.</p>
+  <h1 class="r" style="margin-top:12px"><span class="grad">Questions?</span></h1>
 </section>
 
-<nav aria-label="Slides"><button id="prev" aria-label="Previous slide">←</button><span id="pg">1 / 8</span><button id="next" aria-label="Next slide">→</button></nav>
+</main>
+<nav aria-label="Slides"><button id="prev" aria-label="Previous slide">←</button><span id="pg">1 / 10</span><button id="next" aria-label="Next slide">→</button></nav>
 
 <script>
-const slides=[...document.querySelectorAll('.slide')];let cur=0;
-function show(i){cur=Math.max(0,Math.min(slides.length-1,i));slides.forEach((s,k)=>s.classList.toggle('on',k===cur));document.getElementById('pg').textContent=(cur+1)+' / '+slides.length;if(location.hash!=='#s'+(cur+1))history.replaceState(null,'','#s'+(cur+1));}
+const slides=[...document.querySelectorAll('.slide')];let cur=-1;
+function frameOn(s,on){
+  if(!s.dataset.src)return;let f=s.querySelector('iframe');
+  if(on&&!f){f=document.createElement('iframe');f.className='frame';f.src=s.dataset.src;f.title=s.getAttribute('aria-label');f.allow='autoplay; fullscreen';
+    // our own demo is same-origin: hide its presenter panels so the work fills the slide
+    f.addEventListener('load',()=>{try{f.contentDocument.body.classList.add('clean')}catch(e){}});s.prepend(f);}
+  if(!on&&f)f.remove();   // unload when leaving so a demo stops using the GPU and sound
+}
+function show(i){
+  i=Math.max(0,Math.min(slides.length-1,i));if(i===cur)return;
+  const fwd=i>cur;slides.forEach((s,k)=>{s.classList.toggle('on',k===i);s.classList.toggle('back',k<i||(!fwd&&k===cur&&false));});
+  document.body.classList.toggle('showing',!!slides[i].dataset.src);if(cur>=0)frameOn(slides[cur],false);frameOn(slides[i],true);cur=i;
+  document.getElementById('pg').textContent=(i+1)+' / '+slides.length;
+  document.getElementById('bar').style.width=((i+1)/slides.length*100)+'%';
+  if(location.hash!=='#s'+(i+1))history.replaceState(null,'','#s'+(i+1));
+  window.dispatchEvent(new CustomEvent('slide',{detail:i}));
+}
 document.getElementById('prev').onclick=()=>show(cur-1);document.getElementById('next').onclick=()=>show(cur+1);
-addEventListener('keydown',e=>{if(document.activeElement&&document.activeElement.tagName==='IFRAME')return;if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();show(cur+1)}if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();show(cur-1)}});
+addEventListener('keydown',e=>{if(document.activeElement&&document.activeElement.tagName==='IFRAME')return;
+  if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();show(cur+1)}
+  if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();show(cur-1)}
+  if(e.key==='Home')show(0);if(e.key==='End')show(slides.length-1);});
+let tx=null;addEventListener('touchstart',e=>{tx=e.touches[0].clientX},{passive:true});
+addEventListener('touchend',e=>{if(tx==null)return;const d=e.changedTouches[0].clientX-tx;if(Math.abs(d)>60&&!e.target.closest('.live,iframe'))show(cur+(d<0?1:-1));tx=null},{passive:true});
 const m=/^#s(\d+)$/.exec(location.hash);show(m?+m[1]-1:0);
-const SRC={game:'../dist/index.html',loong:'https://chetaslua.github.io/crimson-loong/'};
-document.querySelectorAll('[data-load]').forEach(b=>b.onclick=()=>{const st=b.closest('.stage');const f=document.createElement('iframe');f.src=SRC[b.dataset.load];f.title=b.textContent;f.allow='autoplay; fullscreen';st.innerHTML='';st.appendChild(f);});
 </script>
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
-const cv=document.getElementById('mcv'),stage=document.getElementById('museum'),hot=document.getElementById('hot');
-let r;try{r=new THREE.WebGLRenderer({canvas:cv,antialias:true});}catch(e){hot.textContent='3D is not available here; this is where a photo of the vase would go.';throw e;}
-r.setPixelRatio(Math.min(devicePixelRatio,2));r.toneMapping=THREE.ACESFilmicToneMapping;r.outputColorSpace=THREE.SRGBColorSpace;
-const sc=new THREE.Scene();sc.background=new THREE.Color('#07061a');
-const cam=new THREE.PerspectiveCamera(38,1,.1,50);cam.position.set(0,1.2,5.2);
-sc.add(new THREE.HemisphereLight('#9fb4ff','#2a1830',.9));const key=new THREE.DirectionalLight('#ffe2c0',2.2);key.position.set(3,4,3);sc.add(key);
-const rim=new THREE.DirectionalLight('#2ff3ff',1.4);rim.position.set(-3,2,-3);sc.add(rim);
-// a vase turned on a lathe from a profile curve, with a painted band generated on a canvas
-const prof=[];for(let i=0;i<=40;i++){const t=i/40,y=t*2.4-1.2;const r0=.38+.55*Math.sin(Math.PI*Math.min(1,t*1.25))*(1-t*.35)-(t>.82?(t-.82)*1.6:0)+(t>.93?.12:0);prof.push(new THREE.Vector2(Math.max(.12,r0),y));}
-const c=document.createElement('canvas');c.width=512;c.height=256;const x=c.getContext('2d');x.fillStyle='#b5582e';x.fillRect(0,0,512,256);
-x.fillStyle='#1d1410';x.fillRect(0,100,512,60);x.strokeStyle='#e8c07a';x.lineWidth=5;for(let i=0;i<16;i++){x.beginPath();x.arc(16+i*32,130,11,0,Math.PI*2);x.stroke();}
-x.fillStyle='#1d1410';for(let i=0;i<32;i++)x.fillRect(i*16,40,8,14);for(let i=0;i<32;i++)x.fillRect(i*16+8,200,8,14);
-const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
-const vase=new THREE.Mesh(new THREE.LatheGeometry(prof,96),new THREE.MeshStandardMaterial({map:tex,roughness:.55,metalness:.05,side:THREE.DoubleSide}));sc.add(vase);
-const plinth=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.2,.35,48),new THREE.MeshStandardMaterial({color:'#1b1a33',roughness:.8}));plinth.position.y=-1.4;sc.add(plinth);
-const HOT=[[new THREE.Vector3(0,1.15,.18),'The rim: a rolled lip, made thicker so it survives handling.'],[new THREE.Vector3(.92,.15,0),'The painted band: rings in gold slip, about the width of a thumb print.'],[new THREE.Vector3(0,-1.05,.42),'The foot: narrow and ringed, so the vase stands on a small base.']];
-const dots=HOT.map(([p,t])=>{const d=new THREE.Mesh(new THREE.SphereGeometry(.07,16,12),new THREE.MeshBasicMaterial({color:'#ffd23f'}));d.position.copy(p);d.userData.t=t;vase.add(d);return d;});
-let yaw=.4,pitch=.1,drag=null,auto=!matchMedia('(prefers-reduced-motion: reduce)').matches;
-cv.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,m:0};cv.setPointerCapture(e.pointerId);});
-cv.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.m+=Math.abs(dx)+Math.abs(dy);yaw+=dx*.01;pitch=Math.max(-.5,Math.min(.6,pitch+dy*.006));drag.x=e.clientX;drag.y=e.clientY;auto=false;});
-const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
-cv.addEventListener('pointerup',e=>{if(drag&&drag.m<6){const b=cv.getBoundingClientRect();ndc.set((e.clientX-b.left)/b.width*2-1,-(e.clientY-b.top)/b.height*2+1);ray.setFromCamera(ndc,cam);const h=ray.intersectObjects(dots)[0];if(h)hot.textContent=h.object.userData.t;}drag=null;});
-function fit(){const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;r.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();}
-new ResizeObserver(fit).observe(stage);fit();
-r.setAnimationLoop(t=>{if(!stage.offsetParent)return;if(auto)yaw+=.004;vase.rotation.set(pitch,yaw,0);dots.forEach((d,i)=>d.scale.setScalar(1+.25*Math.sin(t*.004+i)));r.render(sc,cam);});
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function mk(canvas,bg){const r=new THREE.WebGLRenderer({canvas,antialias:true,alpha:!bg});r.setPixelRatio(Math.min(devicePixelRatio,2));r.toneMapping=THREE.ACESFilmicToneMapping;r.outputColorSpace=THREE.SRGBColorSpace;return r;}
+function fit(r,cam,el){const w=el.clientWidth,h=el.clientHeight;if(!w||!h)return;r.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();}
+function dragOrbit(el,o){let d=null;el.addEventListener('pointerdown',e=>{d={x:e.clientX,y:e.clientY,m:0};el.setPointerCapture(e.pointerId)});
+  el.addEventListener('pointermove',e=>{if(!d)return;const dx=e.clientX-d.x,dy=e.clientY-d.y;d.m+=Math.abs(dx)+Math.abs(dy);o.yaw+=dx*.01;o.pitch=Math.max(-.6,Math.min(.6,o.pitch+dy*.006));d.x=e.clientX;d.y=e.clientY;o.auto=false});
+  el.addEventListener('pointerup',e=>{o.tap&&d&&d.m<6&&o.tap(e);d=null});}
+
+// background: a slow drift of neon particles behind every slide
+{const cv=document.getElementById('bgfx'),r=mk(cv,false),sc=new THREE.Scene(),cam=new THREE.PerspectiveCamera(60,1,.1,200);cam.position.z=40;
+ const n=900,p=new Float32Array(n*3),c=new Float32Array(n*3),A=new THREE.Color('#2ff3ff'),B=new THREE.Color('#ff4fae');
+ for(let i=0;i<n;i++){p.set([(Math.random()-.5)*120,(Math.random()-.5)*70,(Math.random()-.5)*60],i*3);const k=A.clone().lerp(B,Math.random());c.set([k.r,k.g,k.b],i*3);}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(p,3));g.setAttribute('color',new THREE.BufferAttribute(c,3));
+ const pts=new THREE.Points(g,new THREE.PointsMaterial({size:.35,vertexColors:true,transparent:true,opacity:.8,depthWrite:false,blending:THREE.AdditiveBlending}));sc.add(pts);
+ let target=0;addEventListener('slide',e=>target=e.detail*.35);
+ const re=()=>fit(r,cam,document.documentElement);addEventListener('resize',re);re();
+ r.setAnimationLoop(t=>{if(document.hidden)return;if(!reduce)pts.rotation.y+=(target-pts.rotation.y)*.03+.0004;pts.rotation.x=Math.sin(t*.0001)*.08;r.render(sc,cam);});}
+
+// slide 3: the knot from the code sample
+{const cv=document.getElementById('knotcv'),box=cv.parentElement,r=mk(cv,true),sc=new THREE.Scene(),cam=new THREE.PerspectiveCamera(45,1,.1,50);cam.position.z=5;
+ sc.background=new THREE.Color('#05040f');sc.add(new THREE.HemisphereLight('#9fb4ff','#331a3a',1.2));const L=new THREE.PointLight('#ff4fae',30);L.position.set(3,2,3);sc.add(L);
+ const knot=new THREE.Mesh(new THREE.TorusKnotGeometry(1,.32,220,28),new THREE.MeshStandardMaterial({color:'#2ff3ff',roughness:.25,metalness:.4,emissive:'#0a3340'}));sc.add(knot);
+ const o={yaw:0,pitch:.2,auto:true};dragOrbit(cv,o);new ResizeObserver(()=>fit(r,cam,box)).observe(box);
+ r.setAnimationLoop(t=>{if(!box.offsetParent||box.closest('.slide:not(.on)'))return;if(o.auto&&!reduce)o.yaw+=.008;knot.rotation.set(o.pitch,o.yaw,0);r.render(sc,cam);});}
+
+// museum vase: a lathe profile with a painted band and three hotspots
+{const cv=document.getElementById('mcv'),box=cv.parentElement,hot=document.getElementById('hot'),r=mk(cv,true),sc=new THREE.Scene(),cam=new THREE.PerspectiveCamera(38,1,.1,50);
+ sc.background=new THREE.Color('#07061a');cam.position.set(0,1.2,5.2);cam.lookAt(0,0,0);
+ sc.add(new THREE.HemisphereLight('#9fb4ff','#2a1830',.9));const key=new THREE.DirectionalLight('#ffe2c0',2.2);key.position.set(3,4,3);sc.add(key);const rim=new THREE.DirectionalLight('#2ff3ff',1.4);rim.position.set(-3,2,-3);sc.add(rim);
+ const prof=[];for(let i=0;i<=40;i++){const t=i/40,y=t*2.4-1.2;const r0=.38+.55*Math.sin(Math.PI*Math.min(1,t*1.25))*(1-t*.35)-(t>.82?(t-.82)*1.6:0)+(t>.93?.12:0);prof.push(new THREE.Vector2(Math.max(.12,r0),y));}
+ const c=document.createElement('canvas');c.width=512;c.height=256;const x=c.getContext('2d');x.fillStyle='#b5582e';x.fillRect(0,0,512,256);x.fillStyle='#1d1410';x.fillRect(0,100,512,60);
+ x.strokeStyle='#e8c07a';x.lineWidth=5;for(let i=0;i<16;i++){x.beginPath();x.arc(16+i*32,130,11,0,Math.PI*2);x.stroke();}for(let i=0;i<32;i++){x.fillRect(i*16,40,8,14);x.fillRect(i*16+8,200,8,14);}
+ const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
+ const vase=new THREE.Mesh(new THREE.LatheGeometry(prof,96),new THREE.MeshStandardMaterial({map:tex,roughness:.55,side:THREE.DoubleSide}));sc.add(vase);
+ const pl=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.2,.35,48),new THREE.MeshStandardMaterial({color:'#1b1a33',roughness:.8}));pl.position.y=-1.4;sc.add(pl);
+ const HOT=[[[0,1.15,.18],'The rim: a rolled lip, thicker so it survives handling.'],[[.92,.15,0],'The painted band: rings in gold slip, about a thumb-print wide.'],[[0,-1.05,.42],'The foot: narrow and ringed, so the vase stands on a small base.']];
+ const dots=HOT.map(([p,t])=>{const d=new THREE.Mesh(new THREE.SphereGeometry(.07,16,12),new THREE.MeshBasicMaterial({color:'#ffd23f'}));d.position.set(...p);d.userData.t=t;vase.add(d);return d;});
+ const ray=new THREE.Raycaster(),ndc=new THREE.Vector2(),o={yaw:.4,pitch:.1,auto:true,tap(e){const b=cv.getBoundingClientRect();ndc.set((e.clientX-b.left)/b.width*2-1,-(e.clientY-b.top)/b.height*2+1);ray.setFromCamera(ndc,cam);const h=ray.intersectObjects(dots)[0];if(h)hot.textContent=h.object.userData.t;}};
+ dragOrbit(cv,o);new ResizeObserver(()=>fit(r,cam,box)).observe(box);
+ r.setAnimationLoop(t=>{if(box.closest('.slide:not(.on)'))return;if(o.auto&&!reduce)o.yaw+=.004;vase.rotation.set(o.pitch,o.yaw,0);dots.forEach((d,i)=>d.scale.setScalar(1+.25*Math.sin(t*.004+i)));r.render(sc,cam);});}
 </script>
 </body>
 </html>

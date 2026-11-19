@@ -32,7 +32,7 @@ export function createCheats(game) {
   const lines = [];
   const print = (text, err = false) => {
     lines.push({ text, err });
-    while (lines.length > 40) lines.shift();
+    while (lines.length > 150) lines.shift();
     log.textContent = '';
     for (const l of lines) { const d = document.createElement('div'); d.textContent = l.text; if (l.err) d.className = 'err'; log.appendChild(d); }
     log.scrollTop = log.scrollHeight;
@@ -104,8 +104,10 @@ export function createCheats(game) {
       const code = String(raw).trim().toUpperCase();
       if (!code) return false;
       if (code === 'HELP') {
-        print('> HELP');
+        lines.length = 0;                                   // start the list at the top so every code shows
+        print('> HELP  (' + Object.keys(CODES).length + ' codes, scroll for more)');
         for (const [k, v] of Object.entries(CODES)) print(`  ${k.padEnd(11)} ${v}`);
+        log.scrollTop = 0;
         audio.blip(true);
         return true;
       }
