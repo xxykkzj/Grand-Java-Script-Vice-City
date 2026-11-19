@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { box, cyl, tint, merge, PI, rng, beatU, section, angleDelta } from '../core/util.js';
 import { newPose, dancePose, cheerPose, sitPose, blendPose } from '../actors/moves.js';
 import { CLUB_CROWD, clubTier } from './story.js';
+import { createFigure, asNPC, crowdParts } from '../actors/figure.js';
 
 export const OY = -90;
 const NEON = ['#ff2bd1', '#18f0ff', '#ffe14a', '#8dff5a', '#ff6a3d', '#b388ff'];
@@ -51,31 +52,11 @@ export function addRim(mat) {
   return mat;
 }
 const npcMat = addRim(new THREE.MeshLambertMaterial({ vertexColors: true }));
+// The cast are procedural, skinned figures (actors/figure.js); asNPC gives them the shape the rooms and the
+// cutscenes use: { g, head, armL, armR, thighs, shins, sit(seat), stand() } plus fig (face, talking, dims).
 function makeNPC(key) {
-  const o = LOOKS[key], g = new THREE.Group(), mat = npcMat;
-  const add = (geos, x, y, z, parent = g) => { const m = new THREE.Mesh(merge(geos), mat); m.position.set(x, y, z); parent.add(m); return m; };
-  add([box(0.46, 0.6, 0.26, 0, 1.2, 0, o.top), box(0.38, 0.12, 0.25, 0, 0.88, 0, o.legs), box(0.12, 0.1, 0.12, 0, 1.53, 0, o.skin), ...o.body.map(bx)], 0, 0, 0);
-  // legs: both thighs pivot at the hips, both shins at the knees, so the cast can sit down in a booth
-  const thighs = add([box(0.17, 0.46, 0.23, 0.095, -0.23, 0, o.legs), box(0.17, 0.46, 0.23, -0.095, -0.23, 0, o.legs)], 0, 0.9, 0);
-  const shins = add([box(0.15, 0.42, 0.2, 0.095, -0.2, 0, o.legs), box(0.15, 0.42, 0.2, -0.095, -0.2, 0, o.legs),
-    box(0.17, 0.08, 0.29, 0.095, -0.42, 0.045, o.shoe || '#1b1830'), box(0.17, 0.08, 0.29, -0.095, -0.42, 0.045, o.shoe || '#1b1830')], 0, -0.46, 0, thighs);
-  const head = add([box(0.25, 0.26, 0.25, 0, 0.13, 0, o.skin), box(0.05, 0.05, 0.02, -0.07, 0.15, 0.127, '#1b1830'), box(0.05, 0.05, 0.02, 0.07, 0.15, 0.127, '#1b1830'),
-    box(0.1, 0.025, 0.02, 0, 0.06, 0.127, '#8a3a3a'), ...o.head.map(bx)], 0, 1.57, 0);
-  const arm = (sx) => add([box(0.13, 0.5, 0.14, 0, -0.22, 0, o.sleeve), box(0.1, 0.1, 0.1, 0, -0.5, 0, o.skin)], sx * 0.3, 1.46, 0);
-  const n = { key, g, head, armL: arm(1), armR: arm(-1), thighs, shins, x: 0, y: 0, z: 0, yaw: 0, home: 0, seated: false,
-    // sit on a seat ({ x, z, y, yaw } in room coordinates): hips on the cushion, knees bent, feet on the floor
-    sit(st) {
-      Object.assign(n, { seated: true, x: st.x, z: st.z, y: -0.42, yaw: st.yaw });
-      g.position.set(st.x, st.y - 0.9, st.z); g.rotation.y = st.yaw; thighs.rotation.x = -1.5; shins.rotation.x = 1.5;
-      if (st.taken !== undefined) st.taken = true;
-    },
-    stand() {
-      if (!n.seated) return;
-      const h = n.homeAt;
-      Object.assign(n, { seated: false, x: h[0], y: h[3] || 0, z: h[1], yaw: h[2] });
-      g.position.set(n.x, n.y, n.z); g.rotation.y = n.yaw; thighs.rotation.x = 0; shins.rotation.x = 0;
-    },
-  };
+  const n = asNPC(createFigure(key, { rimU }), key);
+  n.fig.breathe = true;
   return n;
 }
 
@@ -423,11 +404,11 @@ function buildClub(room) {
   person('sit', 'vip', 8.3, 7.2, PI, { y: 0.5 }); person('sit', 'vip', 9.6, 7.2, PI, { y: 0.5 });
   person('coat', 'coat', -8.1, 6.3, PI / 2);
   const N = crowd.length;
-  const torso = new THREE.InstancedMesh(merge([box(0.44, 0.56, 0.25, 0, 1.22, 0, '#ffffff'), box(0.4, 0.2, 0.25, 0, 0.9, 0, '#c8c8c8'), box(0.45, 0.06, 0.26, 0, 0.98, 0, '#9a9a9a')]), room.mat, N);
-  const head = new THREE.InstancedMesh(merge([box(0.12, 0.1, 0.12, 0, 0.0, 0, '#e8e8e8'), box(0.24, 0.25, 0.24, 0, 0.17, 0, '#ffffff'), box(0.26, 0.11, 0.26, 0, 0.29, -0.01, '#3a3040'),
-    box(0.04, 0.04, 0.02, -0.06, 0.18, 0.122, '#202020'), box(0.04, 0.04, 0.02, 0.06, 0.18, 0.122, '#202020')]), room.mat, N);
-  const arms = new THREE.InstancedMesh(merge([box(0.12, 0.5, 0.13, 0, -0.22, 0, '#ffffff'), box(0.1, 0.1, 0.1, 0, -0.5, 0, '#c8a890')]), room.mat, N * 2);
-  const legs = new THREE.InstancedMesh(merge([box(0.15, 0.82, 0.17, 0, -0.41, 0, '#ffffff'), box(0.16, 0.1, 0.27, 0, -0.86, 0.04, '#3a3a3a')]), room.mat, N * 2);
+  const CP = crowdParts('club'), crowdMat = addRim(new THREE.MeshLambertMaterial({ vertexColors: true }));
+  const torso = new THREE.InstancedMesh(CP.torso, crowdMat, N);
+  const head = new THREE.InstancedMesh(CP.head, crowdMat, N);
+  const arms = new THREE.InstancedMesh(CP.arm, crowdMat, N * 2);
+  const legs = new THREE.InstancedMesh(CP.leg, crowdMat, N * 2);
   const col = new THREE.Color();
   for (const d of crowd) {
     const top = CROWD_TOPS[(d.i * 7) % CROWD_TOPS.length], sk = SKINS[(d.i * 5) % SKINS.length], lg2 = d.kind === 'coat' ? '#22203a' : CROWD_LEGS[(d.i * 3) % CROWD_LEGS.length];
@@ -735,6 +716,8 @@ export function buildRoom(place, scene, game) {
   const mat = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false });
   const room = { key: place.key, mat, npc: {}, extras: [], ox: place.b.cx, oz: place.b.cz, game, idle() {} };
   BUILD[place.key](room, scene);
+  const roomIdle = room.idle;
+  room.idle = (t, dt, still) => { roomIdle(t, dt, still); for (const k in room.npc) room.npc[k].fig.tick(dt || 1 / 60); };
   const group = room.group = new THREE.Group();
   group.add(new THREE.Mesh(merge(room.geo), mat), ...room.extras);
   room.geo = null;

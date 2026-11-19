@@ -53,6 +53,12 @@ export function createDirector(camera, game) {
       if (a.isMe) { if (seated()) return; player.pos.set(O.x + a.x, OY, O.z + a.z); player.yaw = a.yaw; player.speed = 0; } else a.g.rotation.y = a.yaw;
     };
     const parts = (a) => (a.isMe ? player.model : a);
+    const figOf = (a) => (a.isMe ? player.model : a.fig);
+    // eye height of an actor above its feet (the figures carry their own proportions)
+    const eyeY = (a) => { const f = figOf(a); return f && f.dims ? f.dims.eye : 1.62; };
+    const EXPR = { talk: 'smile', point: 'smug', shrug: 'worried', wave: 'grin', nod: 'smile', think: 'neutral' };
+    const _hp = new THREE.Vector3();
+    const lookAtActor = (a, b) => { const f = figOf(a), g = figOf(b); if (!f || !f.lookAt || !g) return; g.head.getWorldPosition(_hp); _hp.y += 0.07 * (g.dims ? g.dims.headScale : 1); f.lookAt(_hp); };
     const gesture = (a, act, t, on) => {
       const m = parts(a), R = m.armR.rotation, Lr = m.armL.rotation, H = m.head.rotation, w = reducedMotion ? 0 : 1;
       if (!on) return;
@@ -99,7 +105,7 @@ export function createDirector(camera, game) {
       let n = 0;
       const beat = {
         dur: typeT + readTime(line[1]), line,
-        start() { say(line); n = reducedMotion ? line[1].length : 0; },
+        start() { say(line); n = reducedMotion ? line[1].length : 0; const f = figOf(S); if (f && f.setExpression) f.setExpression(EXPR[act] || 'smile', act === 'think' ? 1 : 0.7); },
         full() { return n >= line[1].length; },
         // tap / Enter / Space while typing: show the whole line now, then give it its reading time
         reveal(bt) { n = line[1].length; typed.textContent = line[1]; rest.textContent = ''; nx.classList.add('on'); beat.dur = Math.max(bt + readTime(line[1]), beat.dur - typeT); },
@@ -114,9 +120,11 @@ export function createDirector(camera, game) {
           for (const key in room.npc) { const o = room.npc[key]; if (o !== S && o !== Lr) pose(o, o.seated ? Math.atan2(S.x - o.x, S.z - o.z) : o.home, dt); }
           if (seated()) game.act.update(dt, NOCTL, null); else player.animate(dt, 0, null);
           player.talking = S.isMe && n < line[1].length;
+          if (!S.isMe && S.fig) S.fig.talking = n < line[1].length;
+          lookAtActor(S, Lr); lookAtActor(Lr, S);
           const talking = reducedMotion || n < line[1].length || act !== 'talk';
           gesture(S, act, t, talking);
-          const sy = S.y + 1.56, ly = Lr.y + 1.56, push = reducedMotion ? 0 : k;
+          const sy = S.y + eyeY(S) - 0.1, ly = Lr.y + eyeY(Lr) - 0.1, push = reducedMotion ? 0 : k;
           if (kind === 'wide') { const w = T ? T.wide : room.wide; pos.set(w[0], w[1], w[2]); look.set(lerp(w[3], S.x, 0.5), w[4], lerp(w[5], S.z, 0.5)); pos.lerp(look, push * 0.07); fov = 46; }
           else if (kind === 'cu') { pos.set(S.x + ux * 1.45 + px * 0.34, sy + 0.04, S.z + uz * 1.45 + pz * 0.34); look.set(S.x, sy + 0.04, S.z); pos.lerp(look, push * 0.1); fov = 30; }
           else if (kind === 'two') { const mx = (S.x + Lr.x) / 2, mz = (S.z + Lr.z) / 2; pos.set(mx + px * (2.6 + d * 0.5), (sy + ly) / 2 - 0.15, mz + pz * (2.6 + d * 0.5)); look.set(mx, (sy + ly) / 2 - 0.2, mz); pos.x += ux * push * 0.25; pos.z += uz * push * 0.25; fov = 40; }
@@ -126,7 +134,7 @@ export function createDirector(camera, game) {
           setFov(fov);
           camera.lookAt(O.x + look.x, OY + look.y, O.z + look.z);
         },
-        end() { player.talking = false; for (const a of [S, Lr]) { const m = parts(a); m.head.rotation.set(0, 0, 0); if (!a.isMe) { m.armR.rotation.set(0, 0, 0); m.armL.rotation.set(0, 0, 0); } } },
+        end() { player.talking = false; for (const a of [S, Lr]) { const m = parts(a), f = figOf(a); m.head.rotation.set(0, 0, 0); if (!a.isMe) { m.armR.rotation.set(0, 0, 0); m.armL.rotation.set(0, 0, 0); if (a.fig) a.fig.talking = false; } if (f && f.lookAt) { f.lookAt(null); f.setExpression('neutral'); } } },
       };
       return beat;
     });
