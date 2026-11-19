@@ -980,9 +980,8 @@ function makeWardrobe(P, H, gC, gS, look) {
     rbox(gC, [sx - 0.006 * k, cy + 0.045 * k, cz], [0.033 * k, 0.062 * k, 0.138 * k], () => ({ c: fc.c, role: fc.role, w: [BI.bag, 1], rough: 0.7 }), { segs: 10, rows: 5, e: 0.28 });
     rbox(gC, [sx - 0.041 * k, cy + 0.005 * k, cz], [0.004 * k, 0.012 * k, 0.022 * k], () => ({ c: hex('#c9c0d8'), w: [BI.bag, 1], rough: 0.3, metal: 0.6 }), { segs: 8, rows: 4, e: 0.5 });
     const strap = { col: o.strap || '#1b1830', off: (o.off ?? 0.017) + 0.006, n: 18, rough: 0.6 };
-    const eu = o.endU ?? 0.585;
-    W.strip([[1.25, 0.836], [0.9, 0.78], [0, 0.69 + (eu - 0.585) * 0.5], [-0.9, Math.max(eu, 0.6)], [-1.28, eu]], 0.034, strap);
-    W.strip([[1.95, 0.83], [2.4, 0.76], [PI, 0.69 + (eu - 0.585) * 0.5], [-2.3, Math.max(eu, 0.62)], [-1.9, eu]], 0.034, strap);
+    W.strip([[1.25, 0.836], [0.9, 0.78], [0, 0.69], [-0.9, 0.6], [-1.28, 0.585]], 0.034, strap);
+    W.strip([[1.95, 0.83], [2.4, 0.76], [PI, 0.69], [-2.3, 0.62], [-1.9, 0.585]], 0.034, strap);
     W.strip([[1.25, 0.836], [1.6, 0.845], [1.95, 0.83]], 0.034, { ...strap, n: 6 });
   };
   W.shoes = (o) => { const g1 = new Geo(); buildShoe(g1, P, L, o, look); gC.add(g1).add(g1, true); };
@@ -1263,7 +1262,7 @@ function skyeWear(W, look) {
     W.skirt({ top: skirt ? 0.556 : 0.598, len: look.len * 0.95, flare: look.flare * 0.62, pleat: !!look.pleat && look.pleat !== look.skirt, hem: dress, sequin: look.sequin });
     W.skinLegs(0.1);
   } else { W.pants({ u1: 0.585, t1: 0.36, role: 'shorts', off: 0.012, rough: 0.8 }); W.skinLegs(0.32); }
-  W.bag({ role: 'bag', flap: 'trim', off: dress ? 0.012 : 0.017, endU: dress ? 0.625 : 0.585 });
+  W.bag({ role: 'bag', flap: 'trim', off: dress ? 0.008 : 0.017 });
   W.skates({ role: 'boot', stripe: 'jacket', wheel: 'trim', cuffCol: 'trim' });
   W.cap({ back: true, crown: 'trim', band: 'jacket', brim: 'trim' });
 }
@@ -1655,9 +1654,7 @@ export function createFigure(specOrKey, opts = {}) {
     const brx = B.body.rotation.x, brz = B.body.rotation.z;
     for (const s of ['L', 'R']) {
       const leg = B['leg' + s], shin = B['shin' + s];
-      // feet stay level with the ground while upright; lying or swimming (body tipped over) they point
-      const up = 1 - sstep(0.55, 0.95, Math.abs(brx) + Math.abs(brz));
-      B['foot' + s].rotation.set(lerp(0.5, clamp(-(brx + leg.rotation.x + shin.rotation.x) * 0.9, -0.75, 0.6), up), 0, clamp(-(leg.rotation.z + brz) * 0.7, -0.35, 0.35) * up);
+      B['foot' + s].rotation.set(clamp(-(brx + leg.rotation.x + shin.rotation.x) * 0.9, -0.75, 0.6), 0, clamp(-(leg.rotation.z + brz) * 0.7, -0.35, 0.35));
     }
     // face
     const ex = face.exprK, close = clamp(Math.max(face.hookLids, face.blink) + (ex.squint || 0) * 0.25, -0.2, 1);

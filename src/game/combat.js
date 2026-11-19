@@ -118,7 +118,7 @@ export function createCombat(game, scene) {
 
   // ---- the blaster in the courier's hand
   const holder = new THREE.Group();
-  holder.rotation.x = PI / 2;                       // sits in the palm (model.gripR)
+  holder.position.set(0, -0.58, 0.03); holder.rotation.x = PI / 2;
   const heldMat = new THREE.MeshLambertMaterial({ vertexColors: true });
   heldMat.onBeforeCompile = (sh) => {
     sh.vertexShader = 'attribute float aGlow; varying float vGlow;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vGlow = aGlow;');
@@ -127,7 +127,7 @@ export function createCombat(game, scene) {
   const held = new THREE.Mesh(heldGeometry('pop'), heldMat);
   const heldGeo = { pop: held.geometry };
   holder.add(held); holder.visible = false;
-  (player.model.gripR || player.model.armR).add(holder);
+  player.model.armR.add(holder);
   let heldId = 'pop';
   if (inv.cur && inv.cur !== 'pop') { held.geometry = heldGeo[inv.cur] = heldGeometry(inv.cur); heldId = inv.cur; }
 
@@ -626,18 +626,16 @@ export function createCombat(game, scene) {
       const w = inv.cur ? BYID[inv.cur] : null;
       const show = !!w && !player.hidden && !game.inside && game.started && game.busy !== 'cut' && game.busy !== 'down' && game.busy !== 'walkout' && !game.act.mode && (game.mode === 'foot' || game.mode === 'bike');
       holder.visible = show;
-      const m = player.model;
-      if (m.bend) m.bend.R = m.bend.L = null;
       if (!show) return;
+      const m = player.model;
       if (aimT > 0 || gHeld > 0) {
         const pitch = clamp(aim.pitch, -0.6, 0.8);
         if (game.mode === 'foot') {
           player.yaw = aim.yaw; m.root.rotation.y = aim.yaw;
           m.armR.rotation.set(-PI / 2 - pitch, 0, 0.05);
-          if (m.bend) m.bend.R = 0.04;                     // a straight arm down the barrel
-          if (w.id === 'prism' || w.id === 'candle') { m.armL.rotation.set(-PI / 2 - pitch * 0.8, 0, -0.55); if (m.bend) m.bend.L = 0.35; }
+          if (w.id === 'prism' || w.id === 'candle') m.armL.rotation.set(-PI / 2 - pitch * 0.8, 0, -0.55);
           m.head.rotation.x = -pitch * 0.5;
-        } else { m.armR.rotation.set(-PI / 2 - pitch, angleDelta(game.vehicle.yaw, aim.yaw) * 0.6, 0); if (m.bend) m.bend.R = 0.04; }
+        } else m.armR.rotation.set(-PI / 2 - pitch, angleDelta(game.vehicle.yaw, aim.yaw) * 0.6, 0);
       }
       if (player.stagger > 0 && game.mode === 'foot') m.body.rotation.z += Math.sin(timeU.value * 40) * 0.12 * player.stagger;
     },

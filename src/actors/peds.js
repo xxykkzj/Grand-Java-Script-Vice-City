@@ -5,7 +5,6 @@ import * as THREE from 'three';
 import { box, cyl, merge, angleDelta, clamp, PI, dailyCurve, outOfSight } from '../core/util.js';
 import { SIDE_X, KEY } from '../world/layout.js';
 import { KH, KV, KEY_JUNCTIONS } from '../world/key.js';
-import { crowdParts } from './figure.js';
 import { H_ROADS, walkOK } from '../world/roads.js';
 
 const N = 52, DRIVERS = 90;
@@ -70,12 +69,11 @@ export function createPeds(scene, R, grid, game) {
   // ---- instanced body parts
   const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
   const mk = (geo, count) => { const m = new THREE.InstancedMesh(geo, mat, count); m.frustumCulled = false; scene.add(m); return m; };
-  // rounded bodies (actors/figure.js crowdParts): same origins and extents as the old box parts
-  const CP = crowdParts('street');
-  const torso = mk(CP.torso, N + DRIVERS);
-  const head = mk(CP.head, N + DRIVERS);
-  const limb = mk(CP.limb, N * 4);
-  const hat = mk(CP.hat, N);
+  const torso = mk(merge([box(0.42, 0.56, 0.24, 0, 0.28, 0, '#ffffff'), box(0.43, 0.1, 0.25, 0, 0.03, 0, '#b8b8b8'), box(0.16, 0.08, 0.16, 0, 0.6, 0, '#d8d8d8')]), N + DRIVERS);
+  const head = mk(merge([box(0.24, 0.25, 0.24, 0, 0.125, 0, '#ffffff'), box(0.255, 0.1, 0.25, 0, 0.215, -0.01, '#3a3a3a'), box(0.255, 0.16, 0.08, 0, 0.13, -0.09, '#3a3a3a'),
+    box(0.04, 0.04, 0.02, -0.06, 0.14, 0.122, '#202020'), box(0.04, 0.04, 0.02, 0.06, 0.14, 0.122, '#202020')]), N + DRIVERS);
+  const limb = mk(merge([box(0.13, 0.5, 0.14, 0, -0.25, 0, '#ffffff'), box(0.135, 0.12, 0.17, 0, -0.56, 0.015, '#4a4a4a')]), N * 4);
+  const hat = mk(merge([cyl(0.2, 0.2, 0.03, 8, 0, 0.26, 0, '#ffffff'), cyl(0.125, 0.135, 0.1, 8, 0, 0.31, 0, '#ffffff'), box(0.27, 0.035, 0.02, 0, 0.275, 0.125, '#555555')]), N);
   const shadow = new THREE.InstancedMesh(new THREE.CircleGeometry(0.42, 10).rotateX(-PI / 2), new THREE.MeshBasicMaterial({
     color: 0, transparent: true, opacity: 0.26, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), N);
   shadow.frustumCulled = false; shadow.renderOrder = 1; scene.add(shadow);
