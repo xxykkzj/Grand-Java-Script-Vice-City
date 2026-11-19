@@ -1,12 +1,15 @@
 // Loose street furniture and a light physics layer for it. Heavy, fast things push light things:
-//   light   bins, cones, café chairs, potted plants, crates, newspaper boxes, beach balls (and cans):
+//   light   bins, cones, café chairs, potted plants, crates, beach balls (and cans):
 //           knocked flying by anything moving fast enough, the courier on skates included
-//   medium  benches, café tables, vending machines, sandwich boards: block the courier, get shoved
-//           along by cars and only tumble above a topple speed (a vending machine needs ~50 km/h)
+//   medium  benches, café tables, vending machines, newspaper boxes, sandwich boards: block the
+//           courier, get shoved along by cars and only tumble above a topple speed (a vending machine
+//           needs ~50 km/h). 'anchor' ones (newspaper boxes, benches, vending machines) don't budge
+//           for the courier or a motorbike at all; only cars and the tank move them
+//   fixed   hydrants: bolted down (a slow car stops), sheared off and flung above ~25 km/h, leaving
+//           a water spout; the car keeps most of its speed
 //   static  street lamps bend over when a car hits them above 45 km/h (sparks, a clank, the light
-//           goes out); slower, the car just stops. Hydrants never move but burst into a fountain
-//           when hit at speed. Palms, walls and signal masts never give. The tank flattens lamps,
-//           palms, hydrants and everything loose.
+//           goes out); slower, the car just stops. Palms, walls and signal masts never give. The
+//           tank flattens lamps, palms, hydrants and everything loose.
 // Every loose prop is one range of vertices in ONE merged mesh (one draw call for all of them). Only
 // awake bodies are simulated and only their vertex ranges are rewritten; sleeping ones sit in a static
 // spatial grid. Knocked props, lamps and palms go back to their spot a few minutes later, once nobody
@@ -31,12 +34,12 @@ export const KINDS = {
   chair: { cls: 'light', m: 6, he: [0.24, 0.47, 0.25], fp: [[0, 0.3]] },
   pot: { cls: 'light', m: 18, he: [0.3, 0.4, 0.3], fp: [[0, 0.32]] },
   crate: { cls: 'light', m: 22, he: [0.45, 0.45, 0.45], fp: [[0, 0.5]] },
-  news: { cls: 'light', m: 28, he: [0.26, 0.55, 0.24], fp: [[0, 0.32]] },
+  news: { cls: 'medium', m: 45, he: [0.26, 0.55, 0.24], fp: [[0, 0.32]], topple: 9, anchor: true },
   ball: { cls: 'light', m: 0.5, he: [0.3, 0.3, 0.3], fp: [[0, 0.3]], ball: true, bounce: 0.7 },
   can: { cls: 'light', m: 0.4, he: [0.04, 0.065, 0.04], fp: [[0, 0.08]] },
-  bench: { cls: 'medium', m: 70, he: [1.0, 0.5, 0.33], fp: [[-0.62, 0.36], [0.62, 0.36]], topple: 13 },
+  bench: { cls: 'medium', m: 70, he: [1.0, 0.5, 0.33], fp: [[-0.62, 0.36], [0.62, 0.36]], topple: 13, anchor: true },
   table: { cls: 'medium', m: 25, he: [0.55, 1.35, 0.55], fp: [[0, 0.45]], topple: 7 },
-  vend: { cls: 'medium', m: 300, he: [0.48, 0.95, 0.38], fp: [[0, 0.62]], topple: 14 },
+  vend: { cls: 'medium', m: 300, he: [0.48, 0.95, 0.38], fp: [[0, 0.62]], topple: 14, anchor: true },
   board: { cls: 'medium', m: 8, he: [0.3, 0.45, 0.28], fp: [[0, 0.35]], topple: 4 },
   // bolted down (a static collider holds it) until a fast hit shears it off; then it flies like a light prop
   hydrant: { cls: 'fixed', m: 110, he: [0.25, 0.37, 0.25], fp: [[0, 0.24]] },
@@ -217,6 +220,14 @@ export function createLoose(scene, game, city, fx, audio) {
     const cls = K.cls === 'fixed' ? 'light' : K.cls;
     const vx = isPlayer ? mv.vel.x : mv.vx, vz = isPlayer ? mv.vel.z : mv.vz, sp = tank ? Math.abs(mv.speed) : Math.hypot(vx, vz);
     const mm = isPlayer ? 70 : tank ? TANK_M : mv.kind === 'bike' ? BIKE_M : CAR_M;
+    // anchored street furniture (newspaper boxes, benches, vending machines) doesn't budge for a
+    // person or a motorbike: they stop against it. Cars and the tank still shove or topple it.
+    if (K.anchor && !isPlayer && mv.kind === 'bike') {
+      mv.x += nx * ov; mv.z += nz * ov;
+      const vn = mv.vx * nx + mv.vz * nz;
+      if (vn < 0) { mv.vx -= 1.3 * vn * nx; mv.vz -= 1.3 * vn * nz; if (vn < -3 && b.cool <= 0) { audio.knock(0.5); b.cool = 0.3; } }
+      return;
+    }
     if (cls === 'medium' && isPlayer) {                     // benches & co block the courier
       mv.pos.x += nx * ov; mv.pos.z += nz * ov;
       const vn = mv.vel.x * nx + mv.vel.z * nz;

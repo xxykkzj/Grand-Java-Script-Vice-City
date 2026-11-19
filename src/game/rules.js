@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { box, merge, clamp, lerp, angleDelta, segBlocked, timeU, PI, reducedMotion } from '../core/util.js';
 import { signal } from '../world/roads.js';
+import { onRoad } from '../world/layout.js';
 import { createGlow } from '../world/glow.js';
 
 const $ = (id) => document.getElementById(id);
@@ -78,12 +79,34 @@ export function createRules(game, scene) {
     setTimeout(() => {
       leaveVehicle();
       game.places.putOutside(at.x, at.z);
-      player.pos.set(at.x, 0, at.z); player.vel.set(0, 0, 0); player.vy = 0; player.yaw = 0; player.speed = 0;
-      cam.yaw = 0; cam.pitch = 0.2;
+      // walk out of the doorway (at.z is 5.4 m in front of the facade) a few steps onto the sidewalk.
+      // The camera watches from the street side meanwhile; with it behind the courier from the start it
+      // would sit inside the building and get pulled right up against Skye's back.
+      let endZ = at.z + 1.6;
+      if (onRoad(at.x, endZ, 0.6)) endZ = at.z;
+      walk = { t: 0, x: at.x, z0: at.z - 4.6, z1: endZ };
+      player.pos.set(at.x, 0, walk.z0); player.vel.set(0, 0, 0); player.vy = 0; player.yaw = 0; player.speed = 0;
+      cam.yaw = PI + 0.5; cam.pitch = 0.24;
       game.money -= fee; game.health = 100; game.wanted = 0; unseen = 0; bust = 0;
-      card.className = ''; game.busy = null;
+      card.className = ''; game.busy = 'walkout';
       setTimeout(() => fade.classList.remove('on'), 80);
     }, 2750);
+  }
+
+  // ---- after CAUGHT / KNOCKED OUT: stroll out of the station or clinic, then turn along the sidewalk
+  let walk = null;
+  function stepWalk(dt) {
+    walk.t += dt;
+    const T = 2.0, k = clamp(walk.t / T, 0, 1), e = k * k * (3 - 2 * k);
+    player.pos.set(walk.x, 0, lerp(walk.z0, walk.z1, e));
+    player.speed = k < 1 ? 2.6 : 0;
+    if (walk.t > T) {
+      // face along the street and bring the camera round behind, clear of the building
+      player.yaw += angleDelta(player.yaw, PI / 2) * (1 - Math.exp(-7 * dt));
+      cam.yaw += angleDelta(cam.yaw, player.yaw) * (1 - Math.exp(-4 * dt));
+    } else player.yaw = 0;
+    player.animate(dt, 0, null);
+    if (walk.t > T + 0.9) { cam.yaw = player.yaw; walk = null; game.busy = null; }
   }
 
   // ---- carjack: glide to the driver's door, swing it open, haul them out, hop in
@@ -166,6 +189,7 @@ export function createRules(game, scene) {
       frame++;
       const f = game.focus(), t = timeU.value;
       if (jack) stepJack(dt);
+      if (walk) stepWalk(dt);
 
       // pickups spin and bob; respawn after a while
       for (const p of picks) {
