@@ -381,6 +381,7 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
     <p id="status">WARMING UP THE NEON…</p>
     <div id="ctlpick" hidden><p>CONTROLS</p><div class="pick" role="group" aria-label="Controls"><button type="button" data-mode="keys" aria-pressed="false">KEYBOARD &amp; MOUSE</button><button type="button" data-mode="touch" aria-pressed="false">TOUCH CONTROLS</button></div></div>
     <button id="go" type="button" hidden>CLICK TO START</button>
+    <button id="whyBtn" type="button">WHY 3D ON THE WEB?</button>
     <p id="tkeys" class="tonly" hidden>
       <b>Left thumb</b>: stick to skate, drive and steer (push it all the way to sprint) &nbsp;·&nbsp; <b>right side</b>: swipe to look<br>
       Buttons on the right change with what you are doing: jump, <kbd>E</kbd> enter / use, <kbd>F</kbd> sit / dance, drift, fire, up / down<br>
@@ -403,5 +404,68 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
 </div>
 
 <script>/*%%BUNDLE%%*/</script>
+
+<div id="whySlide" role="dialog" aria-modal="true" aria-labelledby="whyH" hidden>
+  <div class="ws-card">
+    <button type="button" class="ws-x" id="whyClose" aria-label="Close slide">✕</button>
+    <p class="ws-eye">Show &amp; tell · three.js in the browser</p>
+    <h2 id="whyH">From an info page to an experience</h2>
+    <div class="ws-cols">
+      <section class="ws-col ws-old">
+        <h3>Today: a typical government info page</h3>
+        <ul>
+          <li>Long blocks of text and a PDF brochure to download</li>
+          <li>An opening-hours table and a small photo carousel</li>
+          <li>Visitors read about the place but don't get a feel for it</li>
+          <li>The same page on every screen, little reason to stay</li>
+        </ul>
+      </section>
+      <section class="ws-col ws-new">
+        <h3>With three.js: the state museum, in the browser</h3>
+        <ul>
+          <li><b>Walk the galleries</b> before you visit: plan a school trip, check accessible routes and lifts</li>
+          <li><b>Turn objects in your hand</b>: 3D scans of artefacts you can zoom, rotate and light</li>
+          <li><b>Hotspots tell the story</b>: tap an object for its caption, audio guide and sign-language video</li>
+          <li><b>Exhibits that can't travel</b>: fragile or archived pieces shown to regional schools</li>
+        </ul>
+      </section>
+    </div>
+    <div class="ws-foot">
+      <div><b>Why it fits the web</b> No install or app store. It runs on phones and laptops, and a whole world can ship in about a megabyte, like this game.</div>
+      <div><b>Do it responsibly</b> Keep the real text in HTML for screen readers and search. Respect reduced motion. Offer a plain 2D fallback, and set a performance budget.</div>
+      <div><b>More uses</b> Heritage sites, planning and zoning maps, station wayfinding, and emergency drill walkthroughs.</div>
+    </div>
+    <p class="ws-hint">Press Esc or ✕ to return to the game</p>
+  </div>
+</div>
+<style>
+#whyBtn{margin-top:10px;background:transparent;border:1px solid rgba(255,255,255,.35);color:#eaf6ff;font:600 13px/1 system-ui,sans-serif;letter-spacing:.12em;padding:10px 16px;border-radius:999px;cursor:pointer}
+#whyBtn:hover,#whyBtn:focus-visible{border-color:#2ff3ff;color:#2ff3ff;outline:none}
+#whySlide{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:16px;background:rgba(8,6,20,.82);backdrop-filter:blur(6px)}
+#whySlide[hidden]{display:none}
+.ws-card{position:relative;width:min(1100px,100%);max-height:100%;overflow:auto;background:linear-gradient(160deg,#1b1238,#0d1a2e);border:1px solid rgba(47,243,255,.35);border-radius:18px;padding:clamp(18px,3vw,36px);color:#eef3ff;font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;box-shadow:0 20px 80px rgba(0,0,0,.5)}
+.ws-x{position:absolute;top:12px;right:12px;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;font-size:18px;cursor:pointer}
+.ws-eye{margin:0;color:#ff5fb4;font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:12px}
+#whyH{margin:6px 0 18px;font-size:clamp(24px,3.4vw,40px);line-height:1.1;text-wrap:balance}
+.ws-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.ws-col{border-radius:14px;padding:16px 18px}
+.ws-col h3{margin:0 0 8px;font-size:17px}
+.ws-col ul{margin:0;padding-left:18px;display:grid;gap:6px}
+.ws-old{background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.25);color:#c9cfe0}
+.ws-new{background:rgba(47,243,255,.08);border:1px solid rgba(47,243,255,.45)}
+.ws-new b{color:#2ff3ff}
+.ws-foot{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px;font-size:14px;color:#d6dcf0}
+.ws-foot b{display:block;color:#ffd23f;margin-bottom:2px}
+.ws-hint{margin:14px 0 0;font-size:12px;color:#9aa3c4}
+@media (max-width:760px){.ws-cols,.ws-foot{grid-template-columns:1fr}}
+</style>
+<script>
+(function(){var s=document.getElementById('whySlide'),b=document.getElementById('whyBtn'),x=document.getElementById('whyClose');
+function open(e){if(e)e.stopPropagation();s.hidden=false;x.focus();}
+function close(){s.hidden=true;b.focus();}
+b.addEventListener('click',open);x.addEventListener('click',close);
+s.addEventListener('click',function(e){if(e.target===s)close();});
+addEventListener('keydown',function(e){if(!s.hidden&&e.key==='Escape'){e.stopPropagation();close();}},true);})();
+</script>
 </body>
 </html>
