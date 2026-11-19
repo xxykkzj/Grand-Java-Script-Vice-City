@@ -104,6 +104,16 @@ kbd{font:700 calc(11 * var(--u)) var(--mono);color:var(--ink);background:var(--c
 #vcond.fire{border-color:#ff3f5a}#vcond.fire>i>i{background:#ff3f5a}#vcond.fire span{color:#ff8f9f;animation:cool .5s steps(2) infinite}
 #getout{position:absolute;left:50%;top:29%;transform:translateX(-50%);padding:calc(4 * var(--u)) calc(22 * var(--u));font:italic 900 calc(46 * var(--u))/1 var(--disp);letter-spacing:.08em;color:#fff;white-space:nowrap;
   text-shadow:0 0 8px #ff3f5a,0 0 24px #ff3f5a,3px 3px 0 #2a0b5a;animation:cool .5s steps(2) infinite}
+#breath{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:calc(4 * var(--u)) calc(8 * var(--u));padding:calc(4 * var(--u)) calc(10 * var(--u));border-color:rgba(120,235,255,.6)}
+#breath span{font-size:calc(9 * var(--u));letter-spacing:.22em;color:var(--paper);white-space:nowrap}
+#bubbles{display:flex;gap:calc(3 * var(--u));justify-content:flex-end}
+#bubbles i{width:calc(11 * var(--u));height:calc(11 * var(--u));border-radius:50%;border:2px solid rgba(170,245,255,.95);background:rgba(170,245,255,.28);box-shadow:0 0 6px rgba(120,235,255,.5)}
+#bubbles i.off{opacity:.14;box-shadow:none}
+#breath .stam{grid-column:1/-1;height:calc(4 * var(--u));background:rgba(255,246,236,.1);overflow:hidden}
+#breath .stam i{display:block;height:100%;transform-origin:0 50%;background:linear-gradient(90deg,#ffe14a,#ffb000)}
+#breath.low{border-color:#ff3f5a}#breath.low span{color:#ff8f9f;animation:cool .5s steps(2) infinite}
+#sharkw{position:absolute;left:50%;top:36%;transform:translateX(-50%);padding:calc(4 * var(--u)) calc(22 * var(--u));font:italic 900 calc(52 * var(--u))/1 var(--disp);letter-spacing:.1em;color:#fff;white-space:nowrap;
+  text-shadow:0 0 8px #ff3f5a,0 0 26px #ff3f5a,3px 3px 0 #2a0b5a;animation:cool .6s steps(2) infinite;pointer-events:none}
 #arms{display:flex;align-items:center;gap:calc(8 * var(--u));padding:calc(3 * var(--u)) calc(10 * var(--u));border-color:rgba(39,232,255,.6)}
 #arms canvas{width:calc(54 * var(--u));height:calc(24 * var(--u));flex:none}
 #arms b{flex:1;font:800 calc(12 * var(--u)) var(--disp);letter-spacing:.12em;text-align:left;white-space:nowrap}
@@ -272,7 +282,7 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
 #nogl{position:fixed;inset:0;z-index:10;display:grid;place-items:center;padding:24px;text-align:center;background:var(--ink);line-height:1.7}
 #nogl h2{font:italic 900 44px var(--disp);color:var(--sun);margin:0 0 8px}
 @media (max-width:700px){#hint{max-width:90vw}#note{font-size:9px}}
-@media (prefers-reduced-motion:reduce){#go,#stars.cool i.on,#getout,#vcond.fire span{animation:none}#cine::before,#cine::after,#fade,#card{transition:none}#toast,#title,#bar i{transition:none}.tbtn.on{transform:none}}
+@media (prefers-reduced-motion:reduce){#go,#stars.cool i.on,#getout,#sharkw,#breath.low span,#vcond.fire span{animation:none}#cine::before,#cine::after,#fade,#card{transition:none}#toast,#title,#bar i{transition:none}.tbtn.on{transform:none}}
 </style>
 </head>
 <body>
@@ -288,6 +298,7 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
     <div id="stack">
       <div id="cash" class="chip">$<span id="money">0</span></div>
       <div id="hp" class="chip" role="img" aria-label="Health"><i id="hpfill"></i><span>HEALTH</span></div>
+      <div id="breath" class="chip" hidden role="img" aria-label="Breath"><span>BREATH</span><div id="bubbles"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="stam"><i id="stamfill"></i></div></div>
       <div id="vcond" class="chip" hidden role="img" aria-label="Vehicle condition"><span id="vname">CAR</span><i><i id="vfill"></i></i></div>
       <div id="arms" class="chip" hidden><canvas id="armsi" width="108" height="48" aria-hidden="true"></canvas><b id="armsn"></b><span id="armsa"></span></div>
       <div id="stars" class="chip" role="img" aria-label="Wanted level 0"><i>★</i><i>★</i><i>★</i><i>★</i><i>★</i></div>
@@ -304,6 +315,7 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
   <div id="toast" role="status" aria-live="polite"></div>
   <div id="xhair" hidden></div>
   <div id="getout" hidden role="alert">GET OUT!</div>
+  <div id="sharkw" hidden role="alert">SHARK!</div>
   <div id="hint"></div>
   <div id="dance" class="chip" hidden>
     <div id="dbeat"><i id="dring"></i><div id="dpips"><b></b><b></b><b></b><b></b></div></div>

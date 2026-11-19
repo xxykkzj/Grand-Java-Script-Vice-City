@@ -9,6 +9,21 @@ export function createHud(L, groundCanvas, renderer) {
   const el = {};
   for (const id of ['hud', 'time', 'phase', 'wx', 'zone', 'hint', 'toast', 'perf', 'map', 'money', 'cash', 'hpfill', 'stars', 'obj', 'objt', 'objs', 'objm']) el[id] = $(id);
   const starEls = [...el.stars.children];
+  // breath meter (swimming): ten bubbles, plus a thin stamina line
+  const bEl = $('breath'), bubs = [...$('bubbles').children], stamEl = $('stamfill');
+  let bOn = false, bKey = '';
+  function breath(sw) {
+    const on = !!sw && ((sw.S.wet && sw.S.mode !== 'wade') || sw.S.breath < 0.995);
+    if (on !== bOn) { bOn = on; bEl.hidden = !on; bKey = ''; }
+    if (!on) return;
+    const n = Math.ceil(sw.S.breath * 10 - 0.001), st = Math.round(sw.S.stamina * 20), low = sw.S.breath < 0.3, key = n + '|' + st + '|' + low;
+    if (key === bKey) return;
+    bKey = key;
+    bubs.forEach((b, i) => b.classList.toggle('off', i >= n));
+    stamEl.style.transform = `scaleX(${(st / 20).toFixed(2)})`;
+    bEl.classList.toggle('low', low);
+    bEl.setAttribute('aria-label', 'Breath ' + Math.round(sw.S.breath * 100) + ' percent');
+  }
 
   // static minimap layer: 1 px per world unit, painted once
   const PAD = 110, MW = HX * 2 + PAD * 2, MH = HZ * 2 + PAD * 2;
@@ -79,6 +94,7 @@ export function createHud(L, groundCanvas, renderer) {
         lastClock = clock; el.time.textContent = clock; el.phase.textContent = env.phase;
         el.wx.textContent = WEATHER[env.weather].label; el.zone.textContent = zoneName(focus.x, focus.z);
       }
+      breath(game.swim);
       // cash rolls towards its real value like a tape counter
       if (shown < 0) shown = game.money;
       if (shown !== game.money) {
@@ -134,7 +150,7 @@ export function createHud(L, groundCanvas, renderer) {
       g.drawImage(base, 0, 0);
       const flash = (performance.now() / 250) % 2 < 1;
       for (const v of st.vehicles.all()) {
-        if (v === st.inVehicle) continue;
+        if (v === st.inVehicle || v.sink) continue;
         let s = 4;
         if (v.police) { g.fillStyle = v.ai && v.ai.siren ? (flash ? '#ff2a3a' : '#3a7aff') : '#9fd8ff'; s = 6; }
         else if (v.kind === 'car') { g.fillStyle = v.ai ? 'rgba(255,225,74,.6)' : '#ffe14a'; s = v.ai ? 3 : 4; }

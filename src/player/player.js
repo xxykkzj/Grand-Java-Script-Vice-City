@@ -2,7 +2,8 @@
 // backwards cap, messenger bag. Built from boxes, six draw calls, animated by swinging pivots.
 import * as THREE from 'three';
 import { box, cyl, merge, damp, clamp, angleDelta, pushOut, PI, reducedMotion } from '../core/util.js';
-import { clampToWorld } from '../world/layout.js';
+import { clampToWorld, PIER, HZ } from '../world/layout.js';
+import { pushFromSolids } from '../world/sea.js';
 
 const TEAL = '#12b5a6', MAG = '#e6258f', WHITE = '#f7f5ef', SKIN = '#c98d62', BAG = '#f2b63a', HAIR = '#2a2140', DARK = '#1b1830';
 // Outfit roles: every vertex carries the index of the outfit colour it takes (-1 = keeps its own colour)
@@ -180,6 +181,10 @@ export function createPlayer(scene, L) {
     },
     pos: new THREE.Vector3(-10, 0, 67), vel: new THREE.Vector3(), vy: 0, yaw: PI / 2,
     onGround: true, hidden: false, lowGravity: false, phase: 0, speed: 0, lean: 0, model, floor: 0, shadow,
+    groundAt: null,      // optional (x, z) -> ground height: the sand shelf that slopes into the sea (player/swim.js)
+    sy: 0,               // how far the ground under the courier is below the floor (lowers the blob shadow)
+    leap: false,         // jumping off the pier into the water: the pier edge lets go
+    swimming: false,     // set by player/swim.js while it drives the courier
     setHidden(h) { P.hidden = h; model.root.visible = !h; shadow.visible = !h; },
     update(dt, inp, camYaw, vehicles, audio) {
       if (P.hidden) return;
@@ -190,11 +195,24 @@ export function createPlayer(scene, L) {
       if (len > 0) { const k = top * Math.min(1, len) / len; dx *= k; dz *= k; }   // keys give len >= 1, the touch stick less
       const rate = P.onGround ? (len > 0 ? 5 : 1.7) : 1;
       P.vel.x = damp(P.vel.x, dx, rate, dt); P.vel.z = damp(P.vel.z, dz, rate, dt);
-      if (inp.jump && P.onGround) { P.vy = 8.4; P.onGround = false; audio.jump(); }
+      if (inp.jump && P.onGround) {
+        P.vy = 8.4; P.onGround = false; audio.jump();
+        // at the pier's edge a jump is a leap into the sea
+        const px = P.pos.x, pz = P.pos.z;
+        if (P.pos.y > -0.3 && px > PIER.x0 && px < PIER.x1 && pz > HZ + 12 && (px < PIER.x0 + 1.5 || px > PIER.x1 - 1.5 || pz > PIER.z1 - 1.5)) {
+          P.leap = true;
+          if (px < PIER.x0 + 1.5) P.vel.x = Math.min(P.vel.x, -3.5); else if (px > PIER.x1 - 1.5) P.vel.x = Math.max(P.vel.x, 3.5); else P.vel.z = Math.max(P.vel.z, 3.5);
+        }
+      }
+      const g0 = P.groundAt ? P.groundAt(P.pos.x, P.pos.z) : 0;
       P.vy -= (P.lowGravity ? 4.2 : 23) * dt;
       P.pos.y += P.vy * dt;
-      if (P.pos.y <= 0) { if (!P.onGround && P.vy < -4) audio.step(1); P.pos.y = 0; P.vy = 0; P.onGround = true; } else P.onGround = false;
+      if (P.pos.y <= g0) { if (!P.onGround && P.vy < -4) audio.step(1); P.pos.y = g0; P.vy = 0; P.onGround = true; } else P.onGround = false;
       P.pos.x += P.vel.x * dt; P.pos.z += P.vel.z * dt;
+      if (P.groundAt) {          // walking down the sand shelf: stay on it instead of hopping
+        const g1 = P.groundAt(P.pos.x, P.pos.z); P.sy = g1;
+        if (P.onGround && P.vy <= 0 && P.pos.y > g1 && P.pos.y - g1 < 0.35) P.pos.y = g1;
+      }
 
       for (const b of L.solids) {
         if (P.pos.y > b.h) continue;
@@ -209,7 +227,9 @@ export function createPlayer(scene, L) {
           if (d < rr && d > 1e-4) { P.pos.x += ddx / d * (rr - d); P.pos.z += ddz / d * (rr - d); }
         }
       }
-      clampToWorld(P.pos, 0.6);
+      if (P.pos.y < -0.25 && !P.leap) pushFromSolids(P.pos, 0.5, P.pos.y);     // below the pier deck: the sand beside the pier piles
+      clampToWorld(P.pos, 0.6, P.leap ? 3 : 1);
+      if (P.leap && (P.onGround || P.pos.y < -0.2)) P.leap = false;
 
       P.speed = Math.hypot(P.vel.x, P.vel.z);
       let turn = 0;
@@ -241,7 +261,7 @@ export function createPlayer(scene, L) {
       m.head.rotation.set(-0.15 * k, 0, 0); m.body.position.x = m.body.position.z = 0;
       m.root.position.copy(P.pos); m.root.rotation.set(0, P.yaw, 0);
       drape();
-      shadow.position.set(P.pos.x, P.floor + 0.03, P.pos.z);
+      shadow.position.set(P.pos.x, P.floor + P.sy + 0.03, P.pos.z);
       const sk = 1 / (1 + (P.pos.y - P.floor) * 0.35); shadow.scale.set(sk, 1, sk);
     },
     // dancing / sitting: pose the model from a pose object (see actors/moves.js); the legs pivot at the hips

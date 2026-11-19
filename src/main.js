@@ -31,6 +31,11 @@ import { createActivity } from './game/activity.js';
 import { createDamage } from './game/damage.js';
 import { createCombat } from './game/combat.js';
 import { createEvents } from './game/events.js';
+import { createSwim } from './player/swim.js';
+import { createUnderwater } from './world/underwater.js';
+import { createMarine } from './actors/marine.js';
+import { createSinking } from './vehicles/sinking.js';
+import { WL, bedAt, depthAt, islandDist } from './world/sea.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('gl');
@@ -136,6 +141,11 @@ async function boot() {
   const act = game.act = createActivity(game);
   const combat = game.combat = createCombat(game, scene);
   const events = game.events = createEvents(game, scene);
+  // the sea: swimming, everything under the surface, sea life, sinking vehicles
+  const sea = game.sea = createUnderwater(scene, camera, sky, ocean, env, game);
+  const swim = game.swim = createSwim(game);
+  const marine = game.marine = createMarine(scene, game, sea);
+  const sinking = game.sinking = createSinking(game);
   // indoors the camera renders layer 1 only: the room, the courier, the rings and the lights
   scene.traverse((o) => { if (o.isLight) o.layers.enable(1); });
   player.model.root.traverse((o) => o.layers.enable(1)); player.shadow.layers.enable(1);
@@ -154,6 +164,19 @@ async function boot() {
     time: (h) => { env.tod = ((h % 24) + 24) % 24; env.target = null; return env.tod; },
     counts: () => ({ cars: traffic.count(), carTarget: traffic.target, peds: peds.active, pedTarget: peds.target, animals: animals.count(), ...animals.stats, dog: { ...animals.dog } }),
     interact: () => interact(),
+    // ---- the sea (automated checks): everything is placed directly, software GL is slow
+    sea: () => ({ ...sea.stats(), swim: swim.state(), marine: { ...marine.stats }, sink: { ...sinking.stats }, cam: { x: +camera.position.x.toFixed(1), y: +camera.position.y.toFixed(2), z: +camera.position.z.toFixed(1) } }),
+    swim: () => swim.state(),
+    breath: (v) => { swim.S.breath = v; return v; },
+    seaFn: (x, z) => ({ bed: +bedAt(x, z).toFixed(2), depth: +depthAt(x, z).toFixed(2), d: +islandDist(x, z).toFixed(1) }),
+    marineSample: () => marine.sample(),
+    marineForce: (s = 5) => marine.force(s),
+    shark: () => marine.sharkState(),
+    sharkSpawn: () => marine.spawnShark(),
+    sink: (v) => sinking.sink(v || game.vehicle),
+    sunk: (v) => !!(v && v.sink) && { y: +v.y.toFixed(2), settled: v.sink.settled, t: +v.sink.t.toFixed(1) },
+    audioUnder: () => ({ under: sound.under, ctxFilter: audio.ready }),
+    foot: (x, y, z) => { player.pos.set(x, y, z); player.vel.set(0, 0, 0); player.vy = 0; return player.pos.toArray(); },
     key: (code) => input.onKey({ code, repeat: false, preventDefault() {} }),
     // the courier's sitting / dancing state, and the rhythm game
     act: () => ({ mode: act.mode, seat: act.seat && act.seat.kind, move: act.move, combo: act.combo, best: act.best, vibe: act.vibe, rival: act.rival, x: player.pos.x, z: player.pos.z, y: player.pos.y }),
@@ -215,6 +238,7 @@ async function boot() {
   function interact() {
     const v = game.vehicle;
     if (game.busy) return;
+    if (!v && swim.wet) { swim.interact(); return; }
     if (act.mode) { act.toggle(); return; }
     if (game.inside) { places.use(); return; }
     if (v) {
@@ -322,11 +346,14 @@ async function boot() {
     for (const p of peds.peds) if (!p.off) grid.add(p);
     if (!game.vehicle && !player.hidden && game.busy !== 'cut') { me.x = player.pos.x; me.z = player.pos.z; grid.add(me); }
 
+    if (game.busy || game.inside || game.vehicle) swim.sleep(cam);
     if (game.mode === 'bike' && game.vehicle) { /* posed after the bike has moved */ }
     else if (!game.busy && !game.inside && act.mode && !game.vehicle) act.update(dt, ctl, input);
+    else if (!game.busy && !game.inside && swim.update(dt, ctl, cam)) { /* in the water: player/swim.js drives the courier */ }
     else if (!game.busy && !game.inside) player.update(dt, ctl, cam.yaw, vehicles, audio);
     signals.update(timeU.value);
     traffic.update(dt, timeU.value);
+    sinking.update(dt);
     vehicles.update(dt, ctl, cam, player);
     loose.update(dt);
     damage.update(dt);
@@ -334,7 +361,7 @@ async function boot() {
     if (game.mode === 'bike' && game.vehicle) player.ride(game.vehicle);
     peds.update(dt, timeU.value, frameN, vehicles.cars);
     animals.update(dt);
-    if (game.started) { rules.update(dt); story.update(dt); places.update(dt, ctl); events.update(dt); }
+    if (game.started) { rules.update(dt); story.update(dt); places.update(dt, ctl); events.update(dt); marine.blips(rules.blips); }
     city.tick(timeU.value);
     fx.update(dt);
     player.tickFace(dt);
@@ -353,6 +380,8 @@ async function boot() {
     pointScaleU.value = renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360));
     env.update(dt);
     horizon.update(env);
+    sea.update(dt);
+    marine.update(dt);
     // out at sea in the helicopter: a soft boundary with a fuel warning instead of a wall
     if (v && v.kind === 'heli' && v.turnBack && game.started && !game.busy) {
       turnT -= dt;
@@ -364,6 +393,7 @@ async function boot() {
       if (game.busy === 'shop') hud.setHint(places.hint());
       else if (game.busy) hud.setHint(game.busy === 'cut' ? [['Space / Enter', 'next line'], ['X', 'skip scene']] : game.busy === 'fail' ? [['Enter', 'retry from checkpoint'], ['Esc', 'walk away']] : []);
       else if (game.inside) hud.setHint(places.hint());
+      else if (!v && swim.wet) hud.setHint(swim.hint());
       else if (!v && act.mode) hud.setHint(act.hint());
       else if (!v) {
         const n = vehicles.nearest(player.pos), f = act.fHint(), wh = combat.hints();
@@ -383,7 +413,8 @@ async function boot() {
     sound.engine = v && v.kind !== 'heli' ? 1 : 0;
     sound.heavy = !!v && v.kind === 'tank';
     sound.engineRev = v ? Math.min(Math.abs(speed) / (v.kind === 'tank' ? 13 : v.kind === 'bike' ? 40 : 44), 1) * (v.kind === 'bike' ? 1.5 : 1) : 0;
-    sound.skate = !v && player.onGround && !cut.active && !act.mode ? Math.min(player.speed / 13.5, 1) : 0;
+    sound.under = sea.under;
+    sound.skate = !v && player.onGround && !player.swimming && !cut.active && !act.mode ? Math.min(player.speed / 13.5, 1) : 0;
     sound.rotor = vehicles.heli ? vehicles.heli.spool * (v === vehicles.heli ? 1 : 0.35) : 0;
     sound.rain = env.rainAmt; sound.siren = game.siren || 0; sound.duck = cut.active;
     sound.room = !game.inside ? 0 : game.inside.key === 'club' ? 2 : 1;
@@ -401,7 +432,9 @@ async function boot() {
   env.update(0);
   horizon.update(env);
   cam.update(0.016, input, 'foot', player.pos, player.yaw, 0, fx, 0);
+  sea.warm(true); marine.warm(true);
   renderer.compile(scene, camera);
+  sea.warm(false); marine.warm(false);
   await progress(1, 'READY');
   raf = requestAnimationFrame(frame);
 

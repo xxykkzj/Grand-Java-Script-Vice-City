@@ -198,7 +198,7 @@ export function createActivity(game) {
     toggle() {
       if (A.mode === 'dance') { stopDance(); return true; }
       if (A.mode === 'sit') { getUp(); return true; }
-      if (game.vehicle || game.busy || !player.onGround) return false;
+      if (game.vehicle || game.busy || !player.onGround || (game.swim && game.swim.wet)) return false;
       if (onFloor()) { startDance(false); return true; }
       const vm = !game.inside && game.loose && game.loose.vendNear(player.pos);
       if (vm) { game.places.openVend(vm); return true; }
@@ -227,7 +227,7 @@ export function createActivity(game) {
     },
     // extra hint while walking about: is F useful here?
     fHint() {
-      if (game.vehicle || !player.onGround) return null;
+      if (game.vehicle || !player.onGround || (game.swim && game.swim.wet)) return null;
       if (onFloor()) return ['F', 'dance'];
       if (!game.inside && game.loose && game.loose.vendNear(player.pos)) return ['F', 'buy'];
       return candidate() ? ['F', 'sit'] : null;

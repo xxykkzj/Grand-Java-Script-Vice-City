@@ -298,10 +298,10 @@ export function createAnimals(scene, game) {
   }
 
   // ---- sea turtles: surface in the shallows around dusk
-  const turts = [-210, -70, 120].map((x, i) => ({ i, x: x + rnd(-10, 10), z: rnd(158, 175), yaw: rnd(0, 6.3), y: -1.4, st: 'under', t: rnd(1, 6) }));
+  const turts = [-210, -70, 120].map((x, i) => ({ i, x: x + rnd(-10, 10), z: rnd(168, 185), yaw: rnd(0, 6.3), y: -1.4, st: 'under', t: rnd(1, 6) }));
   function turtleStep(u, dt, dusk) {
     u.t -= dt;
-    if (u.st === 'under') { u.y = -1.4; if (u.t <= 0 && dusk) { u.st = 'rise'; u.t = 1.2; u.x = clamp(u.x + rnd(-12, 12), -280, 280); if (Math.abs(u.x - 40) < 14) u.x += 30; u.z = clamp(u.z + rnd(-5, 5), 156, 180); } else if (u.t <= 0) u.t = rnd(2, 5); }
+    if (u.st === 'under') { u.y = -1.4; if (u.t <= 0 && dusk) { u.st = 'rise'; u.t = 1.2; u.x = clamp(u.x + rnd(-12, 12), -280, 280); if (Math.abs(u.x - 40) < 14) u.x += 30; u.z = clamp(u.z + rnd(-5, 5), 168, 190); } else if (u.t <= 0) u.t = rnd(2, 5); }
     else if (u.st === 'rise') { u.y = -1.4 + 0.68 * (1 - u.t / 1.2); if (u.t <= 0) { u.st = 'float'; u.t = rnd(5, 10); } }
     else if (u.st === 'float') {
       u.y = -0.72 + Math.sin(timeU.value * 1.3 + u.i) * 0.03;

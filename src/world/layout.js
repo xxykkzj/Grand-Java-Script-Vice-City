@@ -246,33 +246,40 @@ export const EDGE_SIGNS = ['Causeway Closed – Storm Repairs', 'Lumina Point ·
 export const onIsland = (x, z) => Math.abs(x) <= HX && Math.abs(z) <= HZ;
 
 // Keep something inside the walkable world (the island inside its seawall, the pier and the causeway stub).
-export function clampToWorld(o, m) {
+// w (default 0: stay dry) is a set of bits for things that may leave it by water:
+//   1  the beach: walk or drive on into the sea (nothing stops you at the waterline)
+//   2  the pier: hard enough, and you go through the rail over its sides and end
+//   4  the seawall: fast enough, and you go through the railing
+// The caller (swimming, sinking vehicles) decides what happens once something is out there.
+export function clampToWorld(o, m, w = 0) {
   let hit = false;
   const x = m > 1 ? 1.4 : 0, e = WALL + m + x, C = CAUSEWAY;   // vehicles keep their noses off the wall
-  if (o.x > HX - e) { o.x = HX - e; hit = true; }
+  if (o.x > HX - e) { if (w & 4) edgeHit = 'wall'; else { o.x = HX - e; hit = true; } }
   if (o.x < -HX + e) {
     const onDeck = o.z > C.z0 + m - 0.4 && o.z < C.z1 - m + 0.4;
     if (!onDeck) {
       // already out on the causeway heading sideways: the parapets stop you; otherwise the seawall does
-      if (o.x < -HX - 0.5) o.z = clamp(o.z, C.z0 + m - 0.4, C.z1 - m + 0.4);
-      else o.x = -HX + e;
-      hit = true;
+      if (o.x < -HX - 0.5) { o.z = clamp(o.z, C.z0 + m - 0.4, C.z1 - m + 0.4); hit = true; }
+      else if (w & 4) edgeHit = 'wall';
+      else { o.x = -HX + e; hit = true; }
     }
     if (o.x < C.bar + 0.5 + m + x) { o.x = C.bar + 0.5 + m + x; hit = true; }
   }
-  if (o.z < -HZ + e) { o.z = -HZ + e; hit = true; }
+  if (o.z < -HZ + e) { if (w & 4) edgeHit = 'wall'; else { o.z = -HZ + e; hit = true; } }
   if (o.z > HZ - m) {
     const onPier = o.x > PIER.x0 + m - 0.4 && o.x < PIER.x1 - m + 0.4;
     if (!onPier) {
-      // Either on the sand heading out to sea, or already out on the pier heading sideways.
-      if (o.z > HZ + 0.5) o.x = clamp(o.x, PIER.x0 + m - 0.4, PIER.x1 - m + 0.4);
-      else o.z = HZ - m;
-      hit = true;
-    }
-    if (o.z > PIER.z1 - m) { o.z = PIER.z1 - m; hit = true; }
+      if (o.z > HZ + 12) { if (w & 2) edgeHit = 'pier'; else { o.x = clamp(o.x, PIER.x0 + m - 0.4, PIER.x1 - m + 0.4); hit = true; } }   // off the side of the pier
+      else if (w & 1) { /* the beach runs on into the sea */ }
+      else if (o.z > HZ + 0.5) { o.x = clamp(o.x, PIER.x0 + m - 0.4, PIER.x1 - m + 0.4); hit = true; }
+      else { o.z = HZ - m; hit = true; }
+    } else if (o.z > PIER.z1 - m) { if (w & 2) edgeHit = 'pier'; else { o.z = PIER.z1 - m; hit = true; } }
   }
   return hit;
 }
+// set by clampToWorld when a mover pushed through an edge it was allowed to break (see the w bits): 'pier' | 'wall'
+export let edgeHit = null;
+export const takeEdge = () => { const e = edgeHit; edgeHit = null; return e; };
 
 export function zoneName(x, z) {
   if (x < -HX && z > CAUSEWAY.z0 - 2 && z < CAUSEWAY.z1 + 2 && x > CAUSEWAY.x0 - 4) return 'STORM CAUSEWAY';

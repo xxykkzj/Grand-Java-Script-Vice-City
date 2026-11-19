@@ -128,6 +128,7 @@ export function createTouch(game) {
       if (v.kind === 'tank') return [['KeyF', 'FIRE'], ['KeyE', 'EXIT']];
       return [['Space', 'UP'], ['KeyC', 'DOWN'], ['KeyE', v.y > 0.6 ? 'LAND' : 'EXIT']];
     }
+    if (game.swim && game.swim.wet) return game.swim.touchButtons();
     if (act.dancing) return [];
     if (act.mode === 'sit') return [['KeyF', 'GET UP']];
     const f = act.fHint(), fb = f ? [['KeyF', f[1].toUpperCase()]] : [];

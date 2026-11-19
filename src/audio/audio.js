@@ -9,7 +9,7 @@ const BASS = [0, null, 12, 0, null, 12, 0, 7, 0, null, 12, 0, 7, 12, 0, 12];
 
 export function createAudio() {
   let ctx = null, master, music, mfilt, sfx, noise, arpBus, timer = 0, nextT = 0, stepI = 0, song = 0;
-  let eng, rotor, skate, rain, siren, hum, spray, fire, heyT = 0, zapT = 0;
+  let eng, rotor, skate, rain, siren, hum, spray, fire, uw, ufilt, heyT = 0, zapT = 0, splashT = 0;
   const A = {
     muted: false, ready: false,
     start() {
@@ -20,7 +20,9 @@ export function createAudio() {
       master = ctx.createGain(); master.gain.value = 0.85;
       const comp = ctx.createDynamicsCompressor();
       comp.threshold.value = -14; comp.ratio.value = 4;
-      master.connect(comp); comp.connect(ctx.destination);
+      // everything runs through one low-pass that closes when the camera is under the water (muffled sea)
+      ufilt = ctx.createBiquadFilter(); ufilt.type = 'lowpass'; ufilt.frequency.value = 22000; ufilt.Q.value = 0.6;
+      master.connect(ufilt); ufilt.connect(comp); comp.connect(ctx.destination);
       music = ctx.createGain(); music.gain.value = 0.55;
       // the music bus runs through a low-pass so shops get a muffled radio and Club Prism gets the full system
       mfilt = ctx.createBiquadFilter(); mfilt.type = 'lowpass'; mfilt.frequency.value = 16000; mfilt.Q.value = 0.4;
@@ -48,6 +50,8 @@ export function createAudio() {
       spray = loop('bandpass', 1900, 0.5);
       // a burning car: low crackling noise, its level jittered every frame
       fire = loop('bandpass', 700, 0.45);
+      // the low rumble of being under the sea
+      uw = loop('lowpass', 220, 0.5);
       // vending machines hum at night: a low sine pair
       { const h1 = ctx.createOscillator(), h2 = ctx.createOscillator(), hg = ctx.createGain(); h1.type = 'sine'; h2.type = 'triangle'; h1.frequency.value = 118; h2.frequency.value = 236.6; hg.gain.value = 0;
         h1.connect(hg); h2.connect(hg); hg.connect(sfx); h1.start(); h2.start(); hum = hg; }
@@ -109,6 +113,8 @@ export function createAudio() {
       siren.gain.setTargetAtTime((s.siren || 0) * 0.07, t, 0.15);
       fire.g.gain.setTargetAtTime((s.fire || 0) * (0.05 + Math.random() * 0.07), t, 0.05);
       fire.f.frequency.setTargetAtTime(500 + Math.random() * 600, t, 0.05);
+      ufilt.frequency.setTargetAtTime(s.under ? 650 : 22000, t, s.under ? 0.08 : 0.15);
+      uw.g.gain.setTargetAtTime(s.under ? 0.07 : 0, t, 0.2);
       // a sputtering engine coughs: the engine layer dips while the throttle is cut
       if (s.cough) eng.g.gain.setTargetAtTime(0.02, t, 0.02);
       // room: 0 street, 1 a shop or the bar (radio in the corner), 2 Club Prism (loud)
@@ -119,6 +125,21 @@ export function createAudio() {
       mfilt.frequency.setTargetAtTime(s.room === 1 ? 1500 : s.room === 2 ? 16000 - lg * 13000 - (1 - Math.min(ck, 1)) * 9000 : 16000, t, 0.25);
     },
     club: false,
+    // ---- the sea: a splash, a stroke, wading steps, bubbles, the shark's tense sting and its chomp (all synthesised)
+    splash(k = 1) {
+      if (!ctx || ctx.currentTime < splashT) return;
+      splashT = ctx.currentTime + 0.08;
+      hit(0.32 * k, 0.4, 'lowpass', 2400, 350); hit(0.14 * k, 0.2, 'highpass', 3200); tone('sine', 180, 70, 0.22, 0.1 * k);
+    },
+    stroke(k = 1) { hit(0.05 * k, 0.2, 'bandpass', 800, 2400); },
+    wadeStep(k = 1) { hit(0.07 * k, 0.16, 'bandpass', 650, 380); },
+    bubble() { const f = 380 + Math.random() * 500; tone('sine', f, f * 2.4, 0.08, 0.05); if (Math.random() < 0.6) tone('sine', f * 1.3, f * 3, 0.07, 0.035, 0.09); },
+    // two sawtooth tones a semitone apart creeping upwards, a low pulse under them
+    sting(k = 1) {
+      tone('sawtooth', 523, 554, 1.5, 0.035 * k); tone('sawtooth', 554, 587, 1.5, 0.03 * k, 0.04); tone('triangle', 1046, 1175, 1.3, 0.02 * k, 0.2);
+      tone('sine', 58, 52, 0.18, 0.28 * k); tone('sine', 58, 52, 0.18, 0.28 * k, 0.55); tone('sine', 58, 52, 0.18, 0.3 * k, 0.95);
+    },
+    chomp() { hit(0.55, 0.14, 'bandpass', 800, 220); tone('square', 200, 60, 0.14, 0.18); tone('sawtooth', 110, 40, 0.3, 0.14, 0.05); hit(0.4, 0.45, 'lowpass', 1800, 300, ctx ? ctx.currentTime + 0.05 : 0); },
     step(k = 1) { hit(0.035 * k, 0.05, 'bandpass', 2400); },
     // typewriter blip for subtitles, pitched per character
     talk(pitch = 1) { tone('square', 420 * pitch, 380 * pitch, 0.035, 0.022); },

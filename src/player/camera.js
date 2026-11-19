@@ -18,6 +18,7 @@ export function createFollowCamera(camera, solids) {
   const target = new THREE.Vector3(-10, 1.5, 67), look = new THREE.Vector3();
   const cam = {
     yaw: Math.PI / 2, pitch: 0.2, dist: 7.5, view: VIEWS[saved % VIEWS.length],
+    minY: 0.5, maxY: 1e9, minPitch: -0.12, floorAt: null,   // underwater (player/swim.js): go below the surface, look up, stay above the sand
     shoulder: 0,                 // 0..1: over the right shoulder while a blaster is out on foot (game/combat.js)
     cycleView() {
       cam.view = VIEWS[(VIEWS.indexOf(cam.view) + 1) % VIEWS.length];
@@ -29,7 +30,7 @@ export function createFollowCamera(camera, solids) {
     update(dt, input, mode, focus, heading, speed, fx, playerPhase) {
       if (input.dragDX || input.dragDY) {
         cam.yaw -= input.dragDX * 0.0055;
-        cam.pitch = clamp(cam.pitch + input.dragDY * 0.004, -0.12, 1.25);
+        cam.pitch = clamp(cam.pitch + input.dragDY * 0.004, cam.minPitch, 1.25);
       }
       // ease back behind a moving car / helicopter when the mouse has been left alone
       const idle = performance.now() / 1000 - input.lastDrag;
@@ -48,6 +49,8 @@ export function createFollowCamera(camera, solids) {
         const lp = clamp(cam.pitch - 0.2, -0.9, 0.9), c = Math.cos(lp);
         look.set(camera.position.x + Math.sin(cam.yaw) * c, camera.position.y - Math.sin(lp), camera.position.z + Math.cos(cam.yaw) * c);
         if (fx.shake > 0.01) { camera.position.x += (Math.random() - 0.5) * fx.shake * 0.5; camera.position.y += (Math.random() - 0.5) * fx.shake * 0.5; }
+        if (camera.position.y > cam.maxY) camera.position.y = cam.maxY;
+        if (cam.floorAt) camera.position.y = Math.max(camera.position.y, cam.floorAt(camera.position.x, camera.position.z) + 0.3);
         camera.lookAt(look);
         const fovF = 72 + (reducedMotion ? 0 : clamp(Math.abs(speed) * 0.2, 0, 8));
         if (Math.abs(camera.fov - fovF) > 0.05) { camera.fov = damp(camera.fov, fovF, 4, dt); camera.updateProjectionMatrix(); }
@@ -69,7 +72,9 @@ export function createFollowCamera(camera, solids) {
       cam.dist = want < cam.dist ? want : damp(cam.dist, want, 4, dt);
       let bob = 0;
       if (mode === 'foot' && !reducedMotion) bob = Math.sin(playerPhase * 2) * 0.03 * clamp(speed / 13, 0, 1);
-      camera.position.set(tx + dx * cam.dist, Math.max(0.5, ty + dy * cam.dist + bob), tz + dz * cam.dist);
+      camera.position.set(tx + dx * cam.dist, Math.max(cam.minY, ty + dy * cam.dist + bob), tz + dz * cam.dist);
+      if (camera.position.y > cam.maxY) camera.position.y = cam.maxY;      // swimmer with the head under: the camera dives too
+      if (cam.floorAt) camera.position.y = Math.max(camera.position.y, cam.floorAt(camera.position.x, camera.position.z) + 0.35);
       if (fx.shake > 0.01) {
         camera.position.x += (Math.random() - 0.5) * fx.shake; camera.position.y += (Math.random() - 0.5) * fx.shake;
       }

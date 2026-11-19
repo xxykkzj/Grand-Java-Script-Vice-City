@@ -90,7 +90,7 @@ export function createOcean(scene) {
     uTime: timeU, ...fogU,
   };
   const mat = new THREE.ShaderMaterial({
-    uniforms, fog: false,
+    uniforms, fog: false, side: THREE.DoubleSide,
     vertexShader: /* glsl */`
       varying vec3 vW;
       void main(){
@@ -113,6 +113,22 @@ export function createOcean(scene) {
         vec3 V = normalize(cameraPosition - vW);
         vec2 q = abs(p) - uIsle;
         float dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
+        // seen from below (the camera is under the surface): a bright Snell's window of sky straight above,
+        // the wavy surface rippling across it, and the murk of total internal reflection beyond its rim
+        if (cameraPosition.y < vW.y) {
+          vec3 Vd = normalize(vW - cameraPosition);
+          float cs = dot(Vd, normalize(vec3(-N.x * 1.6, 1.0, -N.z * 1.6)));
+          float win = smoothstep(0.62, 0.74, cs);
+          float rim = smoothstep(0.58, 0.64, cs) * (1.0 - smoothstep(0.64, 0.74, cs));
+          vec3 Rf = vec3(Vd.x * 1.33 - N.x * 0.4, max(cs, 0.0), Vd.z * 1.33 - N.z * 0.4);
+          vec3 sky = uSky * 1.1 + uSunCol * (pow(max(dot(normalize(Rf), uSunDir), 0.0), 40.0) * 1.2 + 0.1);
+          float rip = 0.5 + 0.5 * sin(p.x * 1.7 + t * 1.6 + n * 2.0) * sin(p.y * 1.5 - t * 1.3);
+          vec3 under = mix(uFogColor * 0.75, sky * (0.8 + 0.35 * rip), win) + uSky * rim * 0.3;
+          float fogU2 = smoothstep(uFogNear, uFogFar, length(cameraPosition - vW));
+          gl_FragColor = vec4(mix(under, uFogColor, fogU2 * (1.0 - win * 0.55)), 1.0);
+          #include <colorspace_fragment>
+          return;
+        }
         vec3 col = mix(uDeep, uShallow, 0.25 + 0.2 * n);
         col = mix(uShallow * 1.25, col, smoothstep(0.0, 70.0, dist));
         float fres = pow(1.0 - max(dot(V, N), 0.0), 3.0);

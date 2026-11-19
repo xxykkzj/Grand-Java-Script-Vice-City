@@ -179,7 +179,7 @@ export function createDamage(game) {
 
   const sound = { fire: 0 };
   const api = {
-    hit, blast, explode, ignite, frac, disabled, stageOf, sound, onHit: null, onExplode: null,
+    hit, blast, explode, ignite, frac, disabled, stageOf, sound, clear, onHit: null, onExplode: null,
     // the PITSTOP code and debug: good as new
     repair(v) { if (!v) return false; resetDamage(v); vehicles.retint(v); if (v.kind === 'heli') v.landed = false; return true; },
     state(v) { return v && { kind: v.kind, hp: +v.hp.toFixed(1), max: v.maxHp, frac: +frac(v).toFixed(3), stage: stageOf(v), burn: +(v.burn || 0).toFixed(2), wreck: !!v.wreck, perf: v.perf, char: +(v.char || 0).toFixed(2), dent: +(v.dent || 0).toFixed(2), disabled: disabled(v) }; },

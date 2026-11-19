@@ -20,6 +20,8 @@ export const CODES = {
   NEONRIDE: 'Paint every car hot pink and make it glow',
   PITSTOP: 'Fix the vehicle you are in (or the nearest one)',
   SPARKCRATE: 'Every neon blaster and firework, fully loaded',
+  HIGHTIDE: 'Drop into the sea off the beach (swim: C dives, Space rises)',
+  FINSUP: 'Call a shark (it keeps attacking in deep water: swim for the beach, a pier ladder or shallows)',
   REWIND: 'Forget the saved story, outfits and blasters',
   HELP: 'List codes',
 };
@@ -61,6 +63,14 @@ export function createCheats(game) {
       player.model.setOutfit({ jacket: '#12b5a6', trim: '#e6258f', light: '#f7f5ef', bag: '#f2b63a' });
       return 'TAPE REWOUND: STORY, WARDROBE AND BLASTERS RESET';
     },
+    HIGHTIDE() {
+      if (game.vehicle) game.rules.leaveVehicle();
+      const x = Math.max(-240, Math.min(240, player.pos.x));
+      player.pos.set(x, 0, 150 + 32); player.vel.set(0, 0, 3); player.yaw = 0; player.vy = 0;
+      game.cam.yaw = 0; game.cam.pitch = 0.3;
+      return 'SPLASH. MIND THE CURRENT PAST THE REEF';
+    },
+    FINSUP() { return game.marine.spawnShark() ? 'SOMETHING IS CIRCLING...' : 'THE WATER HERE IS TOO SHALLOW FOR A SHARK'; },
     NIGHTSHIFT() { return env.toggleNight() ? 'LIGHTS OUT, NEON ON' : 'BACK TO GOLDEN HOUR'; },
     STORMFRONT() { const on = env.weather !== 'storm'; env.setWeather(on ? 'storm' : 'clear'); return on ? 'HERE COMES THE RAIN' : 'SKIES CLEARING'; },
     CLEARSKIES() { env.setWeather('clear'); return 'NOT A CLOUD IN SIGHT'; },

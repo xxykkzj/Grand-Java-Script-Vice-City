@@ -91,7 +91,7 @@ export function createEnvironment(scene, sky, ocean, city, camera, audio) {
   scene.add(rain);
 
   const env = {
-    hemi,
+    hemi, rain,
     tod: 19, target: null, speed: 1, indoor: false, flash: 0, cur,
     weather: 'clear', w: { cloud: 0.12, rain: 0, bolt: 0, fog: 0 }, wxTimer: 2.5, wet: 0,
     nextBolt: 4, pendingThunder: -1, phase: 'DUSK',

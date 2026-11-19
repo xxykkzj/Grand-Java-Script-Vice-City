@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { box, cyl, tint, merge, timeU, fogU, FOG_PARS, PI, rng, wetU, rainU, reflU, nightU } from '../core/util.js';
 import { HX, HZ, PIER, SIGN_NAMES, ADS, EDGE_SIGNS } from './layout.js';
+import { LADDERS, LADDER_GAP, shelfGeometry } from './sea.js';
 import { addEdges } from './edges.js';
 import { paintGround, paintSigns, SIGN_ROWS } from './textures.js';
 import { addDetails, buildLife } from './details.js';
@@ -208,11 +209,31 @@ export function buildCity(scene, L) {
   solid.push(box(12, 0.5, plen, px, -0.25, pzc, '#b98a5e'));
   for (let z = PIER.z0 + 2; z < PIER.z1; z += 4) solid.push(box(11.6, 0.02, 0.18, px, 0.012, z, '#93683f'));
   for (const sx of [PIER.x0 + 0.15, PIER.x1 - 0.15]) {
-    solid.push(box(0.12, 0.12, plen, sx, 1.1, pzc, '#fbf7f0'));
-    neon.push(box(0.07, 0.07, plen, sx, 1.2, pzc, sx < px ? '#18f0ff' : '#ff2bd1'));
-    for (let z = PIER.z0; z <= PIER.z1; z += 5) solid.push(box(0.16, 1.1, 0.16, sx, 0.55, z, '#fbf7f0'));
+    // the rail opens at each ladder (LADDER_GAP metres either side)
+    const gaps = LADDERS.filter((l) => (l.s < 0) === (sx < px)).map((l) => l.z).sort((a, b) => a - b);
+    let a0 = PIER.z0;
+    for (const gz of [...gaps, PIER.z1 + LADDER_GAP]) {
+      const a1 = Math.min(gz - LADDER_GAP, PIER.z1);
+      if (a1 > a0 + 0.2) {
+        solid.push(box(0.12, 0.12, a1 - a0, sx, 1.1, (a0 + a1) / 2, '#fbf7f0'));
+        neon.push(box(0.07, 0.07, a1 - a0, sx, 1.2, (a0 + a1) / 2, sx < px ? '#18f0ff' : '#ff2bd1'));
+      }
+      a0 = gz + LADDER_GAP;
+    }
+    for (let z = PIER.z0; z <= PIER.z1; z += 5) if (!gaps.some((g) => Math.abs(g - z) < LADDER_GAP + 0.1)) solid.push(box(0.16, 1.1, 0.16, sx, 0.55, z, '#fbf7f0'));
     for (let z = PIER.z0 + 6; z <= PIER.z1; z += 12.5) solid.push(cyl(0.32, 0.32, 4, 6, sx, -2, z, '#6b4a30'));
   }
+  // ladders: two steel rails and rungs from under the water up over the deck edge, with grab handles
+  for (const l of LADDERS) {
+    const sx = l.x + l.s * 0.22, hx = l.x - l.s * 0.35;
+    for (const o of [-0.3, 0.3]) {
+      solid.push(box(0.07, 3.9, 0.07, sx, -0.75, l.z + o, '#cfd6dd'));
+      solid.push(box(0.07, 0.07, 0.07, sx, 1.22, l.z + o, '#cfd6dd'), box(0.5, 0.06, 0.07, hx + l.s * 0.1, 1.25, l.z + o, '#cfd6dd'), box(0.07, 0.6, 0.07, hx - l.s * 0.15, 1.0, l.z + o, '#cfd6dd'));
+    }
+    for (let y = -2.5; y < 1.1; y += 0.33) solid.push(box(0.05, 0.05, 0.6, sx, y, l.z, '#b7c0c9'));
+  }
+  // the sand where the beach slopes into the sea (a merged part of the city mesh)
+  solid.push(shelfGeometry());
   solid.push(box(12, 0.12, 0.12, px, 1.1, PIER.z1 - 0.1, '#fbf7f0'));
   // entrance arch + sign (faces the island)
   solid.push(box(0.5, 5.6, 0.5, PIER.x0 + 0.3, 2.8, 151, '#f7b3c6'), box(0.5, 5.6, 0.5, PIER.x1 - 0.3, 2.8, 151, '#f7b3c6'));

@@ -96,6 +96,20 @@ Every few minutes, when you are not on a job, not in a scene, not indoors and no
 
 Walk up to a seat and press `F` (the hint shows `F: sit`; touch: **Sit**): Skye sits down onto it facing the right way, then idles (looks around, leans back, on the sand lies back with arms behind the head). `F`, `E` or moving gets up. Seats: benches on the boulevard, the promenade, the pier and the sand by the pier; sun loungers and towels under the beach umbrellas; café chairs at the tables outside the Sunset Strip Diner; the bleacher steps by the volleyball court; the seawall coping; the pier edge by the rail; bar stools, the club lounge booths and the VIP sofa indoors. On the beach you can also just sit on the sand anywhere (stand still first). Pedestrians use the same seats: some sit on benches and at the café, on loungers and towels and the sand by day, and the club crowd fills the booths.
 
+## The sea
+
+Walk off the beach and the sand shelves away: ankle-deep wading (slower, no skates), then past about 1.2 m Skye swims. Jump off the pier edge (or drive off it) for a splash.
+
+- **Keys:** `WASD` swim, `Shift` faster stroke (uses stamina), `C` dive, `Space` rise. Underwater you swim along where the camera points. `E` climbs out at a pier ladder (three of them) or just walk up the beach.
+- **Touch:** while wet the buttons become **Dive**, **Up** and (at a ladder) **Climb**; the stick swims.
+- **Breath:** the bubble meter on the HUD drains while submerged (about 24 s). At zero you lose health; at 0 health the usual KNOCKED OUT flow runs. Breath refills at the surface.
+- **Current:** past the reef a strong current pushes swimmers back (HUD: STRONG CURRENT). The bed drops into dark murk out there.
+- **Underwater:** depth fog that darkens with depth and at night, caustics, light shafts, plankton, a wavy ceiling with a bright window, muffled sound with bubbles. Seabed: ripples, rocks, seaweed, coral, a boat wreck, tyres, a beach ball. Reduced motion calms the caustics and sway.
+- **Sea life:** fish schools, rays, glowing jellyfish at night, sea turtles, dolphins leaping far offshore.
+- **Sharks:** rare, likelier far from shore and at night, never in water under 2 m. A fin circles with a sting, then lunges for a chomp (health loss, splash, shake). Reach the beach or a ladder to escape. HUD shows SHARK! and a minimap blip. Firing a weapon scares it off; it is never killed.
+- **Vehicles in the sea:** cars, the Comet and the tank sink slowly with bubbles (you bail out); a helicopter that lands on water sinks too. Wrecks are cleaned up later.
+- **Cheats:** `HIGHTIDE` (drop into the sea), `FINSUP` (call a shark).
+
 ## What's in town
 
 - **Traffic.** Up to 26 AI cars plus Coast Patrol cars follow a lane graph built from the road layout: they keep right, turn at junctions, queue behind each other, and brake for you, for pedestrians and for red lights. You can see the drivers through the glass; headlights, tail lights and light pools on the road come on at dusk. Empty parked cars are still there for the taking.
