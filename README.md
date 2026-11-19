@@ -312,13 +312,28 @@ then open `dist/index.html`. `npm run dev` rebuilds (unminified) whenever a file
 
 ### Size
 
+**The game's own code** (what we wrote, in `src/`, borrowed assets left out):
+
+| Part | Files | Source size |
+| --- | --- | --- |
+| JavaScript (game logic, world, actors, UI) | 53 | about 828 KB, ~13,500 lines |
+| HTML + CSS (`src/index.html`: HUD, menus, styles) | 1 | about 41 KB |
+| **Core game source** | **54** | **about 869 KB, ~14,100 lines** |
+
+Not counted above: `src/actors/figure.js` (about 133 KB), an experimental character generator that the game no longer uses.
+
+**What ships** (`dist/index.html`, one minified file):
+
 | Part | Minified |
 | --- | --- |
-| three.js 0.187.0 (tree-shaken) | about 602 KB |
-| Game code | about 522 KB |
-| Embedded models (base64) | about 343 KB |
-| HTML + CSS | about 36 KB |
-| **`dist/index.html`** | **about 1.5 MB** |
+| Game code (our JS) | about 454 KB |
+| HTML + CSS | about 40 KB |
+| three.js 0.187.0 (tree-shaken, MIT) | about 596 KB |
+| Borrowed models, embedded (Kenney / Quaternius, CC0) | about 343 KB |
+| **Total** | **about 1.4 MB** |
+
+So the game itself is roughly half a megabyte once minified; the rest is the three.js library and a few borrowed CC0 models.
+The `assets/` folder (about 19 MB, 149 models with their licences and a gallery) is a reference library: only the models listed in Credits are embedded in the game.
 
 ### Source layout
 
