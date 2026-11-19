@@ -20,6 +20,9 @@ Saturday is the Neon Coast Dance-Off at Club Prism. The prize is $5,000. Dee has
 | **Gus Pibble** | Pelican Pantry 24 | Night clerk. Maroon Pantry polo with a name badge, a shop cap, permanently startled. Owes Marty for the slush machine. Owns a Comet sport bike that is his whole savings. |
 | **DJ Kilowatt** | Club Prism, the booth | Headphones, yellow cap, one hand always in the air. Has not forgiven Marty for the smoke machine incident. |
 | **Mimi Zig** | Zigzag Threads | Sells jackets. Has opinions about your shorts. |
+| **Zizi Sparks** | Volt & Spark Supply | Pyrotechnician and blaster tinkerer. Tangerine overalls over a dark long-sleeve, yellow straps, teal hair under a goggle band. Everything she sells is "certified toy-grade": it zaps cars and rattles bins and only ever gives people a fright. Takes safety very seriously, in the loudest possible way. |
+| **Officer Duarte** | Coast Patrol, in a patrol car | The friendly voice on the patrol car's loudspeaker during street events. Pays a reward for a good tackle. The Coast Patrol only ever appears in its cars. |
+| **Patrol Dispatch** | the radio | Calls in the street events: alarms at shops, suspects on foot. |
 
 ## The arc
 
@@ -41,6 +44,28 @@ The flyers are what bring people in. The club's crowd is data in `CLUB_CROWD` (s
 | During **Last Dance** | packed: 28 dancers and every stool (45) | a touch louder and brighter |
 
 New arrivals walk in from the door. The club's conversations are played sitting down in the far booth of the lounge: Skye and the speaker face each other across the table, a second speaker takes the back of the booth, and the dancers keep out of the space round the booth while anyone is talking.
+
+## Volt & Spark Supply
+
+A new shop on Lumina Boulevard, east of the spawn, in the old Aqua Deco Suites front (the hotel name moved to the far east end of the strip). A blue ring at the door, a neon lightning bolt and a firework burst beside it. Inside it is small and brightly lit: a pale checked floor, light walls and ceiling panels, a violet counter with a glass case of firework bangs, and behind Zizi a dark display wall of glowing blasters. Crates of fireworks and rocket bundles line the left wall, a practice target hangs on the right.
+
+The first time you walk in, Zizi gives you the safety talk:
+
+> **ZIZI:** Welcome to Volt and Spark! Goggles on, fingers off the glowy ones.  
+> **SKYE:** Zizi, is any of this actually legal?  
+> **ZIZI:** Certified toy-grade! It zaps cars, rattles bins and gives people a fright. Nobody gets hurt.  
+> **ZIZI:** Bangs are for the road, not the boardwalk. And never zap a patrol car unless you want new friends with sirens.  
+> **SKYE:** Shiny things for cars only. Got it.  
+
+## Street events
+
+Between jobs, Neon Coast gets on with its own business. Every few minutes (never during a job, a scene, indoors or while you are wanted) something happens near you, marked with a blinking blip on the minimap:
+
+- **Bag snatcher.** A shopper yells as someone grabs their handbag and runs. Tackle the snatcher, pick up the bag, hand it back: *"My bag! Everything's still in it, even the emergency mints. Here, for your trouble!"*
+- **Getaway car.** A shop alarm rings, a dark getaway car tears off with a patrol car behind it, and Dispatch calls it in. Ram it or stop it and Officer Duarte takes over: *"Nice driving, citizen! We'll take it from here."* The stolen takings fall out; the shopkeeper gives you a share for bringing them back.
+- **Suspect on foot.** *"All units: suspect on foot near Deco Row! Wanted for swapping price stickers at the Pantry."* Tackle the runner and the officer pays out: *"Textbook tackle! The Coast Patrol owes you one."*
+
+Every line is in `src/game/events.js`; the voices are in the cast list in `src/game/story.js`.
 
 ## How a job plays
 
@@ -208,6 +233,13 @@ New arrivals walk in from the door. The club's conversations are played sitting 
 - This next one goes out to everybody on eight wheels.
 - Floor is open. Hairspray is optional.
 
+**ZIZI** (Volt & Spark Supply)
+
+- Goggles on, fingers off the glowy ones.
+- Everything here is certified toy-grade. Mostly.
+- Bangs are for the road, not the boardwalk.
+- It only zaps cars and bins. People just get a fright.
+
 ### Shop lists
 
 | Zigzag Threads | Price | Notes |
@@ -223,6 +255,14 @@ New arrivals walk in from the door. The club's conversations are played sitting 
 | BOARDWALK SUNDRESS | $140 | Lemon sundress with a tangerine hem. Made for the promenade. |
 | SEA BREEZE SLACKS | $160 | Navy bomber, wide cream trousers. Yacht club, no yacht. |
 | FLAMINGO ROYALE | $750 | Dee's 1979 roller-disco jacket. Pink and gold. Free once the story is finished. |
+
+| Volt & Spark Supply | Price | More ammo | Notes |
+| --- | --- | --- | --- |
+| ZAP POPPER | $150 (60 shots) | +60 for $40 | Compact pop blaster. Cheap, quick, short reach. |
+| PRISM RIFLE | $480 (36 shots) | +36 for $90 | Three-shot bursts of split light. Long reach, dead accurate. |
+| ARC COIL | $620 (24 shots) | +24 for $110 | Short-range lightning that jumps from car to car. |
+| FIREWORK BANGS | $200 (5) | +5 for $120 | Throw them (hold to throw further) or drop them behind your car. Short fuse. |
+| STARFALL CANDLE | $750 (20 stars) | +20 for $150 | A volley of five homing stars. Pricey, very pretty. |
 
 | Pelican Pantry 24 | Price | Notes |
 | --- | --- | --- |

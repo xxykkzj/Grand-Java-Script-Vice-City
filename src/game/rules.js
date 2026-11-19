@@ -13,6 +13,7 @@ const CASH = [[40, 205], [-205, 112], [228, 116], [-150, -144], [150, -144], [11
 const REASON = {
   jack: 'THAT WAS NOT YOUR RIDE', ped: 'WATCH WHERE YOU ROLL', tank: 'HEAVY ARTILLERY ON THE BOULEVARD',
   red: 'COAST PATROL SAW THAT RED LIGHT', patrol: 'YOU STOLE A PATROL CAR',
+  copshot: 'YOU OPENED FIRE ON THE COAST PATROL', shots: 'SHOOTING UP CARS IN FRONT OF THE PATROL', copwreck: 'A PATROL CAR WENT UP IN SMOKE',
 };
 
 export function createRules(game, scene) {
@@ -160,7 +161,8 @@ export function createRules(game, scene) {
     const mine = a.driven ? a : b.driven ? b : null;
     if (!mine || imp < 4) return;
     // fender benders are free: no heat for car-on-car contact, only a few bruises if it was a big one
-    if (imp > 10 && mine.kind === 'car') hurt(Math.min(22, imp * 0.5));
+    // (the car itself takes the damage: see game/damage.js)
+    if (imp > 14 && mine.kind === 'car') hurt(Math.min(15, (imp - 14) * 0.6));
   };
   // a heavy crash on the Comet sends the courier over the bars
   vehicles.onThrow = (c, sp) => {
@@ -174,13 +176,9 @@ export function createRules(game, scene) {
     hud.toast('THROWN OFF', 'THE COMET IS FAST, NOT FORGIVING');
     hurt(Math.min(38, 8 + sp * 0.8));
   };
-  vehicles.onBoom = (x, y, z) => {
-    peds.alarm(x, z, 55, 9);
-    const f = game.focus(), d = Math.hypot(f.x - x, f.z - z);
-    if (d < 10 && game.mode !== 'tank') hurt((1 - d / 10) * (onFoot() ? 70 : 30));
-  };
+  // tank shells: the blast (vehicle damage, people, props, the courier on foot) is in game/damage.js
   vehicles.onShot = (x, z) => { peds.alarm(x, z, 40); crime('tank', 1, 1.5); };
-  game.pedHit = (p, o) => { if (o.driven) crime('ped', 1, 2); };
+  game.pedHit = (p, o) => { if (game.events && game.events.pedHit(p, o)) return; if (o.driven) crime('ped', 1, 2); };
 
   const rules = {
     crime, hurt, startJack, leaveVehicle,
@@ -263,7 +261,7 @@ export function createRules(game, scene) {
       const bl = rules.blips;
       bl.length = 0;
       for (const p of picks) if (p.t <= 0) bl.push({ x: p.x, z: p.z, color: p.med ? '#ff8ad0' : '#6dffb0', near: true });
-      game.places.blips(bl); game.story.blips(bl);
+      game.places.blips(bl); game.story.blips(bl); if (game.events) game.events.blips(bl);
     },
   };
   return rules;

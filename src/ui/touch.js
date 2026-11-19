@@ -107,7 +107,7 @@ export function createTouch(game) {
     if (!b) {
       b = document.createElement('button'); b.type = 'button'; b.className = 'tbtn';
       const t = document.createElement('b'); t.textContent = label;
-      const k = document.createElement('small'); k.textContent = { Space: '', KeyE: 'E', KeyF: 'F', KeyX: 'X', KeyS: '', KeyC: '', Enter: '', Escape: '' }[code] ?? '';
+      const k = document.createElement('small'); k.textContent = { Space: '', KeyE: 'E', KeyF: 'F', KeyX: 'X', KeyS: '', KeyC: '', Enter: '', Escape: '', KeyR: '', KeyG: 'G', KeyQ: 'Q' }[code] ?? '';
       b.append(t, k); b.setAttribute('aria-label', label);
       bindKey(b, code);
       pool.set(id, b);
@@ -120,9 +120,11 @@ export function createTouch(game) {
     if (b === 'cut') return [['Space', 'NEXT'], ['KeyX', 'SKIP']];
     if (b === 'fail') return [['Enter', 'RETRY'], ['Escape', 'DROP']];
     if (b) return [];
+    // weapons (game/combat.js): FIRE, a firework BANG (DROP behind a vehicle) and SWAP, all with auto-aim
+    const wb = game.combat ? game.combat.touchButtons() : [];
     if (v) {
-      if (v.kind === 'car') return [['Space', 'DRIFT'], ['KeyE', 'EXIT'], ['KeyS', 'BRAKE']];
-      if (v.kind === 'bike') return [['KeyS', 'BRAKE'], ['KeyE', 'GET OFF']];
+      if (v.kind === 'car') return [['Space', 'DRIFT'], ['KeyE', 'EXIT'], ['KeyS', 'BRAKE'], ...wb];
+      if (v.kind === 'bike') return [['KeyS', 'BRAKE'], ['KeyE', 'GET OFF'], ...wb];
       if (v.kind === 'tank') return [['KeyF', 'FIRE'], ['KeyE', 'EXIT']];
       return [['Space', 'UP'], ['KeyC', 'DOWN'], ['KeyE', v.y > 0.6 ? 'LAND' : 'EXIT']];
     }
@@ -134,7 +136,8 @@ export function createTouch(game) {
       return [...fb, ...(e ? [['KeyE', 'USE']] : [])];
     }
     const n = vehicles.nearest(player.pos);
-    return [['Space', 'JUMP'], ...(n ? [['KeyE', n.ai ? 'TAKE' : n.kind === 'bike' ? 'RIDE' : 'ENTER']] : []), ...fb];
+    // armed: FIRE is the big button
+    return [...wb.slice(0, 1), ['Space', 'JUMP'], ...(n ? [['KeyE', n.ai ? 'TAKE' : n.kind === 'bike' ? 'RIDE' : 'ENTER']] : []), ...fb, ...wb.slice(1)];
   }
 
   // dance ring: the eight moves round a STOP button

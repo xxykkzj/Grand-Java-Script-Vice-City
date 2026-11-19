@@ -18,7 +18,9 @@ export const CODES = {
   TIPJAR: '+$500',
   MOONBOOTS: 'Toggle low gravity',
   NEONRIDE: 'Paint every car hot pink and make it glow',
-  REWIND: 'Forget the saved story and outfits',
+  PITSTOP: 'Fix the vehicle you are in (or the nearest one)',
+  SPARKCRATE: 'Every neon blaster and firework, fully loaded',
+  REWIND: 'Forget the saved story, outfits and blasters',
   HELP: 'List codes',
 };
 
@@ -53,9 +55,11 @@ export function createCheats(game) {
       return 'ONE COMET, KEYS IN';
     },
     REWIND() {
-      Object.assign(game.save, { outfit: 'classic', owned: [], story: 0, gift: {} }); game.persist();
+      Object.assign(game.save, { outfit: 'classic', owned: [], story: 0, gift: {}, arms: {}, armsIntro: 0 });
+      if (game.combat) game.combat.reset();
+      game.persist();
       player.model.setOutfit({ jacket: '#12b5a6', trim: '#e6258f', light: '#f7f5ef', bag: '#f2b63a' });
-      return 'TAPE REWOUND: STORY AND WARDROBE RESET';
+      return 'TAPE REWOUND: STORY, WARDROBE AND BLASTERS RESET';
     },
     NIGHTSHIFT() { return env.toggleNight() ? 'LIGHTS OUT, NEON ON' : 'BACK TO GOLDEN HOUR'; },
     STORMFRONT() { const on = env.weather !== 'storm'; env.setWeather(on ? 'storm' : 'clear'); return on ? 'HERE COMES THE RAIN' : 'SKIES CLEARING'; },
@@ -67,6 +71,14 @@ export function createCheats(game) {
     TIPJAR() { game.money += 500; return 'KEEP THE CHANGE'; },
     MOONBOOTS() { player.lowGravity = !player.lowGravity; return player.lowGravity ? 'LOW GRAVITY ON' : 'GRAVITY RESTORED'; },
     NEONRIDE() { vehicles.setNeon(!vehicles.neon); return vehicles.neon ? 'EVERY RIDE HOT PINK' : 'FACTORY PAINT RESTORED'; },
+    SPARKCRATE() { game.combat.giveAll(); return 'ZIZI SENDS HER REGARDS: 1-5 OR Q TO PICK'; },
+    PITSTOP() {
+      let v = game.vehicle;
+      if (!v) { let bd = 7; for (const o of vehicles.all()) { const d = Math.hypot(o.x - player.pos.x, o.z - player.pos.z); if (d < bd) { bd = d; v = o; } } }
+      if (!v) return 'NOTHING TO FIX AROUND HERE';
+      game.damage.repair(v);
+      return v.kind === 'heli' ? 'ROTORS BALANCED, GOOD AS NEW' : 'PANEL-BEATEN AND GOOD AS NEW';
+    },
   };
 
   const api = {

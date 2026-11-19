@@ -27,6 +27,11 @@ const LOOKS = {
   TAPS: { skin: '#e0a878', top: '#f6f1e7', legs: '#22203a', sleeve: '#f6f1e7',
     body: [[0.47, 0.5, 0.27, 0, 1.2, 0, '#22203a'], [0.14, 0.5, 0.02, 0, 1.22, 0.14, '#f6f1e7'], [0.18, 0.07, 0.03, 0, 1.47, 0.15, '#ff2bd1']],
     head: [[0.27, 0.08, 0.27, 0, 0.27, -0.01, '#1b1830'], [0.27, 0.16, 0.08, 0, 0.18, -0.11, '#1b1830'], [0.14, 0.03, 0.02, 0, 0.09, 0.127, '#1b1830']] },
+  // Zizi Sparks, Volt & Spark's pyrotechnician: tangerine overalls over a dark long-sleeve, yellow straps,
+  // teal hair under a goggle band, so she reads against the dark display wall and the violet counter
+  ZIZI: { skin: '#a56b43', top: '#ff7a2f', legs: '#ff7a2f', sleeve: '#2a2140', shoe: '#ffe14a',
+    body: [[0.3, 0.3, 0.02, 0, 1.17, 0.135, '#ffa04a'], [0.05, 0.3, 0.02, 0.12, 1.42, 0.135, '#ffe14a'], [0.05, 0.3, 0.02, -0.12, 1.42, 0.135, '#ffe14a'], [0.1, 0.07, 0.025, 0.07, 1.2, 0.15, '#18f0ff'], [0.47, 0.06, 0.27, 0, 0.95, 0, '#2a2140']],
+    head: [[0.3, 0.13, 0.3, 0, 0.28, -0.02, '#1fa89f'], [0.29, 0.22, 0.1, 0, 0.16, -0.11, '#1fa89f'], [0.282, 0.05, 0.282, 0, 0.27, 0, '#22203a'], [0.1, 0.075, 0.03, -0.065, 0.3, 0.13, '#ffe14a'], [0.1, 0.075, 0.03, 0.065, 0.3, 0.13, '#ffe14a']] },
   MIMI: { skin: '#a56b43', top: '#ff8a3d', legs: '#ff8a3d', sleeve: '#a56b43',
     body: [[0.5, 0.5, 0.3, 0, 0.72, 0, '#ff8a3d'], [0.05, 0.6, 0.28, 0.1, 1.25, 0, '#ffe14a'], [0.47, 0.06, 0.27, 0, 0.95, 0, '#22203a']],
     head: [[0.34, 0.2, 0.3, 0, 0.3, -0.03, '#22203a'], [0.4, 0.3, 0.16, 0, 0.18, -0.12, '#22203a'], [0.16, 0.1, 0.06, 0.1, 0.4, 0.05, '#ff2bd1']] },
@@ -676,7 +681,54 @@ function buildMart(room) {
   });
 }
 
-const BUILD = { bar: buildBar, club: buildClub, wear: buildWear, mart: buildMart };
+// ---- Volt & Spark Supply ----------------------------------------------------------------------------
+// Small and brightly lit: a pale checked floor, light walls and ceiling panels; behind the violet counter
+// a dark display wall of glowing neon blasters (the five Zizi sells), crates of fireworks along the left
+// wall, a practice target on the right, Zizi behind the counter.
+function buildArms(room) {
+  const g = [], r = rng(31);
+  shell(g, 6, 4.5, 4.2, '#d9e4f0', '#f3f7fb', ['#1d2440', '#a9bad2', '#b8c7dc'], '#f4f7fb', '#3ad6ff');
+  for (const x of [-3, 0, 3]) for (const z of [-2.6, 0.4, 3]) g.push(box(1.8, 0.05, 0.7, x, 4.17, z, '#ffffff'));          // light panels
+  // the display wall: a dark pegboard with the blasters lit up on it, a neon bolt over the top
+  g.push(box(10.6, 2.8, 0.06, 0, 1.95, -4.44, '#141a30'));
+  for (let i = 0; i < 26; i++) for (let j = 0; j < 7; j++) g.push(box(0.04, 0.04, 0.02, -5 + i * 0.4, 0.75 + j * 0.4, -4.4, '#2c3658'));
+  const blaster = (x, y, kind, c) => {
+    if (kind === 0) g.push(box(0.6, 0.18, 0.06, x, y, -4.38, '#22203a'), box(0.16, 0.3, 0.06, x - 0.12, y - 0.2, -4.38, '#3a3550'), box(0.56, 0.05, 0.07, x, y + 0.08, -4.36, c));
+    else if (kind === 1) g.push(box(1.3, 0.14, 0.06, x, y, -4.38, '#22203a'), box(0.36, 0.22, 0.06, x - 0.55, y - 0.04, -4.38, '#3a3550'), box(1.0, 0.04, 0.07, x + 0.1, y + 0.07, -4.36, c), box(0.18, 0.18, 0.07, x + 0.7, y, -4.36, '#bff8ff'));
+    else if (kind === 2) { g.push(box(0.9, 0.05, 0.06, x, y, -4.38, '#c9c0d8')); for (let k = 0; k < 3; k++) g.push(box(0.05, 0.26 - k * 0.04, 0.07, x - 0.2 + k * 0.2, y, -4.36, c)); }
+    else g.push(box(1.1, 0.16, 0.06, x, y, -4.38, '#3a1d8a'), box(0.06, 0.18, 0.07, x - 0.3, y, -4.36, c), box(0.06, 0.18, 0.07, x + 0.1, y, -4.36, '#ffe14a'), box(0.06, 0.18, 0.07, x + 0.45, y, -4.36, c));
+  };
+  const COLS = ['#ff3fb4', '#27e8ff', '#b388ff', '#ff8a3d', '#8dff5a', '#ffe14a'];
+  for (let row = 0; row < 3; row++) for (let i = 0; i < 4; i++) blaster(-3.9 + i * 2.6 + (row % 2) * 0.4, 1.2 + row * 0.85, (i + row) % 4, COLS[(i * 2 + row) % 6]);
+  g.push(box(10.6, 0.08, 0.08, 0, 3.4, -4.38, '#3ad6ff'), box(10.6, 0.08, 0.08, 0, 0.52, -4.38, '#ff2bd1'));
+  const B = '#ffe14a';                                              // the shop's bolt in neon, top centre
+  g.push(box(0.12, 0.7, 0.07, -0.25, 3.82, -4.36, B, 0, 0, -0.5), box(0.6, 0.12, 0.07, 0, 3.55, -4.36, B), box(0.12, 0.7, 0.07, 0.25, 3.3, -4.36, B, 0, 0, -0.5));
+  // the counter, with a glass case of firework bangs and a till
+  g.push(box(6.4, 1.05, 0.8, 0, 0.525, -1.6, '#4a2a8a'), box(6.6, 0.08, 1.0, 0, 1.08, -1.6, '#efe8ff'), box(6.4, 0.06, 0.06, 0, 0.2, -1.18, '#3ad6ff'), box(6.4, 0.05, 0.05, 0, 0.98, -1.17, '#ff2bd1'));
+  g.push(box(1.6, 0.35, 0.6, -1.6, 1.29, -1.6, '#cfeeff'), box(1.62, 0.04, 0.62, -1.6, 1.48, -1.6, '#ffffff'));
+  for (let k = 0; k < 6; k++) g.push(cyl(0.06, 0.06, 0.22, 6, -2.2 + k * 0.24, 1.25, -1.6, k % 2 ? '#ff3f6a' : '#ffe14a', PI / 2));
+  g.push(box(0.5, 0.32, 0.4, 2.2, 1.28, -1.7, '#22203a'), box(0.42, 0.18, 0.05, 2.2, 1.42, -1.48, '#8dff5a'));
+  // fireworks along the left wall: crates with coloured stripes, rocket bundles, a SAFETY FIRST board
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 2 - (i % 2); j++) {
+    const x = -5.3, z = -0.6 + i * 0.95, y = 0.32 + j * 0.64;
+    g.push(box(0.9, 0.62, 0.86, x, y, z, '#c98d62'), box(0.92, 0.12, 0.88, x, y + 0.12, z, COLS[(i + j * 2) % 6]), box(0.06, 0.3, 0.5, x + 0.46, y - 0.05, z, '#fff6ec'));
+  }
+  for (let i = 0; i < 7; i++) { const a = r() * 6.28, rr = 0.12 + r() * 0.1; g.push(cyl(0.05, 0.05, 0.9, 6, -4.6 + Math.cos(a) * rr, 1.6, 2.9 + Math.sin(a) * rr, COLS[i % 6]), cyl(0.001, 0.07, 0.16, 6, -4.6 + Math.cos(a) * rr, 2.12, 2.9 + Math.sin(a) * rr, '#fff6ec')); }
+  g.push(box(0.06, 0.9, 1.4, -5.94, 2.6, 1.0, '#ffe14a'), box(0.07, 0.12, 1.1, -5.92, 2.82, 1.0, '#22203a'), box(0.07, 0.08, 0.9, -5.92, 2.55, 1.0, '#22203a'), box(0.07, 0.08, 1.0, -5.92, 2.35, 1.0, '#22203a'));
+  // the practice target on the right wall, a bench to try things on
+  for (const [rad, c] of [[0.8, '#ff3f6a'], [0.6, '#fff6ec'], [0.4, '#ff3f6a'], [0.2, '#ffe14a']]) g.push(cyl(rad, rad, 0.04 + (0.8 - rad) * 0.05, 18, 5.95, 2.1, 0.6, c, 0, PI / 2));
+  g.push(box(0.5, 0.45, 1.6, 5.4, 0.225, 0.6, '#3a3550'), box(0.52, 0.06, 1.62, 5.4, 0.47, 0.6, '#3ad6ff'));
+  g.push(box(10, 0.06, 0.06, 0, 4.05, 1.5, '#3ad6ff'), box(10, 0.06, 0.06, 0, 4.05, -1.0, '#ff2bd1'));
+  Object.assign(room, {
+    hx: 6, hz: 4.5, h: 4.2, geo: g, clerk: 'ZIZI',
+    blocks: [{ x0: -6, x1: 6, z0: -4.5, z1: -1.1 }, { x0: -6, x1: -4.75, z0: -1.1, z1: 3.4 }, { x0: 5.1, x1: 6, z0: -0.3, z1: 1.5 }],
+    seats: [{ x: 5.4, z: 0.6, y: 0.5, yaw: -PI / 2, kind: 'stool' }],
+    me: [0.5, -0.35], cast: { ZIZI: [-0.15, -2.55, 0] }, use: { x: 0, z: -0.6, r: 1.5 }, wide: [4.2, 2.6, 3.4, -0.6, 1.3, -2.2],
+    idle(t) { const n = room.npc.ZIZI; n.armR.rotation.set(-1.1 + Math.sin(t * 3.2) * 0.25, 0, -0.25); n.armL.rotation.set(-0.9, 0, 0.3); n.head.rotation.y = Math.sin(t * 0.9) * 0.35; },
+  });
+}
+
+const BUILD = { bar: buildBar, club: buildClub, wear: buildWear, mart: buildMart, arms: buildArms };
 
 // Build a room for a place. `place` is { key, b: building } from the layout.
 export function buildRoom(place, scene, game) {

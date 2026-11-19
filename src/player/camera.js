@@ -18,6 +18,7 @@ export function createFollowCamera(camera, solids) {
   const target = new THREE.Vector3(-10, 1.5, 67), look = new THREE.Vector3();
   const cam = {
     yaw: Math.PI / 2, pitch: 0.2, dist: 7.5, view: VIEWS[saved % VIEWS.length],
+    shoulder: 0,                 // 0..1: over the right shoulder while a blaster is out on foot (game/combat.js)
     cycleView() {
       cam.view = VIEWS[(VIEWS.indexOf(cam.view) + 1) % VIEWS.length];
       try { localStorage.setItem('neon-view', VIEWS.indexOf(cam.view)); } catch {}
@@ -53,10 +54,14 @@ export function createFollowCamera(camera, solids) {
         return;
       }
       let want = DIST[mode] * cam.view.dist + (mode === 'car' || mode === 'bike' ? Math.min(Math.abs(speed) * 0.06, 3) * cam.view.dist : 0);
+      const sh = mode === 'foot' ? cam.shoulder : 0;
+      want *= 1 - 0.3 * sh;
+      // aiming: the camera slides over the right shoulder so the crosshair sits beside the courier
+      const tx = target.x - Math.cos(cam.yaw) * 0.85 * sh, ty = target.y + 0.15 * sh, tz = target.z + Math.sin(cam.yaw) * 0.85 * sh;
       // pull in if a building sits between the camera and the target
       const cp = Math.cos(cam.pitch), dx = -Math.sin(cam.yaw) * cp, dy = Math.sin(cam.pitch), dz = -Math.cos(cam.yaw) * cp;
       for (let i = 1; i <= 10; i++) {
-        const d = want * i / 10, x = target.x + dx * d, y = target.y + dy * d, z = target.z + dz * d;
+        const d = want * i / 10, x = tx + dx * d, y = ty + dy * d, z = tz + dz * d;
         let blocked = false;
         for (const b of solids) if (y < b.h && x > b.x0 - 0.4 && x < b.x1 + 0.4 && z > b.z0 - 0.4 && z < b.z1 + 0.4) { blocked = true; break; }
         if (blocked) { want = Math.max(1.2, want * (i - 1) / 10); break; }
@@ -64,11 +69,11 @@ export function createFollowCamera(camera, solids) {
       cam.dist = want < cam.dist ? want : damp(cam.dist, want, 4, dt);
       let bob = 0;
       if (mode === 'foot' && !reducedMotion) bob = Math.sin(playerPhase * 2) * 0.03 * clamp(speed / 13, 0, 1);
-      camera.position.set(target.x + dx * cam.dist, Math.max(0.5, target.y + dy * cam.dist + bob), target.z + dz * cam.dist);
+      camera.position.set(tx + dx * cam.dist, Math.max(0.5, ty + dy * cam.dist + bob), tz + dz * cam.dist);
       if (fx.shake > 0.01) {
         camera.position.x += (Math.random() - 0.5) * fx.shake; camera.position.y += (Math.random() - 0.5) * fx.shake;
       }
-      look.copy(target); look.y += 0.4;
+      look.set(tx, ty + 0.4, tz);
       camera.lookAt(look);
       const fov = 62 + (reducedMotion ? 0 : clamp(Math.abs(speed) * 0.22, 0, 10));
       if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = damp(camera.fov, fov, 4, dt); camera.updateProjectionMatrix(); }

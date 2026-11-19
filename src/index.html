@@ -94,6 +94,24 @@ kbd{font:700 calc(11 * var(--u)) var(--mono);color:var(--ink);background:var(--c
 #note b{color:var(--sun);font-weight:700}
 #perf{position:absolute;bottom:calc(44 * var(--u) + var(--sab));right:calc(14 * var(--u) + var(--sar));padding:10px 14px;font-size:calc(11 * var(--u));line-height:1.7;white-space:pre;border-color:rgba(255,63,180,.6)}
 #perf b{color:var(--cyan);font-weight:400}
+/* vehicle condition, the burning-car warning, the weapon chip and the crosshair */
+#vcond{display:flex;align-items:center;gap:calc(8 * var(--u));padding:calc(4 * var(--u)) calc(10 * var(--u));border-color:rgba(141,255,176,.5)}
+#vcond span{font-size:calc(9 * var(--u));letter-spacing:.22em;color:var(--paper);white-space:nowrap}
+#vcond>i{flex:1;height:calc(8 * var(--u));background:rgba(255,246,236,.1);border:1px solid rgba(141,255,176,.45);overflow:hidden}
+#vcond>i>i{display:block;height:100%;transform-origin:0 50%;background:linear-gradient(90deg,#8dffb0,#ffe14a)}
+#vcond.warn>i>i{background:linear-gradient(90deg,#ffe14a,#ffb000)}
+#vcond.bad>i>i{background:linear-gradient(90deg,#ff8a3d,#ffb000)}
+#vcond.fire{border-color:#ff3f5a}#vcond.fire>i>i{background:#ff3f5a}#vcond.fire span{color:#ff8f9f;animation:cool .5s steps(2) infinite}
+#getout{position:absolute;left:50%;top:29%;transform:translateX(-50%);padding:calc(4 * var(--u)) calc(22 * var(--u));font:italic 900 calc(46 * var(--u))/1 var(--disp);letter-spacing:.08em;color:#fff;white-space:nowrap;
+  text-shadow:0 0 8px #ff3f5a,0 0 24px #ff3f5a,3px 3px 0 #2a0b5a;animation:cool .5s steps(2) infinite}
+#arms{display:flex;align-items:center;gap:calc(8 * var(--u));padding:calc(3 * var(--u)) calc(10 * var(--u));border-color:rgba(39,232,255,.6)}
+#arms canvas{width:calc(54 * var(--u));height:calc(24 * var(--u));flex:none}
+#arms b{flex:1;font:800 calc(12 * var(--u)) var(--disp);letter-spacing:.12em;text-align:left;white-space:nowrap}
+#arms span{font:800 calc(17 * var(--u)) var(--disp);color:var(--sun);font-variant-numeric:tabular-nums}
+#arms.empty span{color:#ff6a8a}
+#xhair{position:absolute;left:50%;top:50%;width:calc(24 * var(--u));height:calc(24 * var(--u));transform:translate(-50%,-50%);border:2px solid rgba(39,232,255,.8);border-radius:50%;box-shadow:0 0 8px rgba(39,232,255,.55)}
+#xhair::after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px 0 0 -2px;border-radius:50%;background:var(--pink)}
+#xhair.lock{border-color:var(--pink);box-shadow:0 0 12px rgba(255,63,180,.8)}
 #toast{position:absolute;left:50%;top:18%;transform:translateX(-50%);padding:calc(12 * var(--u)) calc(22 * var(--u));text-align:center;
   font:800 calc(20 * var(--u)) var(--disp);letter-spacing:.16em;color:#fff;width:max-content;max-width:min(92vw,calc(900 * var(--u)));
   text-shadow:0 0 6px var(--pink),0 0 18px var(--pink),0 0 34px var(--pink);
@@ -254,7 +272,7 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
 #nogl{position:fixed;inset:0;z-index:10;display:grid;place-items:center;padding:24px;text-align:center;background:var(--ink);line-height:1.7}
 #nogl h2{font:italic 900 44px var(--disp);color:var(--sun);margin:0 0 8px}
 @media (max-width:700px){#hint{max-width:90vw}#note{font-size:9px}}
-@media (prefers-reduced-motion:reduce){#go,#stars.cool i.on{animation:none}#cine::before,#cine::after,#fade,#card{transition:none}#toast,#title,#bar i{transition:none}.tbtn.on{transform:none}}
+@media (prefers-reduced-motion:reduce){#go,#stars.cool i.on,#getout,#vcond.fire span{animation:none}#cine::before,#cine::after,#fade,#card{transition:none}#toast,#title,#bar i{transition:none}.tbtn.on{transform:none}}
 </style>
 </head>
 <body>
@@ -270,6 +288,8 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
     <div id="stack">
       <div id="cash" class="chip">$<span id="money">0</span></div>
       <div id="hp" class="chip" role="img" aria-label="Health"><i id="hpfill"></i><span>HEALTH</span></div>
+      <div id="vcond" class="chip" hidden role="img" aria-label="Vehicle condition"><span id="vname">CAR</span><i><i id="vfill"></i></i></div>
+      <div id="arms" class="chip" hidden><canvas id="armsi" width="108" height="48" aria-hidden="true"></canvas><b id="armsn"></b><span id="armsa"></span></div>
       <div id="stars" class="chip" role="img" aria-label="Wanted level 0"><i>★</i><i>★</i><i>★</i><i>★</i><i>★</i></div>
       <div id="clock" class="chip"><b id="time">19:00</b><span><i id="phase">DUSK</i> · <span id="wx">CLEAR</span></span></div>
     </div>
@@ -282,6 +302,8 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
   </div>
   <div id="perf" class="chip" hidden></div>
   <div id="toast" role="status" aria-live="polite"></div>
+  <div id="xhair" hidden></div>
+  <div id="getout" hidden role="alert">GET OUT!</div>
   <div id="hint"></div>
   <div id="dance" class="chip" hidden>
     <div id="dbeat"><i id="dring"></i><div id="dpips"><b></b><b></b><b></b><b></b></div></div>

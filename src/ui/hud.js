@@ -149,6 +149,7 @@ export function createHud(L, groundCanvas, renderer) {
         let dx = p.x - focus.x, dz = p.z - focus.z;
         const d = Math.hypot(dx, dz);
         if (d > VIEW) { if (p.near) continue; dx *= VIEW / d; dz *= VIEW / d; }
+        if (p.blink && !flash) continue;                          // street events blink
         const x = R + (dx * cs - dz * sn) * SCALE, y = R + (dx * sn + dz * cs) * SCALE, r = (p.big ? 7 : 4) * (p.big ? pulse : 1);
         g.fillStyle = p.color; g.strokeStyle = '#0a0518'; g.lineWidth = 2.5;
         g.beginPath();

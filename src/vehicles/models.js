@@ -60,13 +60,18 @@ export function bikeGeometry() {
   return merge(parts);
 }
 
-// Coast Patrol livery kit: white door panels and a red / blue roof bar, drawn over a teal car.
+// Coast Patrol livery kit: white door panels, a red / blue roof bar and, at the front of the roof,
+// the pulse-laser emitter (a squat turret with a cyan lens), drawn over a teal car.
+export const LASER_MOUNT = [0, 1.72, 0.24];            // the lens, in car space (x, y, z ahead)
 export function patrolKitGeometry() {
   return merge([
     box(1.935, 0.27, 1.7, 0, 0.56, -0.35, '#f6f8fb'), box(1.94, 0.05, 1.7, 0, 0.56, -0.35, '#12b5a6'),
     box(1.2, 0.07, 0.34, 0, 1.63, -0.5, '#d9dde6'),
     box(0.52, 0.17, 0.28, -0.32, 1.72, -0.5, '#ff2a3a'), box(0.52, 0.17, 0.28, 0.32, 1.72, -0.5, '#2a6aff'),
     box(0.9, 0.02, 1.1, 0, 0.955, 1.5, '#f6f8fb', 0.2),
+    box(0.34, 0.1, 0.3, 0, 1.64, -0.16, '#2a2f3a'), box(0.2, 0.1, 0.22, 0, 1.72, -0.12, '#3a4458'),
+    box(0.09, 0.09, 0.34, 0, 1.72, 0.06, '#3a4458'), box(0.11, 0.11, 0.05, 0, 1.72, 0.24, '#9ff6ff'),
+    box(0.35, 0.03, 0.31, 0, 1.695, -0.16, '#18f0ff'),
   ]);
 }
 

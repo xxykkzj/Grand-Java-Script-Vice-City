@@ -3,11 +3,13 @@
 import { clamp, lerp, damp, angleDelta, pushOut, timeU, PI, reducedMotion } from '../core/util.js';
 import { makeMarker, ease } from './cutscene.js';
 import { buildRoom, OY, rimU } from './interiors.js';
-import { OUTFITS, SNACKS, BARKS, CAST, VEND } from './story.js';
+import { OUTFITS, SNACKS, BARKS, CAST, VEND, ARMS, ARMS_INTRO } from './story.js';
 import { BRANDS } from '../world/loose.js';
 
 const $ = (id) => document.getElementById(id);
-const USE_HINT = { bar: 'ask Dee for a delivery', wear: 'try on outfits', mart: 'buy a snack' };
+const USE_HINT = { bar: 'ask Dee for a delivery', wear: 'try on outfits', mart: 'buy a snack', arms: 'browse the blasters' };
+const SHOP_NAME = { mart: 'PELICAN PANTRY 24', arms: 'VOLT & SPARK SUPPLY' };
+const statLine = (o) => `${o.kind === 'throw' ? 'BLAST ' + o.radius + ' M' : 'RANGE ' + o.range + ' M'} · DMG ${o.dmg}${o.burst ? ' ×' + o.burst : o.shots ? ' ×' + o.shots : ''} · ${o.ammo} PER BUY`;
 
 export function createPlaces(game, scene, camera) {
   const { L, player, hud, audio, env, cam, cut, save } = game;
@@ -29,7 +31,7 @@ export function createPlaces(game, scene, camera) {
     const r = p.room = room(p);
     if (game.inside && game.inside !== p) game.inside.room.group.visible = false;
     r.group.visible = true; game.inside = p; env.indoor = true; audio.club = p.key === 'club';
-    rimU.value.set(p.key === 'club' ? '#5a3a8a' : p.key === 'bar' ? '#4a2050' : '#3a3046');   // a soft rim light on the characters
+    rimU.value.set(p.key === 'club' ? '#5a3a8a' : p.key === 'bar' ? '#4a2050' : p.key === 'arms' ? '#2a3a5a' : '#3a3046');   // a soft rim light on the characters
     camRoom = null;
     camera.layers.set(1);                       // indoors only the room, the courier and the rings are drawn
     player.floor = OY; player.pos.set(r.ox + x, OY, r.oz + z); player.vel.set(0, 0, 0); player.vy = 0; player.onGround = true; player.yaw = PI; player.speed = 0;
@@ -96,6 +98,11 @@ export function createPlaces(game, scene, camera) {
     // if the scene is skipped before the cut inside, still end up indoors (or the door ring re-fires)
     cut.run(beats, () => { if (!ev || !ev.leave) setInside(p, goal[0], goal[1]); after(p, ev); }, !!(ev && ev.leave));
   }
+  // the first time you walk into Volt & Spark, Zizi gives you the safety talk
+  function firstVisit(key) {
+    if (key !== 'arms' || save.armsIntro) return null;
+    return { lines: ARMS_INTRO, leave: false, done: () => { save.armsIntro = 1; game.persist(); } };
+  }
   function after(p, ev) {
     if (!ev) return;
     if (ev.leave) putOutside(p.x, p.z + 3.4);
@@ -115,22 +122,23 @@ export function createPlaces(game, scene, camera) {
 
   // ---- shops
   const el = { box: $('shop'), t: $('shopt'), l: $('shopl'), f: $('shopf') };
-  const items = () => (shop === 'wear' ? OUTFITS : shop === 'vend' ? VEND[vend.brand] || VEND.coolwave : SNACKS);
+  const items = () => (shop === 'wear' ? OUTFITS : shop === 'vend' ? VEND[vend.brand] || VEND.coolwave : shop === 'arms' ? ARMS : SNACKS);
   function render() {
-    const wear = shop === 'wear', list = items();
-    el.t.textContent = wear ? 'ZIGZAG THREADS' : shop === 'vend' ? (BRANDS[vend.brand] || BRANDS.coolwave).name : 'PELICAN PANTRY 24';
+    const wear = shop === 'wear', arms = shop === 'arms', list = items(), inv = game.arms;
+    el.t.textContent = wear ? 'ZIGZAG THREADS' : shop === 'vend' ? (BRANDS[vend.brand] || BRANDS.coolwave).name : SHOP_NAME[shop] || 'PELICAN PANTRY 24';
     el.l.textContent = '';
     list.forEach((o, i) => {
       const li = document.createElement('li'), b = document.createElement('b'), s = document.createElement('span'), pr = document.createElement('i');
       b.textContent = o.name; s.textContent = o.note;
-      pr.textContent = wear ? (save.outfit === o.id ? 'WEARING' : owns(o) ? 'OWNED' : '$' + o.price) : '$' + o.price;
+      pr.textContent = wear ? (save.outfit === o.id ? 'WEARING' : owns(o) ? 'OWNED' : '$' + o.price) : arms && inv.owned[o.id] ? `+${o.ammo} AMMO · $${o.refill}` : '$' + o.price;
       if (wear && o.gift && !owns(o)) s.textContent += ' (' + o.gift + ', or buy it)';
+      if (arms) s.textContent += ` ${statLine(o)}${inv.owned[o.id] ? ` · CARRYING ${inv.ammo[o.id]}` : ''}`;
       if (i === sel) li.className = 'sel';
       // tap / click: the first tap picks, a tap on the picked line buys or wears it
       li.addEventListener('click', () => { if (!shop) return; if (sel === i) buy(); else { sel = i; msg = ''; audio.step(1); if (wear) player.model.setOutfit(OUTFITS[i]); render(); } });
       li.append(b, pr, s); el.l.appendChild(li);
     });
-    el.f.textContent = msg || (game.input.touchMode ? (wear ? 'Tap to try on · tap again or WEAR / BUY · DONE to leave' : 'Tap to choose · tap again or BUY · DONE to leave') : wear ? 'W/S choose · Enter wear or buy · Esc done · a new look sheds one star of heat' : 'W/S choose · Enter buy · Esc done');
+    el.f.textContent = msg || (game.input.touchMode ? (wear ? 'Tap to try on · tap again or WEAR / BUY · DONE to leave' : 'Tap to choose · tap again or BUY · DONE to leave') : wear ? 'W/S choose · Enter wear or buy · Esc done · a new look sheds one star of heat' : arms ? 'W/S choose · Enter buy · Esc done · outside: 1-5 or Q to pick, click / R to fire, G to throw' : 'W/S choose · Enter buy · Esc done');
   }
   for (const b of el.box.querySelectorAll('[data-k]')) b.addEventListener('click', () => { if (shop) api.key({ code: b.dataset.k }); });
   function openShop(kind) {
@@ -156,6 +164,10 @@ export function createPlaces(game, scene, camera) {
       msg = 'LOOKING SHARP: ' + o.name;
       if (game.wanted > 0 && timeU.value > heatCd) { game.wanted--; heatCd = timeU.value + 45; msg += ' · COAST PATROL IS LOOKING FOR THE OLD JACKET: -1 HEAT'; }
       game.persist();
+    } else if (shop === 'arms') {
+      const [ok, m] = game.combat.buy(items()[sel]);
+      msg = m;
+      if (ok) { audio.cash(); audio.pickup(); } else audio.blip(false);
     } else {
       const o = items()[sel];
       if (game.health >= 100) { msg = shop === 'vend' ? "YOU'RE FULL. THE MACHINE SULKS." : "YOU'RE FULL. GUS LOOKS RELIEVED."; audio.blip(false); return render(); }
@@ -209,7 +221,7 @@ export function createPlaces(game, scene, camera) {
           q.mark.visible = show;
           const d = Math.hypot(player.pos.x - q.x, player.pos.z - q.z);
           if (!q.armed) { if (d > 3) q.armed = true; continue; }
-          if (show && !game.busy && !game.vehicle && d < 1.7 && player.pos.y < 2) { enter(q, game.story.onEnter(q.key)); break; }
+          if (show && !game.busy && !game.vehicle && d < 1.7 && player.pos.y < 2) { enter(q, game.story.onEnter(q.key) || firstVisit(q.key)); break; }
         }
         return;
       }
@@ -225,7 +237,7 @@ export function createPlaces(game, scene, camera) {
           player.pos.set(r.ox + u.x, OY + 0.22, r.oz + u.z - 0.4); player.yaw += angleDelta(player.yaw, 0.25 + (reducedMotion ? 0 : Math.sin(timeU.value * 0.9) * 0.5)) * (1 - Math.exp(-5 * dt));
           camera.position.set(r.ox + u.x + 1.5, OY + 1.5, r.oz + u.z + 2.5); camera.lookAt(r.ox + u.x + 0.75, OY + 1.12, r.oz + u.z - 0.4);
         } else {
-          const g = r.npc.GUS;
+          const g = r.npc[r.clerk || 'GUS'];
           player.pos.set(r.ox + u.x, OY, r.oz + u.z); player.yaw += angleDelta(player.yaw, Math.atan2(g.x - u.x, g.z - u.z)) * (1 - Math.exp(-8 * dt));
           camera.position.set(r.ox + u.x - 1.3, OY + 2, r.oz + u.z + 2.1); camera.lookAt(r.ox + g.x - 0.6, OY + 1.3, r.oz + g.z);
         }

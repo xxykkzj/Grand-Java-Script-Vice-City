@@ -428,6 +428,41 @@ export function createLoose(scene, game, city, fx, audio) {
       wake(c);
       audio.clunk();
     },
+    // an explosion or a firework bang: everything loose within r is thrown outwards. Medium props only
+    // shift for a strong one, anchored ones (benches, vending machines) only right next to it.
+    blast(x, z, r, k = 1) {
+      let n = 0;
+      near(x, z, r, (b) => {
+        if (b.hidden || (b.K.cls === 'fixed' && !b.free)) return;
+        const dx = b.x - x, dz = b.z - z, d = Math.hypot(dx, dz);
+        if (d > r) return;
+        const f = (1 - d / r) * k, light = b.K.cls !== 'medium';
+        if (!light && f < (b.K.anchor ? 0.6 : 0.3)) return;
+        const sp = (light ? 11 : 5.5) * f * (b.K.m > 100 ? 0.45 : 1), inv = 1 / Math.max(d, 0.3);
+        wake(b);
+        b.vx += dx * inv * sp; b.vz += dz * inv * sp; b.vy += 1.5 + sp * 0.45; b.y += 0.05;
+        b.wx += (Math.random() - 0.5) * sp * 1.4; b.wz += (Math.random() - 0.5) * sp * 1.4; b.wy += (Math.random() - 0.5) * sp;
+        b.cool = 0.3; n++;
+      });
+      return n;
+    },
+    // a blaster bolt reaching (x, y, z): knocks a light prop it touches about. Returns the prop or null.
+    hitAt(x, y, z, vx, vz, k = 1) {
+      let hit = null;
+      near(x, z, 0.8, (b) => {
+        if (hit || b.hidden || (b.K.cls === 'fixed' && !b.free) || y > topOf(b) + 0.15 || y < b.y - b.K.he[1] - 0.2) return;
+        const n = footprint(b);
+        for (let i = 0; i < n; i++) if (Math.hypot(x - FP[i][0], z - FP[i][1]) < FP[i][2] + 0.12) { hit = b; break; }
+      });
+      if (hit && (hit.K.cls !== 'medium' || k > 1.5)) {
+        const s = Math.hypot(vx, vz) || 1, sp = (hit.K.cls === 'medium' ? 1.5 : 4.5) * k;
+        wake(hit);
+        hit.vx += vx / s * sp; hit.vz += vz / s * sp; hit.vy += 1.2 + sp * 0.3; hit.y += 0.03;
+        hit.wx += (Math.random() - 0.5) * sp * 2; hit.wz += (Math.random() - 0.5) * sp * 2; hit.cool = 0.2;
+        audio.knock(0.6);
+      }
+      return hit;
+    },
     // test hooks: wake / reset everything
     resetAll() { for (const b of bodies) if (b.moved || b.awake) home(b); for (const o of [...dead]) restore(o); dead.length = 0; falling.length = 0; sprays.length = 0; },
     status(b) { return { kind: b.kind, x: b.x, y: b.y, z: b.z, moved: b.moved, awake: b.awake, dist: Math.hypot(b.x - b.hx, b.z - b.hz) }; },

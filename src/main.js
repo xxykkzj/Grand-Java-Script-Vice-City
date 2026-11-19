@@ -28,6 +28,9 @@ import { createPlaces } from './game/places.js';
 import { createStory } from './game/missions.js';
 import { createRules } from './game/rules.js';
 import { createActivity } from './game/activity.js';
+import { createDamage } from './game/damage.js';
+import { createCombat } from './game/combat.js';
+import { createEvents } from './game/events.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('gl');
@@ -127,9 +130,12 @@ async function boot() {
   game.persist = () => { try { localStorage.setItem(SAVE, JSON.stringify(save)); } catch (e) { /* ignore */ } };
   const cut = game.cut = createDirector(camera, game);
   const rules = game.rules = createRules(game, scene);
+  const damage = game.damage = createDamage(game);
   const places = game.places = createPlaces(game, scene, camera);
   const story = game.story = createStory(game, scene);
   const act = game.act = createActivity(game);
+  const combat = game.combat = createCombat(game, scene);
+  const events = game.events = createEvents(game, scene);
   // indoors the camera renders layer 1 only: the room, the courier, the rings and the lights
   scene.traverse((o) => { if (o.isLight) o.layers.enable(1); });
   player.model.root.traverse((o) => o.layers.enable(1)); player.shadow.layers.enable(1);
@@ -178,6 +184,31 @@ async function boot() {
     // ground lamp-light term under a lamp head at full night, and the night ambient
     nightLight: (x, z) => ({ lampTerm: L.lampMap.sample(x, z) * LAMP_GAIN * nightU.value, mapValue: L.lampMap.sample(x, z), night: nightU.value, hemi: env.hemi.intensity }),
     drawCalls: () => renderer.info.render.calls,
+    // ---- damage, weapons, patrol lasers (automated checks set velocities directly: software GL is slow)
+    cheat: (code) => cheats.exec(code),
+    parked: (i = 0) => vehicles.cars.filter((k) => k.kind === 'car' && !k.traffic && !k.police && !k.off)[i],
+    drive: (c) => { if (game.vehicle) game.vehicle.driven = false; act.reset(); c.driven = true; game.vehicle = c; game.mode = c.kind; player.setHidden(c.kind !== 'bike'); return c.idx; },
+    leave: () => { if (game.vehicle) rules.leaveVehicle(); },
+    put: (v, x, z, yaw) => Object.assign(v, { x, z, yaw: yaw ?? v.yaw, vx: 0, vy: 0, vz: 0, y: v.kind === 'heli' ? v.y : 0, spin: 0 }),
+    vel: (vx, vz, v = game.vehicle) => { v.vx = vx; v.vz = vz; if (v.kind !== 'heli') v.yaw = Math.atan2(vx, vz); },
+    dmg: (v) => damage.state(v || game.vehicle),
+    hit: (v, n) => damage.hit(v || game.vehicle, n, 'player'),
+    repair: (v) => damage.repair(v || game.vehicle),
+    wanted: (n) => { game.wanted = n; return n; },
+    // a patrol car on the lane `dist` m behind (x, z), heading along yaw, chasing
+    copBehind: (i, dist = 22) => { const c = traffic.police[i], f = game.focus(), y = game.heading(); traffic.railNear(c, f.x - Math.sin(y) * dist, f.z - Math.cos(y) * dist, y); vehicles.paint(c, '#19b8b0'); damage.repair(c); return c; },
+    police: () => combat.lasers(),
+    combat: () => ({ ...combat.stats, cur: combat.inv.cur, ammo: { ...combat.inv.ammo }, held: combat.held }),
+    fireAt: (v) => combat.fireAt(v),
+    bang: (charge = 0.3, behind = true) => combat.throwBang(charge, behind),
+    weapon: (id) => combat.set(id),
+    projectiles: () => combat.projectiles(),
+    fx: () => fx.stats(),
+    // street events: start one now ('bag' | 'getaway' | 'suspect'), read its state, jump to what you are after
+    event: (type) => events.start(type),
+    evt: () => events.state(),
+    evtStats: () => ({ ...events.stats }),
+    evtGo: (off = 0.6) => { const t = events.target(); if (!t) return null; const v = game.vehicle; if (v) { v.x = t.x + off; v.z = t.z; v.vx = v.vz = 0; } else player.pos.set(t.x + off, 0, t.z); return t; },
   };
   game.signalAt = (n, h) => signal(n, h, timeU.value);
 
@@ -220,6 +251,9 @@ async function boot() {
     }
     if (game.busy === 'shop') { places.key(e); return; }
     if (game.busy === 'fail') { story.key(e); return; }
+    // weapons: 1-5 pick one (when not dancing), Q cycles (and holsters)
+    const wd = /^(Digit|Numpad)([1-5])$/.exec(e.code);
+    if (wd && !act.dancing && game.started && !game.busy && !cheats.open) { combat.select(+wd[2]); return; }
     // dancing: 1-8 pick a move and hit the beat, arrows step through the moves
     if (act.dancing && !game.busy) {
       const d = /^(Digit|Numpad)([1-8])$/.exec(e.code);
@@ -236,6 +270,7 @@ async function boot() {
       case 'KeyM': hud.toast(audio.toggleMute() ? 'SOUND OFF' : 'SOUND ON'); break;
       case 'KeyP': hud.togglePerf(); break;
       case 'KeyV': hud.toast('CAMERA', cam.cycleView().name); break;
+      case 'KeyQ': if (game.started && !game.busy && !cheats.open) combat.cycle(1); break;
     }
   };
 
@@ -272,6 +307,8 @@ async function boot() {
       if (!ctl.strafe) ctl.strafe = st.x;
       if (game.mode === 'foot' && Math.hypot(st.x, st.y) > 0.92) ctl.sprint = true;
     }
+    // a patrol stun shot: a moment of wobbly legs
+    if (player.stagger > 0 && !game.vehicle) { ctl.move = ctl.strafe = 0; ctl.jump = false; ctl.sprint = false; }
     ctl.throttle = ctl.move; ctl.steer = -ctl.strafe;
     ctl.hand = live && game.mode === 'car' && input.isDown('Space');
     ctl.up = live && input.isDown('Space');
@@ -292,13 +329,16 @@ async function boot() {
     traffic.update(dt, timeU.value);
     vehicles.update(dt, ctl, cam, player);
     loose.update(dt);
+    damage.update(dt);
+    combat.update(dt);
     if (game.mode === 'bike' && game.vehicle) player.ride(game.vehicle);
     peds.update(dt, timeU.value, frameN, vehicles.cars);
     animals.update(dt);
-    if (game.started) { rules.update(dt); story.update(dt); places.update(dt, ctl); }
+    if (game.started) { rules.update(dt); story.update(dt); places.update(dt, ctl); events.update(dt); }
     city.tick(timeU.value);
     fx.update(dt);
     player.tickFace(dt);
+    combat.pose();
 
     const v = game.vehicle;
     const speed = v ? (v.kind === 'tank' ? v.speed : Math.hypot(v.vx, v.vz)) : player.speed;
@@ -326,11 +366,11 @@ async function boot() {
       else if (game.inside) hud.setHint(places.hint());
       else if (!v && act.mode) hud.setHint(act.hint());
       else if (!v) {
-        const n = vehicles.nearest(player.pos), f = act.fHint();
-        hud.setHint(n ? [['E', n.ai ? `take the ${n.label} (heat!)` : n.kind === 'bike' ? 'ride the Comet' : `enter ${n.label}`], ...(f ? [f] : []), ['V', 'camera view'], ['~ / T', 'cheat console']]
-          : [...(f ? [f] : []), ['WASD', 'skate'], ['Shift', 'sprint'], ['Space', 'jump'], ['Drag', 'look'], ['V', 'camera view'], ['~ / T', 'cheat console']]);
-      } else if (v.kind === 'car') hud.setHint([['E', 'exit car'], ['WASD', 'drive'], ['Space', 'handbrake'], ['V', 'camera view']]);
-      else if (v.kind === 'bike') hud.setHint([['E', 'get off'], ['W', 'throttle (wheelie from low speed)'], ['A D', 'lean'], ['S', 'brake'], ['V', 'camera view']]);
+        const n = vehicles.nearest(player.pos), f = act.fHint(), wh = combat.hints();
+        hud.setHint(n ? [['E', n.ai ? `take the ${n.label} (heat!)` : n.kind === 'bike' ? 'ride the Comet' : `enter ${n.label}`], ...(f ? [f] : []), ...wh, ['V', 'camera view'], ['~ / T', 'cheat console']]
+          : [...(f ? [f] : []), ...wh, ['WASD', 'skate'], ['Shift', 'sprint'], ['Space', 'jump'], ['Drag', 'look'], ['V', 'camera view'], ['~ / T', 'cheat console']]);
+      } else if (v.kind === 'car') hud.setHint([['E', 'exit car'], ['WASD', 'drive'], ['Space', 'handbrake'], ...combat.hints(), ['V', 'camera view']]);
+      else if (v.kind === 'bike') hud.setHint([['E', 'get off'], ['W', 'throttle (wheelie from low speed)'], ['A D', 'lean'], ['S', 'brake'], ...combat.hints(), ['V', 'camera view']]);
       else if (v.kind === 'tank') hud.setHint([['E', 'exit tank'], ['WASD', 'drive'], ['Drag', 'aim turret'], ['Click / F', 'fire'], ['V', 'camera view']]);
       else hud.setHint([['W S', 'forward / back'], ['A D', 'yaw'], ['Space', 'up'], ['C / Ctrl', 'down'], ['E', v.y > 0.6 ? 'land to exit' : 'exit helicopter'], ['V', 'camera view']]);
       hudState.focus = game.focus(); hudState.heading = game.heading(); hudState.camYaw = cam.yaw; hudState.inVehicle = v;
@@ -350,6 +390,7 @@ async function boot() {
     sound.club = game.inside && game.inside.key === 'club' ? game.inside.room.level.music : 1;
     sound.lounge = game.inside && game.inside.room.inLounge && game.inside.room.inLounge(player.pos.x - game.inside.room.ox) ? 1 : 0;
     sound.hum = game.inside ? 0 : loose.sound.hum; sound.spray = game.inside ? 0 : loose.sound.spray;
+    sound.fire = damage.sound.fire; sound.cough = !!(v && v.cut && v.stage >= 2);
     audio.update(sound);
 
     renderer.render(scene, camera);

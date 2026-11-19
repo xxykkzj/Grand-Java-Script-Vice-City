@@ -18,9 +18,9 @@ const ACCENT = ['#ff4fa3', '#19c9bd', '#ffc93f', '#7a5cff', '#ff8a3d', '#ffffff'
 const NEON = ['#ff2bd1', '#18f0ff', '#ffe14a', '#8dff5a', '#ff6a3d', '#b388ff'];
 export const SIGN_NAMES = [
   'Coral Palms Hotel', 'Sunset Strip Diner', 'The Velvet Flamingo', 'Blue Manatee Hotel',
-  'Club Prism', 'Aqua Deco Suites', 'Pelican Pantry 24', 'Seahorse Cinema',
+  'Club Prism', 'Volt & Spark Supply', 'Pelican Pantry 24', 'Seahorse Cinema',
   'Tidewater Records', 'Coast Patrol Station', 'Cabana Royale', 'Pink Heron Hotel',
-  'Zigzag Threads', 'Seabreeze Clinic', 'Hotel Lumina', 'Driftwood Pier',
+  'Zigzag Threads', 'Seabreeze Clinic', 'Hotel Lumina', 'Aqua Deco Suites', 'Driftwood Pier',
 ];
 // Rooftop and beach billboards share the sign atlas (slots 16 to 23). All brands are made up.
 export const ADS = [
@@ -33,6 +33,7 @@ export const PLACE_DEFS = {
   club: { name: 'Club Prism', title: 'CLUB PRISM', color: '#a98bff' },
   wear: { name: 'Zigzag Threads', title: 'ZIGZAG THREADS', color: '#ff9a3d' },
   mart: { name: 'Pelican Pantry 24', title: 'PELICAN PANTRY 24', color: '#5dff9a' },
+  arms: { name: 'Volt & Spark Supply', title: 'VOLT & SPARK SUPPLY', color: '#3ad6ff' },
 };
 
 export function makeLayout() {

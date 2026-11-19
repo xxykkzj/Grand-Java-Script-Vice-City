@@ -9,7 +9,7 @@ const BASS = [0, null, 12, 0, null, 12, 0, 7, 0, null, 12, 0, 7, 12, 0, 12];
 
 export function createAudio() {
   let ctx = null, master, music, mfilt, sfx, noise, arpBus, timer = 0, nextT = 0, stepI = 0, song = 0;
-  let eng, rotor, skate, rain, siren, hum, spray, heyT = 0;
+  let eng, rotor, skate, rain, siren, hum, spray, fire, heyT = 0, zapT = 0;
   const A = {
     muted: false, ready: false,
     start() {
@@ -46,6 +46,8 @@ export function createAudio() {
       skate = loop('bandpass', 1500, 0.6);
       rain = loop('highpass', 2600);
       spray = loop('bandpass', 1900, 0.5);
+      // a burning car: low crackling noise, its level jittered every frame
+      fire = loop('bandpass', 700, 0.45);
       // vending machines hum at night: a low sine pair
       { const h1 = ctx.createOscillator(), h2 = ctx.createOscillator(), hg = ctx.createGain(); h1.type = 'sine'; h2.type = 'triangle'; h1.frequency.value = 118; h2.frequency.value = 236.6; hg.gain.value = 0;
         h1.connect(hg); h2.connect(hg); hg.connect(sfx); h1.start(); h2.start(); hum = hg; }
@@ -105,6 +107,10 @@ export function createAudio() {
       spray.g.gain.setTargetAtTime((s.spray || 0) * 0.08, t, 0.2);
       hum.gain.setTargetAtTime((s.hum || 0) * 0.035, t, 0.3);
       siren.gain.setTargetAtTime((s.siren || 0) * 0.07, t, 0.15);
+      fire.g.gain.setTargetAtTime((s.fire || 0) * (0.05 + Math.random() * 0.07), t, 0.05);
+      fire.f.frequency.setTargetAtTime(500 + Math.random() * 600, t, 0.05);
+      // a sputtering engine coughs: the engine layer dips while the throttle is cut
+      if (s.cough) eng.g.gain.setTargetAtTime(0.02, t, 0.02);
       // room: 0 street, 1 a shop or the bar (radio in the corner), 2 Club Prism (loud)
       // Club Prism: s.club scales the system (quiet before the flyers go out, louder at the Dance-Off),
       // s.lounge is 1 in the booth lounge, where the music is softer and duller
@@ -145,6 +151,36 @@ export function createAudio() {
     win() { [0, 4, 7, 12, 16].forEach((n, i) => tone('square', mtof(69 + n), mtof(69 + n), 0.22, 0.07, i * 0.09)); },
     lose() { [7, 4, 0, -5].forEach((n, i) => tone('sawtooth', mtof(57 + n), mtof(56 + n), 0.3, 0.08, i * 0.16)); },
     star() { tone('square', 880, 440, 0.16, 0.08); tone('square', 880, 440, 0.16, 0.08, 0.18); },
+    // ---- damage, lasers and the neon blasters (all synthesised)
+    sputter() { hit(0.22, 0.14, 'lowpass', 380); tone('square', 70, 45, 0.12, 0.08); hit(0.16, 0.1, 'lowpass', 300, 0, ctx ? ctx.currentTime + 0.16 : 0); },
+    crunch(k = 1) { hit(0.35 * k, 0.25, 'bandpass', 1200, 300); tone('square', 140, 60, 0.16, 0.12 * k); },
+    bigBoom() { A.boom(); hit(0.6, 1.6, 'lowpass', 600, 50); tone('sine', 60, 22, 1.1, 0.6); tone('square', 110, 40, 0.3, 0.12, 0.05); },
+    // the patrol's roof laser: a rising charge hum, then a pulse zap per shot
+    charge(vol = 1) { if (vol <= 0) return; tone('sine', 380, 1500, 0.6, 0.035 * vol); tone('triangle', 760, 3000, 0.6, 0.015 * vol); },
+    laser(vol = 1) {
+      if (!ctx || vol <= 0 || ctx.currentTime < zapT) return;
+      zapT = ctx.currentTime + 0.04;
+      tone('square', 2200, 380, 0.11, 0.05 * vol); tone('sawtooth', 3300, 900, 0.07, 0.03 * vol); hit(0.05 * vol, 0.05, 'highpass', 5000);
+    },
+    zapHit(vol = 1) { hit(0.18 * vol, 0.12, 'bandpass', 3200); tone('square', 900, 200, 0.08, 0.05 * vol); },
+    pop() { tone('square', 1500, 520, 0.07, 0.07); tone('triangle', 3000, 1200, 0.05, 0.04); hit(0.08, 0.04, 'highpass', 4000); },
+    prism() { tone('triangle', 2600, 1700, 0.16, 0.07); tone('sine', 5200, 4100, 0.2, 0.03); tone('square', 1300, 1250, 0.05, 0.03); },
+    arc() { for (let i = 0; i < 4; i++) hit(0.14, 0.05, 'bandpass', 2000 + Math.random() * 4000, 0, ctx ? ctx.currentTime + i * 0.045 : 0); tone('sawtooth', 160, 90, 0.25, 0.06); },
+    whoosh() { hit(0.16, 0.32, 'bandpass', 900, 4200); tone('sine', 500, 1400, 0.25, 0.03); },
+    throw() { hit(0.1, 0.18, 'bandpass', 700, 1800); },
+    fuse() { hit(0.04, 0.12, 'highpass', 6500); },
+    // a firework bang: a sharp crack, then a crackle of little pops
+    bang(k = 1) {
+      hit(0.7 * k, 0.5, 'lowpass', 2400, 120); tone('sine', 120, 40, 0.3, 0.35 * k);
+      if (ctx) for (let i = 0; i < 9; i++) hit(0.12 * k, 0.04, 'highpass', 3000 + Math.random() * 3000, 0, ctx.currentTime + 0.22 + Math.random() * 0.6);
+    },
+    empty() { tone('square', 180, 150, 0.05, 0.05); hit(0.06, 0.03, 'highpass', 3000); },
+    swap() { tone('triangle', 900, 1350, 0.06, 0.05); tone('square', 1800, 1800, 0.04, 0.025, 0.05); },
+    // the shop alarm: a bell that rings for a couple of seconds
+    bell() { if (!ctx) return; for (let i = 0; i < 22; i++) { tone('square', 1480, 1470, 0.05, 0.04, i * 0.11); tone('triangle', 2960, 2940, 0.05, 0.02, i * 0.11); } },
+    // the patrol radio: a squelch, two beeps
+    radio() { hit(0.12, 0.18, 'bandpass', 1800); tone('square', 1100, 1100, 0.06, 0.04, 0.2); tone('square', 1400, 1400, 0.06, 0.04, 0.29); },
+    thanks() { [0, 7, 12].forEach((n, i) => tone('triangle', mtof(76 + n), mtof(76 + n), 0.18, 0.08, i * 0.08)); },
         blip(ok = true) {
       if (ok) { tone('square', 660, 660, 0.07, 0.07); tone('square', 990, 990, 0.12, 0.07, 0.08); tone('square', 1320, 1320, 0.2, 0.06, 0.16); }
       else tone('square', 160, 110, 0.2, 0.1);

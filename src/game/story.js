@@ -25,6 +25,12 @@ export const CAST = {
   GUS: { name: 'GUS', color: '#8dffb0', voice: 1.45 },
   KILO: { name: 'DJ KILOWATT', color: '#b9a0ff', voice: 0.85 },
   MIMI: { name: 'MIMI', color: '#ff9a5c', voice: 1.35 },
+  ZIZI: { name: 'ZIZI SPARKS', color: '#ffb14a', voice: 1.3 },
+  // voices of the street events (game/events.js): subtitles only, no scene
+  DISPATCH: { name: 'PATROL DISPATCH', color: '#5ff0e0', voice: 0.9 },
+  OFFICER: { name: 'OFFICER DUARTE', color: '#19d8c8', voice: 0.8 },
+  SHOPPER: { name: 'SHOPPER', color: '#ffd166', voice: 1.2 },
+  SHOPKEEP: { name: 'SHOPKEEPER', color: '#ff9ac8', voice: 1.05 },
 };
 
 export const MISSIONS = [
@@ -190,7 +196,34 @@ export const BARKS = {
   mart: ['GUS', ['Welcome to Pelican Pantry, please do not lean on the slush machine.', 'The hot dogs are from today. Mostly.', "You didn't see a shoebox. There is no shoebox."]],
   bar: ['DEE', ["Skates off the stools, Skye.", 'First fizz is free. The second one is also free. I am bad at business.']],
   club: ['KILO', ['This next one goes out to everybody on eight wheels.', 'Floor is open. Hairspray is optional.']],
+  arms: ['ZIZI', ['Goggles on, fingers off the glowy ones.', 'Everything here is certified toy-grade. Mostly.', 'Bangs are for the road, not the boardwalk.', 'It only zaps cars and bins. People just get a fright.']],
 };
+
+// Volt & Spark Supply: Zizi's neon blasters and fireworks (combat in game/combat.js). They only ever
+// damage vehicles and knock props about: people flinch, shout and run, they are never hurt.
+// price buys it with `ammo` shots; once owned, `refill` buys another `ammo` (up to `max`).
+//   kind: 'bolt' (projectile) · 'beam' (instant, bursts) · 'arc' (lightning that chains between cars)
+//         · 'throw' (firework bang with a fuse) · 'volley' (homing firework stars)
+export const ARMS = [
+  { id: 'pop', name: 'ZAP POPPER', note: 'Compact pop blaster. Cheap, quick, short reach.', price: 150, refill: 40, ammo: 60, max: 240,
+    kind: 'bolt', dmg: 7, rate: 0.15, range: 34, spread: 0.035, speed: 85, color: '#ff3fb4', auto: true },
+  { id: 'prism', name: 'PRISM RIFLE', note: 'Three-shot bursts of split light. Long reach, dead accurate.', price: 480, refill: 90, ammo: 36, max: 144,
+    kind: 'beam', dmg: 10, rate: 0.62, burst: 3, gap: 0.075, range: 75, spread: 0.008, color: '#27e8ff' },
+  { id: 'arc', name: 'ARC COIL', note: 'Short-range lightning that jumps from car to car.', price: 620, refill: 110, ammo: 24, max: 96,
+    kind: 'arc', dmg: 16, rate: 0.7, range: 16, chain: 3, jump: 10, color: '#b388ff' },
+  { id: 'bang', name: 'FIREWORK BANGS', note: 'Throw them (hold to throw further) or drop them behind your car. Short fuse.', price: 200, refill: 120, ammo: 5, max: 20,
+    kind: 'throw', dmg: 60, radius: 7, fuse: 1.5, rate: 0.5, color: '#ffe14a' },
+  { id: 'candle', name: 'STARFALL CANDLE', note: 'A volley of five homing stars. Pricey, very pretty.', price: 750, refill: 150, ammo: 20, max: 60,
+    kind: 'volley', dmg: 18, radius: 3.2, rate: 1.6, shots: 5, gap: 0.11, range: 60, speed: 34, turn: 4.5, color: '#ff8a3d' },
+];
+// the first time you walk into Volt & Spark Supply
+export const ARMS_INTRO = [
+  ['ZIZI', "Welcome to Volt and Spark! Goggles on, fingers off the glowy ones.", 'wide', 'wave'],
+  ['SKYE', 'Zizi, is any of this actually legal?', 'ots', 'shrug'],
+  ['ZIZI', "Certified toy-grade! It zaps cars, rattles bins and gives people a fright. Nobody gets hurt.", 'ots', 'point'],
+  ['ZIZI', "Bangs are for the road, not the boardwalk. And never zap a patrol car unless you want new friends with sirens.", 'cu'],
+  ['SKYE', 'Shiny things for cars only. Got it.', 'cu', 'nod'],
+];
 
 // Zigzag Threads: jacket / trim / light (shorts, boots) / bag colours. `price: 0` is yours from the start.
 // bottom: 'shorts' (default) · 'trousers' (legs colour) · 'skirt' (skirt colour, pleat for alternate pleats)

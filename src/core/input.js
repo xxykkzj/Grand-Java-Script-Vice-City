@@ -13,6 +13,8 @@ export function createInput(canvas) {
     dragging: false,
     lastDrag: -10,
     clicked: false,
+    firePress: false,                       // left button pressed while the right one holds the camera
+    wheel: 0,                               // mouse wheel notches this frame (+ down / - up)
     onKey: null,
     touchMode: false,
     // analog stick from the touch controls: x right, y down, -1..1
@@ -33,7 +35,7 @@ export function createInput(canvas) {
     },
     look(dx, dy) { input.dragDX += dx; input.dragDY += dy; input.dragging = true; input.lastDrag = performance.now() / 1000; },
     endFrame() {
-      pressed.clear(); input.dragDX = 0; input.dragDY = 0; input.clicked = false;
+      pressed.clear(); input.dragDX = 0; input.dragDY = 0; input.clicked = false; input.firePress = false; input.wheel = 0;
       for (const c of vrelease) vdown.delete(c);
       vrelease.clear(); frameNo++;
     },
@@ -52,12 +54,16 @@ export function createInput(canvas) {
   addEventListener('keyup', (e) => down.delete(e.code));
   addEventListener('blur', () => down.clear());
 
-  let px = 0, py = 0, moved = 0, active = false;
+  // left drag or right drag orbits the camera; a left click (no drag) is a click (fires a blaster, the
+  // tank); with the right button held, every left press fires straight away
+  let px = 0, py = 0, moved = 0, active = false, btn = 0;
   canvas.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0 || (input.touchMode && e.pointerType === 'touch')) return;
-    active = true; moved = 0; px = e.clientX; py = e.clientY;
+    if ((e.button !== 0 && e.button !== 2) || (input.touchMode && e.pointerType === 'touch')) return;
+    active = true; moved = 0; px = e.clientX; py = e.clientY; btn = e.button;
     canvas.setPointerCapture(e.pointerId);
   });
+  canvas.addEventListener('mousedown', (e) => { if (e.button === 0 && (e.buttons & 2) && input.enabled) input.firePress = true; });
+  canvas.addEventListener('wheel', (e) => { e.preventDefault(); if (input.enabled && Math.abs(e.deltaY) > 0.5) input.wheel += Math.sign(e.deltaY); }, { passive: false });
   canvas.addEventListener('pointermove', (e) => {
     if (!active) return;
     const dx = e.clientX - px, dy = e.clientY - py;
@@ -66,7 +72,7 @@ export function createInput(canvas) {
     if (moved > 4) { input.dragging = true; input.dragDX += dx; input.dragDY += dy; input.lastDrag = performance.now() / 1000; }
   });
   const up = () => {
-    if (active && moved <= 4 && input.enabled) input.clicked = true;
+    if (active && btn === 0 && moved <= 4 && input.enabled) input.clicked = true;
     active = false; input.dragging = false;
   };
   canvas.addEventListener('pointerup', up);

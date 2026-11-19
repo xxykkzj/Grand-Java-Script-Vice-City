@@ -6,13 +6,13 @@ import { box, cyl, merge, angleDelta, clamp, PI, dailyCurve, outOfSight } from '
 import { SIDE_X } from '../world/layout.js';
 import { H_ROADS, walkOK } from '../world/roads.js';
 
-const N = 52, DRIVERS = 54;
+const N = 52, DRIVERS = 56;
 const WALK_Z = [65, 41.4, 4, -12, -60, -76], DX = 8.8;
 const SHIRT = ['#ff5fa8', '#27d8cf', '#ffd447', '#f6f1e7', '#ff8a4c', '#9b7bff', '#7fe0ff', '#ff3f6a', '#8dff9a', '#f7b3c6', '#2a2140', '#ffb000'];
 const LEGS = ['#f6f1e7', '#3b5a9a', '#c9b38a', '#22203a', '#ff8fb0', '#5a7ac8', '#e8e0d0', '#2f8f86'];
 const SKIN = ['#f1c9a5', '#e0a878', '#c98d62', '#a56b43', '#7a4a2e', '#5a3620'];
 const HAT = ['#fff6ec', '#ff3fb4', '#27e8ff', '#ffd166', '#22203a'];
-const WALK = 0, WAIT = 1, DOWN = 2, FIST = 3, LIE = 4, SIT = 5;
+const WALK = 0, WAIT = 1, DOWN = 2, FIST = 3, LIE = 4, SIT = 5, FLINCH = 6;
 // Share of the crowd out and about by hour: rush hours busiest, nightlife on the boulevard, empty small hours.
 export const CROWD_CURVE = [[0, 0.62], [1, 0.3], [2, 0.12], [5, 0.1], [6.5, 0.45], [7.4, 1], [9, 1], [10.2, 0.72], [16, 0.75], [17, 1], [19, 1], [20.2, 0.85], [23, 0.75], [24, 0.62]];
 
@@ -102,12 +102,23 @@ export function createPeds(scene, R, grid, game) {
       return;
     }
     B.compose(v.set(p.x, 0, p.z), q.setFromEuler(eu.set(p.tilt, p.yaw, 0)), sc.set(p.h, p.h, p.h));
-    const fist = p.state === FIST ? -2.4 + Math.sin(p.t * 16) * 0.35 : 0, flail = p.state === DOWN ? 2.6 : p.state === LIE ? 2.9 : 0;
+    if (p.state === FLINCH) {
+      // a shot whizzed past: duck, arms over the head (never hurt, just startled)
+      part(torso, i, 0, 0.74, 0, 0.38, 0, p.w, 1); part(head, i, 0, 1.34, 0.2, 0.45, 0, 1, 1);
+      part(limb, i * 4, 0.1 * p.w, 0.8, 0, -0.35, 0, 1, 1.3); part(limb, i * 4 + 1, -0.1 * p.w, 0.8, 0, 0.1, 0, 1, 1.3);
+      part(limb, i * 4 + 2, 0.24 * p.w, 1.28, 0.2, -2.7, 0.5, 0.85, 1); part(limb, i * 4 + 3, -0.24 * p.w, 1.28, 0.2, -2.7, -0.5, 0.85, 1);
+      if (p.hat) part(hat, i, 0, 1.34, 0.2, 0.45, 0, 1, 1); else hat.setMatrixAt(i, ZERO);
+      shadow.setMatrixAt(i, M.makeTranslation(p.x, 0.03, p.z));
+      return;
+    }
+    const g = p.evt && p.state !== DOWN ? p.evt.gesture : null;
+    const fist = p.state === FIST || g === 'fist' ? -2.4 + Math.sin((p.t || p.phase) * 16) * 0.35 : g === 'wave' ? -2.7 + Math.sin(p.phase * 4) * 0.35 : g === 'point' ? -1.5 : g === 'bag' ? -0.5 : 0;
+    const flail = p.state === DOWN ? 2.6 : p.state === LIE ? 2.9 : 0;
     part(torso, i, 0, 0.84, 0, 0.06 * k, 0, p.w, 1);
     part(head, i, 0, 1.5, 0, 0, 0, 1, 1);
     part(limb, i * 4, 0.1 * p.w, 0.86, 0, s, 0, 1, 1.38);
     part(limb, i * 4 + 1, -0.1 * p.w, 0.86, 0, -s, 0, 1, 1.38);
-    part(limb, i * 4 + 2, 0.27 * p.w, 1.38, 0, fist || -s - flail, 0.08, 0.85, 1);
+    part(limb, i * 4 + 2, 0.27 * p.w, 1.38, 0, fist || -s - flail, g === 'wave' ? 0.4 : 0.08, 0.85, 1);
     part(limb, i * 4 + 3, -0.27 * p.w, 1.38, 0, s - flail, -0.08, 0.85, 1);
     if (p.hat && p.state !== LIE) part(hat, i, 0, 1.5, 0, 0, 0, 1, 1); else hat.setMatrixAt(i, ZERO);
     shadow.setMatrixAt(i, M.makeTranslation(p.x, 0.03, p.z));
@@ -130,6 +141,7 @@ export function createPeds(scene, R, grid, game) {
   function hangOut(p, dt) {
     const H = p.hang;
     p.v = 0;
+    if (p.state === FLINCH) { p.t -= dt; if (p.t <= 0) { p.state = WALK; p.flee = Math.max(p.flee, 4); } p.x = H.x + p.ox; p.z = H.z + p.oz; return; }
     if (p.state === DOWN) {
       p.t -= dt;
       p.tilt += ((p.t > 0.6 ? p.dir * 1.5 : 0) - p.tilt) * (1 - Math.exp(-(p.t > 0.6 ? 12 : 6) * dt));
@@ -161,10 +173,35 @@ export function createPeds(scene, R, grid, game) {
     p.phase += dt * (1.2 + p.v * 3.2);
   }
 
+  // a person a street event is directing (game/events.js): stand somewhere, walk or run to a spot, sit
+  function evtStep(p, dt) {
+    const E = p.evt;
+    p.v = 0;
+    if (p.state === DOWN) {
+      p.t -= dt;
+      p.tilt += ((p.t > 0.6 ? p.dir * 1.5 : 0) - p.tilt) * (1 - Math.exp(-(p.t > 0.6 ? 12 : 6) * dt));
+      p.x += p.ovx * dt; p.z += p.ovz * dt;
+      const k = Math.exp(-3.5 * dt); p.ovx *= k; p.ovz *= k;
+      if (p.t <= 0) { p.tilt = 0; p.state = WALK; }
+    } else if (p.state === FLINCH) { p.t -= dt; if (p.t <= 0) p.state = WALK; }
+    else if (E.mode === 'sit') { p.state = SIT; p.sitY = 0; p.sitK = 'sand'; if (E.face) p.yaw += angleDelta(p.yaw, Math.atan2(E.face.x - p.x, E.face.z - p.z)) * (1 - Math.exp(-4 * dt)); }
+    else if (E.mode === 'goto') {
+      const dx = E.x - p.x, dz = E.z - p.z, d = Math.hypot(dx, dz), sp = E.speed || 1.6;
+      if (d < 0.35) { E.mode = 'hold'; E.arrived = true; }
+      else { const m = Math.min(d, sp * dt); p.x += dx / d * m; p.z += dz / d * m; p.v = sp; p.yaw += angleDelta(p.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-10 * dt)); }
+    } else {
+      if (p.state === SIT) p.state = WALK;
+      const fc = E.face || game.focus();
+      p.yaw += angleDelta(p.yaw, Math.atan2(fc.x - p.x, fc.z - p.z)) * (1 - Math.exp(-5 * dt));
+    }
+    p.phase += dt * (2 + p.v * 3.2);
+  }
   function update(p, dt, t) {
+    if (p.evt) { evtStep(p, dt); hitCheck(p); return; }
     if (p.hang) { hangOut(p, dt); hitCheck(p); return; }
     const e = p.e;
     p.v = 0;
+    if (p.state === FLINCH) { p.t -= dt; if (p.t <= 0) { p.state = WALK; p.flee = Math.max(p.flee, 4); } return; }
     if (p.state === DOWN) {
       // cartoon tumble: slide, lie flat, then pick yourself up
       p.t -= dt;
@@ -182,7 +219,7 @@ export function createPeds(scene, R, grid, game) {
       p.flee -= dt;
       if (off > 0.25) {
         // knocked or shoved off the path: head back to it
-        const sp = run ? 5.2 : 1.8, m = Math.min(off, sp * dt);
+        const sp = run ? p.runSpeed || 5.2 : 1.8, m = Math.min(off, sp * dt);
         p.yaw += angleDelta(p.yaw, Math.atan2(-p.ox, -p.oz)) * (1 - Math.exp(-10 * dt));
         p.ox -= p.ox / off * m; p.oz -= p.oz / off * m; p.v = sp;
       } else if (p.state === WAIT) {
@@ -191,7 +228,7 @@ export function createPeds(scene, R, grid, game) {
         if (run || walkOK(c.n, c.h, t, e.len / 3.1 + 1)) p.state = WALK;
         else if (p.t > 24) { p.b = p.a; p.d = e.len; p.state = WALK; }     // give up and wander on
       } else {
-        p.v = run ? 5.2 : e.cross ? Math.max(p.speed, 3.1) : p.speed;
+        p.v = run ? p.runSpeed || 5.2 : e.cross ? Math.max(p.speed, 3.1) : p.speed;
         p.d += p.v * dt;
         if (p.d >= e.len) {
           const from = p.a, at = p.b;
@@ -306,7 +343,7 @@ export function createPeds(scene, R, grid, game) {
       // send home someone out of sight; people standing in the "wrong" place for the hour go first
       let best = null, bs = -1;
       for (const p of peds) {
-        if (p.off || p.state === DOWN || p.state === FIST || !hid(p.x, p.z, 45)) continue;
+        if (p.off || p.state === DOWN || p.state === FIST || p.evtLock || !hid(p.x, p.z, 45)) continue;
         const wrong = p.hang && ((p.hang.kind === 'beach' && !day) || (p.hang.kind === 'seat' && !day && p.state === SIT && (p.sitK === 'lounger' || p.sitK === 'towel')) || (p.hang.kind !== 'beach' && p.hang.kind !== 'seat' && !night));
         const sc = Math.random() + (wrong ? 2 : 0);
         if (sc > bs) { bs = sc; best = p; }
@@ -320,7 +357,7 @@ export function createPeds(scene, R, grid, game) {
       churnT = 4;
       const p = peds[Math.floor(Math.random() * N)];
       const wrong = !p.off && (p.hang ? (p.hang.kind === 'beach' ? !day : p.hang.kind === 'seat' ? Math.random() < 0.3 : !night) : (night || day) && Math.random() < 0.35);
-      if (wrong && p.state !== DOWN && p.state !== FIST && hid(p.x, p.z, 45)) { release(p); spawn(p); }
+      if (wrong && !p.evtLock && p.state !== DOWN && p.state !== FIST && hid(p.x, p.z, 45)) { release(p); spawn(p); }
     }
   }
 
@@ -335,20 +372,80 @@ export function createPeds(scene, R, grid, game) {
         if (blast && d < blast) { if (knock(p, dx / (d + 0.5) * 7, dz / (d + 0.5) * 7, 2.8)) shout(p); }
         else if (p.flee <= 0 && p.state !== DOWN && Math.random() < 0.25) shout(p);
         if (p.state === WAIT) p.state = WALK;
-        p.flee = Math.max(p.flee, 5 + Math.random() * 4); p.tx = x; p.tz = z;
+        if (!p.evtLock) { p.flee = Math.max(p.flee, 5 + Math.random() * 4); p.tx = x; p.tz = z; }
       }
     },
+    // weapons never hurt anyone: people near a shot or a bang flinch (ducking, arms over the head),
+    // shout "hey!" and run away from it; further out they just leave
+    scare(x, z, r, fr = 3) {
+      let n = 0;
+      for (const p of peds) {
+        if (p.off) continue;
+        const d = Math.hypot(p.x - x, p.z - z);
+        if (d > r) continue;
+        if (d < fr && p.state !== DOWN && p.state !== FLINCH && !(p.evt && p.evt.mode === 'sit')) {
+          if (p.state === SIT) standUp(p);
+          if (p.state === LIE) p.tilt = 0;
+          p.state = FLINCH; p.t = 0.45 + Math.random() * 0.3; n++;
+          shout(p);
+        } else if (p.flee <= 0 && p.state !== DOWN && Math.random() < 0.3) shout(p);
+        if (p.state === WAIT) p.state = WALK;
+        if (!p.evtLock) { p.flee = Math.max(p.flee, 5 + Math.random() * 4); p.tx = x; p.tz = z; }
+      }
+      return n;
+    },
+    // ---- street events
+    isDown: (p) => p.state === DOWN,
+    flinching: (p) => p.state === FLINCH,
+    tackle(p, vx, vz) { if (knock(p, vx, vz, 2.6)) { shout(p); return true; } return false; },
+    // walkers (not sitting, not hanging about, not busy) between rmin and rmax of (x, z), nearest first
+    walkers(x, z, rmin, rmax) {
+      const out = [];
+      for (const p of peds) {
+        if (p.off || p.hang || p.evtLock || p.state !== WALK || p.flee > 0) continue;
+        const d = Math.hypot(p.x - x, p.z - z);
+        if (d >= rmin && d <= rmax) out.push([d, p]);
+      }
+      return out.sort((a, b) => a[0] - b[0]).map((a) => a[1]);
+    },
+    // bring someone out at the sidewalk node nearest (x, z): a spare person, or the furthest one out of sight
+    spawnNear(x, z) {
+      let p = peds.find((k) => k.off);
+      if (!p) { let bd = -1; for (const o of peds) { const d = Math.hypot(o.x - x, o.z - z); if (!o.evtLock && o.state !== DOWN && d > bd && hid(o.x, o.z, 40)) { bd = d; p = o; } } }
+      if (!p) return null;
+      if (p.hang) release(p);
+      let a = nodes[0], ad = 1e9;
+      for (const n of nodes) { const d = Math.hypot(n.x - x, n.z - z); if (d < ad) { ad = d; a = n; } }
+      dress(p); p.off = false; p.hang = null; put(p, a); p.lane = (Math.random() - 0.5) * 1.6;
+      p.x = a.x; p.z = a.z;
+      return p;
+    },
+    // hand an event person back to the crowd: back onto the nearest sidewalk path
+    free(p) {
+      if (!p) return;
+      const x = p.x, z = p.z, down = p.state === DOWN ? { t: p.t, ovx: p.ovx, ovz: p.ovz, tilt: p.tilt, dir: p.dir } : null;
+      p.evt = null; p.evtLock = false; p.runSpeed = 0; p.flee = 0; p.fistAt = false;
+      if (p.state === SIT) p.state = WALK;
+      let a = nodes[0], ad = 1e9;
+      for (const n of nodes) { const d = Math.hypot(n.x - x, n.z - z); if (d < ad) { ad = d; a = n; } }
+      put(p, a); p.lane = 0; p.ox = x - a.x; p.oz = z - a.z; p.x = x; p.z = z;
+      if (down) Object.assign(p, { state: DOWN }, down);
+    },
+    // the nearest sidewalk node to (x, z)
+    node(x, z) { let a = nodes[0], ad = 1e9; for (const n of nodes) { const d = Math.hypot(n.x - x, n.z - z); if (d < ad) { ad = d; a = n; } } return a; },
     // a driver hauled out of their car: stumbles, shakes a fist, then legs it
-    eject(x, z, vx, vz) {
+    eject(x, z, vx, vz, angry = true) {
       const f = game.focus();
       let p = null, bd = 0;
-      for (const o of peds) { const d = o.off ? 1e6 : Math.hypot(o.x - f.x, o.z - f.z); if (d > bd && o.state !== DOWN) { bd = d; p = o; } }
+      for (const o of peds) { const d = o.off ? 1e6 : Math.hypot(o.x - f.x, o.z - f.z); if (d > bd && o.state !== DOWN && !o.evtLock) { bd = d; p = o; } }
+      if (!p) return null;
       p.off = false; p.hang = null; p.tilt = 0;
       let a = nodes[0], ad = 1e9;
       for (const n of nodes) { const d = Math.hypot(n.x - x, n.z - z); if (d < ad) { ad = d; a = n; } }
       dress(p); put(p, a);
       p.lane = 0; p.ox = x - a.x; p.oz = z - a.z; p.x = x; p.z = z;
-      knock(p, vx, vz, 1.1); p.fistAt = true;
+      if (angry) { knock(p, vx, vz, 1.1); p.fistAt = true; }
+      else { p.flee = 9; p.tx = x - vx; p.tz = z - vz; p.yaw = Math.atan2(vx, vz); }
       shout(p);
       return p;
     },

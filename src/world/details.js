@@ -104,6 +104,10 @@ export function addDetails(L, S, N, glows, addWin, signs) {
       seg(ex + 0.45, ey + 0.1, ex + 2.1, ey + 0.7, z, '#ff2bd1'); seg(ex + 0.45, ey, ex + 2.1, ey + 0.1, z, '#ffe14a'); seg(ex + 0.45, ey - 0.1, ex + 2.1, ey - 0.5, z, '#18f0ff');
     } else if (b.place === 'wear') {
       for (const [o, c] of [[0, C], [0.55, '#ffe14a']]) path([[ex - 1 + o, ey + 1.3], [ex + 0.3 + o, ey + 0.5], [ex - 0.6 + o, ey], [ex + 0.7 + o, ey - 0.7], [ex + o, ey - 1.5]], z, c);
+    } else if (b.place === 'arms') {
+      // Volt & Spark: a lightning bolt beside a firework burst
+      path([[ex - 1.2, ey + 1.4], [ex - 0.35, ey + 0.15], [ex - 0.95, ey + 0.05], [ex - 0.15, ey - 1.4]], z, '#ffe14a');
+      for (let k = 0; k < 8; k++) { const a = k * PI / 4; seg(ex + 0.9 + Math.cos(a) * 0.3, ey + 0.3 + Math.sin(a) * 0.3, ex + 0.9 + Math.cos(a) * 0.9, ey + 0.3 + Math.sin(a) * 0.9, z, k % 2 ? '#ff2bd1' : C); }
     } else {
       const Y = '#ffe14a', a = ex - 1, c2 = ex + 0.25;
       path([[a, ey + 0.8], [a + 0.8, ey + 0.8], [a + 0.8, ey], [a, ey], [a, ey - 0.8], [a + 0.8, ey - 0.8]], z, Y);          // 2
@@ -175,7 +179,8 @@ export function addDetails(L, S, N, glows, addWin, signs) {
   });
 
   // --- vending machines: drinks (Coolwave) and snacks (Snaxx 24), against walls and on the promenade
-  const front = L.buildings.filter((b) => b.row === 0 && !b.place && b.name !== 'Sunset Strip Diner').sort((a, b) => Math.abs(a.cx) - Math.abs(b.cx));
+  // (Volt & Spark stays in this list so the machines, pots and beds keep the spots they had before it opened)
+  const front = L.buildings.filter((b) => b.row === 0 && (!b.place || b.place === 'arms') && b.name !== 'Sunset Strip Diner').sort((a, b) => Math.abs(a.cx) - Math.abs(b.cx));
   const mid = L.buildings.filter((b) => b.row === 1 && !b.place).sort((a, b) => Math.abs(a.cx) - Math.abs(b.cx));
   const back = L.buildings.filter((b) => b.row === 2).sort((a, b) => Math.abs(a.cx) - Math.abs(b.cx));
   let vn = 0;
