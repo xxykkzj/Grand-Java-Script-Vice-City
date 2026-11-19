@@ -42,13 +42,15 @@ export function createTraffic(R, vehicles, grid, game) {
   }
   // a random lane position at least `far` from the player and clear of other cars
   const blvdEdges = R.edges.filter((e) => e.h && Math.abs(e.z0 - 53) < 6);
+  // (and within NEAR of the player: two districts' worth of roads share one fleet, so it follows you)
+  const NEAR = 300;
   function place(c, far, hide = false, blvd = 0) {
     const f = game.focus();
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 90; i++) {
       const pool = Math.random() < blvd ? blvdEdges : R.edges;
       const e = pool[Math.floor(Math.random() * pool.length)], s = 3 + Math.random() * (e.len - 12);
-      const x = e.x0 + e.dx * s, z = e.z0 + e.dz * s;
-      if (Math.hypot(x - f.x, z - f.z) < far) continue;
+      const x = e.x0 + e.dx * s, z = e.z0 + e.dz * s, d = Math.hypot(x - f.x, z - f.z);
+      if (d < far || (d > NEAR && i < 75)) continue;
       if (hide && !outOfSight(game.camera, x, z, solids)) continue;
       if (cars.some((o) => o !== c && !o.off && Math.hypot(o.x - x, o.z - z) < 11)) continue;
       rail(c, e, s);
@@ -73,6 +75,11 @@ export function createTraffic(R, vehicles, grid, game) {
   for (let i = 0; i < TRAFFIC; i++) {
     const c = vehicles.addCar(0, 0, 0, vehicles.PAINTS[(i * 4 + 1) % vehicles.PAINTS.length], { traffic: true });
     if (c) place(c, 30);
+  }
+  // taxis, vans, trucks, a garbage truck and an ambulance from the Kenney Car Kit (vehicles.js KIT_CARS)
+  for (const [m, cruise] of [['taxi', 0], ['taxi', 0], ['taxi', 0], ['van', 0], ['van', 0], ['delivery', 8], ['truck', 0], ['truck', 0], ['garbage', 6.5], ['ambulance', 11]]) {
+    const c = vehicles.addCar(0, 0, 0, vehicles.PAINTS[Math.floor(Math.random() * vehicles.PAINTS.length)], { traffic: true, model: m });
+    if (c && place(c, 30) && cruise) c.ai.cruise = cruise;
   }
   // a couple of Comets ride with the traffic
   for (let i = 0; i < 2; i++) {
@@ -197,6 +204,12 @@ export function createTraffic(R, vehicles, grid, game) {
     densT = 0.12;
     let on = 0;
     for (const c of fleet) if (!c.off && c.ai) on++;
+    // a car left far behind (the other district) is brought round to where you are, out of sight
+    if (on >= target) {
+      const f = game.focus();
+      const far = fleet.find((c) => parkable(c) && Math.hypot(c.x - f.x, c.z - f.z) > NEAR + 60);
+      if (far && place(far, 80, true)) return;
+    }
     if (on > target) {
       // the first suitable car out of sight goes home; at night boulevard cars stay out longest
       let best = null, bs = -1;

@@ -1,11 +1,13 @@
 // Cars (one InstancedMesh for the whole fleet), the tank, the helicopter and tank shells.
 import * as THREE from 'three';
 import { clamp, damp, angleDelta, pushOut, PI, reducedMotion, nightU, wetU } from '../core/util.js';
-import { clampToWorld, SEA_R } from '../world/layout.js';
+import { clampToWorld, seaPull } from '../world/layout.js';
 import { carGeometry, carGlassGeometry, patrolKitGeometry, tankGeometry, heliGeometry, bikeGeometry } from './models.js';
+import { kitGeometry, kitPaint } from '../world/kits.js';
 import { createGlow } from '../world/glow.js';
 
-const CAP = 56, POLICE = 6, BIKES = 8;
+export const CAP = 90;
+const POLICE = 6, BIKES = 8, HELIS = 2;
 // Vehicle condition (see game/damage.js for the stages, smoke, fire and explosions)
 export const MAXHP = { car: 100, bike: 60, tank: 420, heli: 140 };
 export function resetDamage(v) {
@@ -24,13 +26,19 @@ const HOT_PINK = '#ff1f9c';
 // front circle reaches the bumper, so the bonnet no longer slides into lamp posts and walls.
 const SHAPES = {
   car: [[1.3, 1.0], [0, 1.0], [-1.3, 1.0]],
+  truck: [[1.65, 1.05], [0, 1.05], [-1.65, 1.05]],
   bike: [[0.62, 0.45], [-0.72, 0.45]],
   tank: [[1.25, 2.1], [0, 2.1], [-1.25, 2.1]],
   heli: [[0.4, 1.6], [-3.6, 0.6]],
 };
-const REACH = { car: 2.3, bike: 1.17, tank: 3.35, heli: 4.2 };
+const REACH = { car: 2.3, truck: 2.75, bike: 1.17, tank: 3.35, heli: 4.2 };
+// Kenney Car Kit vehicles in the traffic (world/kits.js): scale to our street, label, collision shape
+export const KIT_CARS = {
+  taxi: { label: 'taxi', s: 1.5 }, van: { label: 'van', s: 1.55, paint: true }, delivery: { label: 'delivery van', s: 1.45, shape: 'truck', paint: true },
+  truck: { label: 'pickup truck', s: 1.5, paint: true }, garbage: { label: 'garbage truck', s: 1.45, shape: 'truck' }, ambulance: { label: 'ambulance', s: 1.45, shape: 'truck' },
+};
 export function circlesOf(v, out = []) {
-  const sh = SHAPES[v.kind] || SHAPES.car, fx = Math.sin(v.yaw), fz = Math.cos(v.yaw);
+  const sh = SHAPES[v.shape || v.kind] || SHAPES.car, fx = Math.sin(v.yaw), fz = Math.cos(v.yaw);
   for (let i = 0; i < sh.length; i++) { const o = out[i] || (out[i] = [0, 0, 0]); o[0] = v.x + fx * sh[i][0]; o[1] = v.z + fz * sh[i][0]; o[2] = sh[i][1]; }
   out.length = sh.length;
   return out;
@@ -44,7 +52,7 @@ export function bodyDist(v, x, z) {
 }
 
 export function createVehicles(scene, L, fx, audio) {
-  const solids = L.solids;
+  const solids = L.solids, surf = L.surf;
   const glowU = { value: 0 };
   const carMat = new THREE.MeshLambertMaterial({ vertexColors: true });
   carMat.onBeforeCompile = (sh) => {
@@ -80,6 +88,26 @@ export function createVehicles(scene, L, fx, audio) {
   kit.frustumCulled = false;
   for (let i = 0; i < POLICE; i++) kit.setColorAt(i, new THREE.Color(1, 1, 1));
   scene.add(kit);
+  // Kenney Car Kit traffic (taxis, vans, trucks, a garbage truck, an ambulance): one BatchedMesh, one draw
+  // call for all of them. The body paint takes the instance colour (aFlag bit 1); the instance alpha
+  // darkens the whole vehicle as it gets damaged (the procedural cars dent instead)
+  const kitIds = Object.keys(KIT_CARS), kitGeo = {};
+  let kv = 0;
+  for (const id of kitIds) { kitGeo[id] = kitGeometry(id, { scale: KIT_CARS[id].s, flags: true }); kv += kitGeo[id].attributes.position.count; }
+  const kitMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  kitMat.onBeforeCompile = (sh) => {
+    sh.vertexShader = 'attribute float aFlag;\n' + sh.vertexShader.replace('#include <color_vertex>', `#include <color_vertex>
+      #ifdef USE_BATCHING_COLOR
+        vec4 bc = getBatchingColor( getIndirectIndex( gl_DrawID ) );
+        vColor.rgb = mix(color.rgb, bc.rgb, step(0.5, mod(aFlag, 2.0))) * bc.a;
+      #endif`);
+  };
+  const kitMesh = new THREE.BatchedMesh(24, kv + 16, 0, kitMat);
+  const kitGid = {};
+  for (const id of kitIds) kitGid[id] = kitMesh.addGeometry(kitGeo[id]);
+  kitMesh.sortObjects = false;
+  scene.add(kitMesh);
+  const v4 = new THREE.Vector4();
   // headlight pools on the road: one additive instanced quad per car, faded in by the night uniform
   const poolGeo = new THREE.PlaneGeometry(5.5, 10); poolGeo.rotateX(-PI / 2); poolGeo.translate(0, 0.06, 7.2);
   const pools = new THREE.InstancedMesh(poolGeo, new THREE.ShaderMaterial({
@@ -101,9 +129,9 @@ export function createVehicles(scene, L, fx, audio) {
   shadows.frustumCulled = false; shadows.renderOrder = 1;
   scene.add(shadows);
 
-  // 5 sprites per car, then tank (2), heli (2), shells (4)
-  const glow = createGlow(scene, CAP * 5 + 8 + POLICE * 2);
-  const G_TANK = CAP * 5, G_HELI = G_TANK + 2, G_SHELL = G_HELI + 2, G_BAR = G_SHELL + 4;
+  // 5 sprites per car, then tank (2), helicopters (2 each), shells (4)
+  const glow = createGlow(scene, CAP * 5 + 6 + HELIS * 2 + POLICE * 2);
+  const G_TANK = CAP * 5, G_HELI = G_TANK + 2, G_SHELL = G_HELI + HELIS * 2, G_BAR = G_SHELL + 4;
 
   const partMat = new THREE.MeshLambertMaterial({ vertexColors: true });
   const cars = [];
@@ -118,6 +146,11 @@ export function createVehicles(scene, L, fx, audio) {
     };
     Object.assign(c, extra);
     resetDamage(c);
+    if (c.model) {
+      const K = KIT_CARS[c.model];
+      Object.assign(c, { label: K.label, shape: K.shape, ki: kitMesh.addInstance(kitGid[c.model]) });
+      if (!K.paint) c.color = kitPaint(c.model);
+    }
     if (c.kind === 'bike') {
       if (nBikes >= BIKES) return null;
       Object.assign(c, { label: 'Comet', radius: 0.95, mass: 0.45, bi: nBikes++ });
@@ -129,6 +162,11 @@ export function createVehicles(scene, L, fx, audio) {
   }
   // paint, darkened with damage (a wreck is charred almost black); the glass smokes over too
   function tintOf(c) {
+    if (c.model) {
+      col.set(neon ? HOT_PINK : c.color);
+      kitMesh.setColorAt(c.ki, v4.set(col.r, col.g, col.b, c.wreck ? 0.15 : 1 - Math.min(1, c.char || 0) * 0.8));
+      return;
+    }
     const m = c.kind === 'bike' ? bikeMesh : carMesh;
     col.set(neon ? HOT_PINK : c.color);
     if (c.char) col.lerp(SOOT, Math.min(1, c.char) * 0.9);
@@ -136,11 +174,13 @@ export function createVehicles(scene, L, fx, audio) {
     m.instanceColor.needsUpdate = true;
     if (c.kind !== 'bike') { glass.setColorAt(c.idx, col.setScalar(c.wreck ? 0.12 : 1 - (c.char || 0) * 0.5)); glass.instanceColor.needsUpdate = true; }
   }
-  L.parking.forEach((p, i) => addCar(p.x, p.z, p.yaw, PAINT[i % PAINT.length]));
+  L.parking.forEach((p, i) => addCar(p.x, p.z, p.yaw, PAINT[i % PAINT.length], p.model ? { model: p.model } : undefined));
   L.bikes.forEach((p, i) => addCar(p.x, p.z, p.yaw, BIKE_PAINT[i % BIKE_PAINT.length], { kind: 'bike', home: p.home, hx: p.x, hz: p.z, hyaw: p.yaw }));
   const PAINTS = PAINT;
 
-  let tank = null, heli = null;
+  let tank = null;
+  const helis = [];
+  const heliNow = () => helis.find((h) => h.driven) || helis.find((h) => h.hi === 0) || helis[0] || null;
   const shells = [];
   for (let i = 0; i < 4; i++) {
     const m = new THREE.Mesh(new THREE.SphereGeometry(0.22, 6, 5), new THREE.MeshBasicMaterial({ color: '#ffe9a0' }));
@@ -156,7 +196,7 @@ export function createVehicles(scene, L, fx, audio) {
   function hitSolids(o, bounce) {
     let hit = false;
     o.impact = 0;
-    const heli = o.kind === 'heli', sh = SHAPES[o.kind] || SHAPES.car;
+    const heli = o.kind === 'heli', sh = SHAPES[o.shape || o.kind] || SHAPES.car;
     for (const [off, r] of sh) {
       const fx = Math.sin(o.yaw), fz = Math.cos(o.yaw);
       tp.x = o.x + fx * off; tp.z = o.z + fz * off;
@@ -172,7 +212,7 @@ export function createVehicles(scene, L, fx, audio) {
       // street furniture: lamps, palms, hydrants... a car stops dead against a pole (a soft bounce, a thud,
       // never any heat) unless it is going fast enough to flatten it (see world/loose.js); the helicopter
       // only minds the tall things, and only when low
-      if (!heli || o.y < 8) {
+      if (!heli || o.y - (o.floor || 0) < 8) {
         const k = L.props.collide(tp, r, o.y, o, heli ? 0.1 : 0.2, heli ? 3 : 0, o);
         if (k > 0) { hit = true; o.impact = Math.max(o.impact, k); if (k > 4 && (o.driven || !o.ai)) audio.thud(clamp(k / 25, 0.15, 0.8)); }
       }
@@ -186,7 +226,7 @@ export function createVehicles(scene, L, fx, audio) {
     // out of reach of the seawall unless you hit it very hard; the pier rail gives at modest speed; the beach runs on into the sea
     // (game/sinking.js takes over once something is in the water). Traffic stays on its lanes: it never goes in.
     const sp = Math.hypot(c.vx, c.vz), wf = c.ai ? 0 : 1 | (sp > 8 ? 2 : 0) | (sp > 22 ? 4 : 0);
-    for (const [off, r] of SHAPES[c.kind] || SHAPES.car) {
+    for (const [off, r] of SHAPES[c.shape || c.kind] || SHAPES.car) {
       tp.x = c.x + Math.sin(c.yaw) * off; tp.z = c.z + Math.cos(c.yaw) * off;
       const x0 = tp.x, z0 = tp.z;
       if (clampToWorld(tp, Math.min(r, 1), wf)) {
@@ -199,16 +239,68 @@ export function createVehicles(scene, L, fx, audio) {
     return hit;
   }
 
+  // Up and down: cars and bikes follow the ground they are on (the street, a stunt ramp, a raised deck, a
+  // roof); when it falls away under them (off the top of a ramp, off a deck edge) they fly on with the
+  // vertical speed the ramp gave them, and land on whatever is below. A face too tall to drive up (the
+  // side of a ramp, a deck) stops them like a wall.
+  function vertical(c, dt, px, pz) {
+    const hs = Math.hypot(c.vx, c.vz);
+    if (c.air) {
+      c.vy -= 22 * dt; c.y += c.vy * dt; c.tx += c.tvx * dt; c.tz += c.tvz * dt;
+      c.flipA = (c.flipA || 0) + Math.abs(c.tvz) * dt + Math.abs(c.tvx) * dt;
+      if (!c.tvx && !c.tvz && !(c.kind === 'bike' && c.driven && c.tx < -0.2)) c.tx = damp(c.tx, clamp(-Math.atan2(c.vy, Math.max(hs, 5)) * 0.8, -0.7, 0.7), 4, dt);
+      c.airT = (c.airT || 0) + dt; c.apex = Math.max(c.apex || 0, c.y);
+      const gh = c.gy = surf.at(c.x, c.z, c.y + 0.3), sl = surf.last;
+      if (c.y <= gh) {
+        const impact = -c.vy, flip = Math.abs(c.flipA || 0);
+        c.y = gh; c.air = false; c.surf = sl; c.tvx = c.tvz = 0;
+        c.tx = angleDelta(0, c.tx); c.tz = angleDelta(0, c.tz);
+        c.vy = impact > 7 && !sl && c.airT < 0.25 ? impact * 0.3 : 0;   // a hard bounce off the street after a short hop
+        if (c.vy > 0) c.air = true;
+        if (api.onLand) api.onLand(c, impact, sl, flip);
+        // landing hard dents it a little (game/damage.js thresholds apply)
+        if (api.onImpact && impact > 9) api.onImpact(c, impact * 0.6, null);
+        c.airT = 0; c.apex = 0; c.flipA = 0; c.vyRamp = 0;
+      }
+      return;
+    }
+    const gh = c.gy = surf.at(c.x, c.z, c.y + 0.75), sl = surf.last, top = surf.at(c.x, c.z);
+    if (top - c.y > 0.75 && top > gh) {
+      // a face too tall to climb: back to where we were, bounce off
+      c.x = px; c.z = pz; c.impact = Math.max(c.impact || 0, hs); c.vx *= -0.25; c.vz *= -0.25;
+      if (api.onImpact && hs > 7) api.onImpact(c, hs * 0.8, null);
+      return;
+    }
+    const dy = gh - c.y;
+    if (dy < -0.12 && sl !== c.surf) {
+      // the ground fell away: fly on with what the ramp gave us
+      const prev = c.surf;
+      c.air = true; c.vy = Math.max(0, c.vyRamp || 0); c.airT = 0; c.apex = c.y; c.flipA = 0;
+      if (prev && prev.kicker && api.onTakeoff) api.onTakeoff(c, prev, hs);
+      // a little twist off a kicker at speed: half the fun of the jump (never with reduced motion)
+      if (prev && prev.kicker && !reducedMotion && hs > 14 && c.kind !== 'bike' && Math.abs(c.steerLast || 0) > 0.5) c.tvz = -Math.sign(c.steerLast) * 6.6;
+      c.surf = null;
+      return;
+    }
+    c.vyRamp = dt > 0 ? clamp(dy / dt, -30, 30) : 0;
+    c.y = gh; c.vy = 0; c.surf = sl;
+    if (sl && !sl.rect) c.tx = damp(c.tx, -Math.atan(c.vyRamp / Math.max(hs, 3)), 14, dt);
+  }
+
   function updateCar(c, dt, user) {
     if (c.off || c.sink || onRails(c)) return;
+    // a parked car at rest: nothing to integrate until something moves it
+    if (!c.driven && !c.ai && !c.air && c.vx * c.vx + c.vz * c.vz < 0.0004 && !c.vy && Math.abs(c.spin) < 0.01 && Math.abs(c.tx) < 0.01 && Math.abs(c.tz - (c.kind === 'bike' ? 0.2 : 0)) < 0.01) { c.vx = c.vz = 0; c.impact = 0; return; }
     const inp = c.wreck ? null : c.driven ? user : c.ai && c.ai.pursuit && !(c.ai.stun > 0) ? c.ai.inp : null;
     const perf = c.perf || 1;
     const B = c.kind === 'bike';
-    if (inp && c.y < 0.3) {
+    if (!c.air && c.vy > 0.5) c.air = true;                 // thrown by a blast
+    if (inp && !c.air) {
       let fx_ = Math.sin(c.yaw), fz = Math.cos(c.yaw);
       let vf = c.vx * fx_ + c.vz * fz;
       const sf = clamp(Math.abs(vf) / 6, 0, 1) * (vf >= 0 ? 1 : -1);
       c.yaw += inp.steer * sf * ((B ? 3 : 2.5) / (1 + Math.abs(vf) * 0.03)) * (inp.hand ? 1.4 : 1) * dt;
+      c.steerLast = inp.steer;
       fx_ = Math.sin(c.yaw); fz = Math.cos(c.yaw);
       const rx = -fz, rz = fx_;
       vf = c.vx * fx_ + c.vz * fz;
@@ -228,22 +320,16 @@ export function createVehicles(scene, L, fx, audio) {
         c.tx = damp(c.tx, inp.throttle > 0 && vf > 2.5 && vf < 26 && !reducedMotion ? -0.5 : 0, inp.throttle > 0 ? 4 : 9, dt);
       } else {
         c.tz = damp(c.tz, clamp(vl * 0.012, -0.12, 0.12), 8, dt);
-        c.tx = damp(c.tx, 0, 8, dt);
+        if (!c.surf || c.surf.rect) c.tx = damp(c.tx, 0, 8, dt);
       }
     } else {
-      const k = Math.exp(-(c.y > 0.05 ? 0.2 : 2.4) * dt);
+      const k = Math.exp(-(c.air ? 0.2 : 2.4) * dt);
       c.vx *= k; c.vz *= k; c.yaw += c.spin * dt; c.spin *= Math.exp(-2.2 * dt); c.slip = 0;
-      if (c.y <= 0 && c.vy <= 0) { c.tx = damp(c.tx, 0, 6, dt); c.tz = damp(c.tz, B && !c.ai ? 0.2 : 0, 6, dt); }   // parked bikes rest on the stand
+      if (!c.air && c.vy <= 0 && !c.surf) { c.tx = damp(c.tx, 0, 6, dt); c.tz = damp(c.tz, B && !c.ai ? 0.2 : 0, 6, dt); }   // parked bikes rest on the stand
     }
-    if (c.y > 0 || c.vy > 0) {
-      c.vy -= 22 * dt; c.y += c.vy * dt; c.tx += c.tvx * dt; c.tz += c.tvz * dt;
-      if (c.y <= 0) {
-        c.y = 0; c.tvx = c.tvz = 0;
-        c.tx = angleDelta(0, c.tx); c.tz = angleDelta(0, c.tz);
-        c.vy = c.vy < -7 ? -c.vy * 0.3 : 0;
-      }
-    }
+    const px = c.x, pz = c.z;
     c.x += c.vx * dt; c.z += c.vz * dt;
+    vertical(c, dt, px, pz);
     const sp0 = Math.hypot(c.vx, c.vz);
     hitSolids(c, 0.35);
     if (c.impact > 0 && api.onImpact) api.onImpact(c, c.impact, null);
@@ -288,33 +374,36 @@ export function createVehicles(scene, L, fx, audio) {
     } else if (h.driven && h.spool > 0.6) {
       h.vy += ((inp.up ? 1 : 0) - (inp.down ? 1 : 0)) * 18 * dt;
       h.vy *= Math.exp(-1.7 * dt);
-      if (h.y > 0.25) {
+      if (h.y - h.floor > 0.25) {
         h.yaw += inp.steer * 1.6 * dt;
         h.vx += fx_ * inp.throttle * 22 * dt; h.vz += fz * inp.throttle * 22 * dt;
       }
       const k = Math.exp(-0.75 * dt); h.vx *= k; h.vz *= k;
     } else { h.vy -= 9 * dt; const k = Math.exp(-1 * dt); h.vx *= k; h.vz *= k; }
     h.y += h.vy * dt;
-    if (h.y <= 0) {
+    // the ground under the skids: the street, or any flat roof, helipad or deck (world/surfaces.js)
+    const floor = h.floor = surf.at(h.x, h.z, h.y + 0.6);
+    if (h.y <= floor) {
       if (dead && !h.landed) { h.landed = true; if (api.onCrash) api.onCrash(h, -h.vy); }
-      h.y = 0; if (h.vy < 0) h.vy = 0; const k = Math.exp(-6 * dt); h.vx *= k; h.vz *= k;
+      h.y = floor; if (h.vy < 0) h.vy = 0; const k = Math.exp(-6 * dt); h.vx *= k; h.vz *= k;
     }
-    if (h.y > 110) { h.y = 110; h.vy = Math.min(h.vy, 0); }
+    if (h.y > 170) { h.y = 170; h.vy = Math.min(h.vy, 0); }
     h.x += h.vx * dt; h.z += h.vz * dt;
     hitSolids(h, 0.1);
     if (h.impact > 0 && api.onImpact) api.onImpact(h, h.impact, null);
     // soft boundary out at sea: past SEA_R the fuel warning turns the nose for home and a growing
     // push brings it back; there is no wall, just a firmer hand the further out you go
-    const rr = Math.hypot(h.x, h.z);
-    h.turnBack = rr > SEA_R;
+    // (measured from the line between the two islands' centres, so it hugs both)
+    const sp = seaPull(h.x, h.z);
+    h.turnBack = sp.over > 0;
     if (h.turnBack) {
-      const nx = h.x / rr, nz = h.z / rr, over = rr - SEA_R, vout = h.vx * nx + h.vz * nz;
+      const nx = sp.nx, nz = sp.nz, over = sp.over, vout = h.vx * nx + h.vz * nz;
       if (vout > 0) { const k = Math.min(1, dt * (0.8 + over * 0.04)); h.vx -= nx * vout * k; h.vz -= nz * vout * k; }
       h.vx -= nx * Math.min(over, 60) * 0.25 * dt; h.vz -= nz * Math.min(over, 60) * 0.25 * dt;
       if (h.driven && h.y > 0.25) h.yaw += angleDelta(h.yaw, Math.atan2(-nx, -nz)) * (1 - Math.exp(-dt * clamp(over / 30, 0.3, 2)));
-      if (rr > SEA_R + 90) { h.x = nx * (SEA_R + 90); h.z = nz * (SEA_R + 90); }
+      if (over > 90) { h.x -= nx * (over - 90); h.z -= nz * (over - 90); }
     }
-    const vf = h.vx * fx_ + h.vz * fz, air = clamp(h.y / 2, 0, 1);
+    const vf = h.vx * fx_ + h.vz * fz, air = clamp((h.y - h.floor) / 2, 0, 1);
     h.pitchVis = damp(h.pitchVis, clamp(vf * 0.016, -0.35, 0.35) * air, 4, dt);
     h.rollVis = damp(h.rollVis, (h.driven ? -inp.steer * 0.22 : 0) * air, 4, dt);
     h.group.position.set(h.x, h.y, h.z);
@@ -326,13 +415,13 @@ export function createVehicles(scene, L, fx, audio) {
   function collidePairs(all) {
     for (let i = 0; i < all.length; i++) {
       const a = all[i];
-      if (a.y > 2.5 || a.sink) continue;
+      if (a.sink) continue;
       for (let j = i + 1; j < all.length; j++) {
         const b = all[j];
-        if (b.y > 2.5 || b.sink) continue;
+        if (b.sink || Math.abs(a.y - b.y) > 2.2) continue;
         const ra = onRails(a), rb = onRails(b);
         if (ra && rb) continue;
-        const reach = (REACH[a.kind] || 2.3) + (REACH[b.kind] || 2.3);
+        const reach = (REACH[a.shape || a.kind] || 2.3) + (REACH[b.shape || b.kind] || 2.3);
         if ((b.x - a.x) ** 2 + (b.z - a.z) ** 2 >= reach * reach) continue;
         // deepest overlap between any circle of a and any circle of b
         const slack = ra || rb ? 0.55 : 0;
@@ -387,8 +476,8 @@ export function createVehicles(scene, L, fx, audio) {
     paint(c, color) { c.color = color; tintOf(c); },
     retint(c) { if (c.kind === 'car' || c.kind === 'bike') tintOf(c); else if (c.mat) c.mat.color.setScalar(1 - Math.min(1, c.char || 0) * 0.8); },
     removeTank() { if (tank) { tank.group.visible = false; scene.remove(tank.group); tank = null; } },
-    get tank() { return tank; }, get heli() { return heli; },
-    all() { const a = cars.filter((c) => !c.off); if (tank) a.push(tank); if (heli) a.push(heli); return a; },
+    get tank() { return tank; }, get heli() { return heliNow(); }, helis,
+    all() { const a = cars.filter((c) => !c.off); if (tank) a.push(tank); for (const h of helis) a.push(h); return a; },
     nearest(pos, reach = 2.4) {
       let best = null, bd = 1e9;
       for (const v of api.all()) {
@@ -414,7 +503,9 @@ export function createVehicles(scene, L, fx, audio) {
       if (tank.wreck || !tank.maxHp || tank.hp < tank.maxHp) { resetDamage(tank); api.retint(tank); }
       return tank;
     },
-    spawnHeli(x, z, yaw) {
+    // which: 0 is the one the ROTORWASH code and the start bring you, 1 waits on a downtown helipad; y: the roof it stands on
+    spawnHeli(x, z, yaw, which = 0, y = 0) {
+      let heli = helis.find((h) => h.hi === which);
       if (!heli) {
         const g = heliGeometry(), mat = partMat.clone();
         const group = new THREE.Group();
@@ -422,10 +513,12 @@ export function createVehicles(scene, L, fx, audio) {
         const rotor = new THREE.Mesh(g.rotor, mat); rotor.position.set(0, 2.98, 0);
         const tail = new THREE.Mesh(g.tail, mat); tail.position.set(0.32, 2.3, -5.3);
         group.add(rotor, tail); scene.add(group);
-        heli = { kind: 'heli', label: 'helicopter', group, rotor, tail, mat, x, y: 0, z, yaw, vx: 0, vy: 0, vz: 0, radius: 2.4, mass: 3, driven: false, spool: 0, rotA: 0, pitchVis: 0, rollVis: 0, home: { x, z, yaw } };
+        heli = { kind: 'heli', label: 'helicopter', hi: which, group, rotor, tail, mat, x, y, z, yaw, vx: 0, vy: 0, vz: 0, radius: 2.4, mass: 3, driven: false, spool: 0, rotA: 0, pitchVis: 0, rollVis: 0, floor: y, home: { x, z, yaw, y } };
+        helis.push(heli);
       }
-      Object.assign(heli, { x, z, yaw, y: 0, vx: 0, vy: 0, vz: 0, sink: null, pitchVis: 0, rollVis: 0 });
+      Object.assign(heli, { x, z, yaw, y, floor: y, vx: 0, vy: 0, vz: 0, sink: null, pitchVis: 0, rollVis: 0 });
       if (heli.wreck || !heli.maxHp || heli.hp < heli.maxHp) { resetDamage(heli); api.retint(heli); }
+      heli.group.position.set(x, y, z); heli.group.rotation.set(0, yaw, 0);
       return heli;
     },
     setNeon(on) {
@@ -452,7 +545,7 @@ export function createVehicles(scene, L, fx, audio) {
     update(dt, inp, cam, player) {
       for (const c of cars) updateCar(c, dt, inp);
       if (tank) updateTank(tank, dt, inp, cam.yaw, cam.pitch);
-      if (heli) updateHeli(heli, dt, inp);
+      for (const h of helis) updateHeli(h, dt, inp);
       collidePairs(api.all());
 
       // shells
@@ -461,11 +554,11 @@ export function createVehicles(scene, L, fx, audio) {
           const steps = 3, h = dt / steps;
           for (let k = 0; k < steps && s.on; k++) {
             s.vy -= 12 * h; s.x += s.vx * h; s.y += s.vy * h; s.z += s.vz * h; s.life -= h;
-            let hit = s.y <= 0.1 || s.life <= 0 || Math.abs(s.x) > 460 || Math.abs(s.z) > 420;
+            let hit = s.y <= 0.1 || s.life <= 0 || seaPull(s.x, s.z).over > -200;
             if (!hit) for (const b of solids) if (s.y < b.h && s.x > b.x0 && s.x < b.x1 && s.z > b.z0 && s.z < b.z1) { hit = true; break; }
             let direct = null;
             if (!hit) for (const c of cars) if (!c.driven && !c.off && Math.abs(s.y - c.y - 0.8) < 1.6 && Math.hypot(s.x - c.x, s.z - c.z) < 2.3) { hit = true; direct = c; break; }
-            if (!hit && heli && !heli.driven && Math.abs(s.y - heli.y - 1.5) < 2 && Math.hypot(s.x - heli.x, s.z - heli.z) < 2.6) { hit = true; direct = heli; }
+            if (!hit) for (const heli of helis) if (!heli.driven && Math.abs(s.y - heli.y - 1.5) < 2 && Math.hypot(s.x - heli.x, s.z - heli.z) < 2.6) { hit = true; direct = heli; }
             if (hit) { s.on = false; boom(s.x, Math.max(s.y, 0.2), s.z, player, direct); }
           }
         }
@@ -482,6 +575,7 @@ export function createVehicles(scene, L, fx, audio) {
         if (c.off) {
           m4.makeScale(0, 0, 0);
           carMesh.setMatrixAt(c.idx, m4); shadows.setMatrixAt(c.idx, m4); pools.setMatrixAt(c.idx, m4);
+          if (c.model) kitMesh.setVisibleAt(c.ki, false);
           if (c.kind === 'bike') bikeMesh.setMatrixAt(c.bi, m4);
           for (let k = 0; k < 5; k++) glow.hide(g + k);
           if (c.police) { kit.setMatrixAt(nk, m4); glow.hide(G_BAR + nk * 2); glow.hide(G_BAR + nk * 2 + 1); nk++; }
@@ -499,9 +593,9 @@ export function createVehicles(scene, L, fx, audio) {
           bikeMesh.setMatrixAt(c.bi, m4);
           m4.makeScale(0, 0, 0); carMesh.setMatrixAt(c.idx, m4);
           q.setFromEuler(e.set(0, c.yaw, 0));
-          m4.compose(p3.set(c.x, 0.03, c.z), q, s3.set(0.3, 1, 0.42)); shadows.setMatrixAt(c.idx, m4); s3.set(1, 1, 1);
+          m4.compose(p3.set(c.x, (c.gy || 0) + 0.03, c.z), q, s3.set(0.3, 1, 0.42)); shadows.setMatrixAt(c.idx, m4); s3.set(1, 1, 1);
           const lit = (c.driven || !!c.ai) && !c.wreck;
-          if (lit && c.y < 0.5) m4.compose(p3.set(c.x, 0, c.z), q, s3.set(0.6, 1, 0.8)); else m4.makeScale(0, 0, 0);
+          if (lit && c.y - (c.gy || 0) < 0.5) m4.compose(p3.set(c.x, c.gy || 0, c.z), q, s3.set(0.6, 1, 0.8)); else m4.makeScale(0, 0, 0);
           pools.setMatrixAt(c.idx, m4); s3.set(1, 1, 1);
           if (c.sink) { m4.makeScale(0, 0, 0); shadows.setMatrixAt(c.idx, m4); pools.setMatrixAt(c.idx, m4); for (let k = 0; k < 5; k++) glow.hide(g + k); continue; }
           const brk = c.driven ? inp.throttle < 0 : !!c.ai && c.ai.braking;
@@ -513,7 +607,9 @@ export function createVehicles(scene, L, fx, audio) {
           continue;
         }
         m4.compose(p3.set(c.x, c.y, c.z), q.setFromEuler(e), s3);
+        if (c.model) { kitMesh.setMatrixAt(c.ki, m4); kitMesh.setVisibleAt(c.ki, true); m4.makeScale(0, 0, 0); }
         carMesh.setMatrixAt(c.idx, m4);
+        if (c.model) m4.compose(p3, q, s3);
         if (c.sink) { m4.makeScale(0, 0, 0); shadows.setMatrixAt(c.idx, m4); pools.setMatrixAt(c.idx, m4); for (let k = 0; k < 5; k++) glow.hide(g + k); continue; }
         if (c.police) {
           kit.setMatrixAt(nk, m4);
@@ -524,11 +620,11 @@ export function createVehicles(scene, L, fx, audio) {
           nk++;
         }
         e.set(0, c.yaw, 0);
-        const sk = 1 / (1 + c.y * 0.25), on = (c.driven || !!c.ai) && !c.wreck;
+        const gy = c.gy || 0, sk = 1 / (1 + (c.y - gy) * 0.25), on = (c.driven || !!c.ai) && !c.wreck;
         q.setFromEuler(e);
-        m4.compose(p3.set(c.x, 0.03, c.z), q, s3.set(sk, 1, sk));
+        m4.compose(p3.set(c.x, gy + 0.03, c.z), q, s3.set(sk, 1, sk));
         shadows.setMatrixAt(c.idx, m4); s3.set(1, 1, 1);
-        if (on && c.y < 0.5) m4.compose(p3.set(c.x, 0, c.z), q, s3); else m4.makeScale(0, 0, 0);
+        if (on && c.y - gy < 0.5) m4.compose(p3.set(c.x, gy, c.z), q, s3); else m4.makeScale(0, 0, 0);
         pools.setMatrixAt(c.idx, m4);
         const braking = c.driven ? inp.throttle < 0 : !!c.ai && c.ai.braking;
         const ts = braking ? 2.6 : on ? 1.7 : 1.1, tb = braking ? 1 : on ? 0.3 : 0;
@@ -548,12 +644,12 @@ export function createVehicles(scene, L, fx, audio) {
         glow.set(G_TANK, tank.x - fx_ * 3.2 + fz * 1.2, 1.5, tank.z - fz * 3.2 - fx_ * 1.2, '#ff1830', 1.8, 0.5);
         glow.set(G_TANK + 1, tank.x - fx_ * 3.2 - fz * 1.2, 1.5, tank.z - fz * 3.2 + fx_ * 1.2, '#ff1830', 1.8, 0.5);
       }
-      if (heli) {
-        const fx_ = Math.sin(heli.yaw), fz = Math.cos(heli.yaw);
-        const blink = Math.sin(performance.now() / 160) > 0.3 ? 1 : 0;
-        glow.set(G_HELI, heli.x - fx_ * 5.3, heli.y + 3.1, heli.z - fz * 5.3, '#ff1830', 2.4 * blink * (reducedMotion ? 0 : 1) + (reducedMotion ? 1.6 : 0), 1);
-        glow.set(G_HELI + 1, heli.x + fx_ * 2, heli.y + 1.1, heli.z + fz * 2, '#c8f4ff', heli.driven ? 3 : 0, 0.5);
-      }
+      helis.forEach((heli, i) => {
+        const fx_ = Math.sin(heli.yaw), fz = Math.cos(heli.yaw), G = G_HELI + i * 2;
+        const blink = Math.sin(performance.now() / 160 + i) > 0.3 ? 1 : 0;
+        glow.set(G, heli.x - fx_ * 5.3, heli.y + 3.1, heli.z - fz * 5.3, '#ff1830', 2.4 * blink * (reducedMotion ? 0 : 1) + (reducedMotion ? 1.6 : 0), 1);
+        glow.set(G + 1, heli.x + fx_ * 2, heli.y + 1.1, heli.z + fz * 2, '#c8f4ff', heli.driven ? 3 : 0, 0.5);
+      });
       glow.commit();
     },
   };

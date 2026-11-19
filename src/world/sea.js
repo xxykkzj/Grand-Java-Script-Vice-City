@@ -7,7 +7,7 @@
 //   swimmers are nudged back by a "strong current" past SAFE_D metres from the island
 import * as THREE from 'three';
 import { clamp } from '../core/util.js';
-import { HX, HZ, PIER, CAUSEWAY } from './layout.js';
+import { HX, HZ, PIER, CAUSEWAY, KEY, MPIER } from './layout.js';
 
 export const WL = -0.6;
 export const FLOAT_Y = WL - 1.14;        // feet-level of a swimmer treading at the surface (hips ~0.18 under)
@@ -18,10 +18,16 @@ export const DEEP_SHARK = 2.0;           // sharks never come into water shallow
 
 const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
-// distance from the island's rectangle (0 inside it)
+// distance from the nearer island's rectangle (negative inside it): the old town or Solano Key
+const KCX = (KEY.x0 + KEY.x1) / 2, KHX = (KEY.x1 - KEY.x0) / 2, KHZ = (KEY.z1 - KEY.z0) / 2;
+const rectDist = (x, z, hx, hz) => { const qx = Math.abs(x) - hx, qz = Math.abs(z) - hz; return Math.hypot(Math.max(qx, 0), Math.max(qz, 0)) + Math.min(Math.max(qx, qz), 0); };
 export function islandDist(x, z) {
-  const qx = Math.abs(x) - HX, qz = Math.abs(z) - HZ;
-  return Math.hypot(Math.max(qx, 0), Math.max(qz, 0)) + Math.min(Math.max(qx, qz), 0);
+  return Math.min(rectDist(x, z, HX, HZ), rectDist(x - KCX, z, KHX, KHZ));
+}
+// the nearest point on dry land (either island), for currents that push swimmers home
+export function nearestLand(x, z) {
+  const a = rectDist(x, z, HX, HZ), b = rectDist(x - KCX, z, KHX, KHZ);
+  return a <= b ? [clamp(x, -HX, HX), clamp(z, -HZ, HZ)] : [clamp(x, KEY.x0, KEY.x1), clamp(z, KEY.z0, KEY.z1)];
 }
 function profile(d, beach) {
   if (beach) {
@@ -49,10 +55,11 @@ export function bedAt(x, z) {
   }
   return b;
 }
-export const onDeck = (x, z) => x > PIER.x0 && x < PIER.x1 && z > PIER.z0 && z < PIER.z1;
+export const onDeck = (x, z) => (x > PIER.x0 && x < PIER.x1 && z > PIER.z0 && z < PIER.z1) || (x > MPIER.x0 && x < MPIER.x1 && z > MPIER.z0 && z < MPIER.z1);
 // water depth at a point (0 on land: the island, the pier deck, the causeway deck)
 export function depthAt(x, z) {
   if (Math.abs(x) <= HX && Math.abs(z) <= HZ) return 0;
+  if (x >= KEY.x0 && x <= KEY.x1 && z >= KEY.z0 && z <= KEY.z1) return 0;
   const C = CAUSEWAY;
   if (x < -HX && x > C.x0 - 2 && z > C.z0 - 1 && z < C.z1 + 1) return 0;
   return Math.max(0, WL - bedAt(x, z));
@@ -62,7 +69,8 @@ export const surfaceAt = () => WL;
 
 // ---- the pier ladders: on the outside of the pier, reaching from the water to the deck
 export const LADDERS = [
-  { x: PIER.x0, z: 175, s: -1 }, { x: PIER.x1, z: 200, s: 1 }, { x: PIER.x0, z: 227, s: -1 },
+  { x: PIER.x0, z: 175, s: -1, pier: 'a' }, { x: PIER.x1, z: 200, s: 1, pier: 'a' }, { x: PIER.x0, z: 227, s: -1, pier: 'a' },
+  { x: MPIER.x1, z: 196, s: 1, pier: 'k' }, { x: MPIER.x0, z: 214, s: -1, pier: 'k' },
 ];
 export const LADDER_GAP = 1.0;           // the rail opens this far each side of a ladder
 export function nearLadder(x, z, reach = 2.2) {
@@ -82,9 +90,10 @@ export function pushFromSolids(p, r, feetY = -2) {
     hit = true;
   };
   out(WALLR.x0, WALLR.x1, WALLR.z0, WALLR.z1);
-  if (feetY < -0.25) out(PIER.x0 - 0.15, PIER.x1 + 0.15, PIER.z0 - 1, PIER.z1 + 0.2);
+  out(KEY.x0 - 0.8, KEY.x1 + 0.8, KEY.z0 - 0.8, KEY.z1 + 0.8);
+  if (feetY < -0.25) { out(PIER.x0 - 0.15, PIER.x1 + 0.15, PIER.z0 - 1, PIER.z1 + 0.2); out(MPIER.x0 - 0.15, MPIER.x1 + 0.15, MPIER.z0 - 1, MPIER.z1 + 0.2); }
   const C = CAUSEWAY;
-  out(C.x0 - 1, -HX, C.z0 - 0.5, C.z1 + 0.5);
+  out(C.x0, -HX, C.z0 - 0.5, C.z1 + 0.5);
   return hit;
 }
 

@@ -1,8 +1,8 @@
 # Neon Coast
 
-A pocket-sized 80s sunset island you can skate, ride, drive and fly around, in **one self-contained HTML file**.
+A pocket-sized 80s sunset coast you can skate, ride, drive and fly around, in **one self-contained HTML file**: the old town on Lumina Boulevard and, across the reopened Halcyon Causeway, Solano Key with its glass towers, a stadium, a marina and the docks.
 Pastel art-deco hotels, palms, neon signs, live traffic and pedestrians, a patrol with roof lasers that chases you when you misbehave, a four-job story with cutscenes, a bar, a nightclub with a booth lounge, a clothes shop, a corner store and a neon blaster shop you can walk into, vehicles that smoke, burn and blow up in cartoon style, random street events that reward good deeds, a sport bike, weather, a full day/night cycle, a synthwave soundtrack and a retro cheat console.
-Every model, texture and sound is generated in code at load time: there are **0 asset files**.
+Almost everything is generated in code at load time: the town, every texture and every sound. A handful of licensed low-poly models (Kenney and Quaternius, CC0, see [Credits](#credits)) are baked into the same file at build time: there are still **0 asset files** next to it.
 
 An original homage to 80s open-world games. Not affiliated with or using assets from any existing game.
 
@@ -126,7 +126,7 @@ Walk off the beach and the sand shelves away: ankle-deep wading (slower, no skat
 - **Knocking things over.** Loose street furniture has mass. Light things (bins, cones, café chairs, potted plants, crates, newspaper boxes, beach balls) fly when anything moving hits them, the courier on fast skates included. Medium things (benches, café tables, vending machines, sandwich boards) block you on foot and get shoved along by cars; they only tumble at speed (a vending machine needs about 50 km/h). A car above about 45 km/h bends a street lamp over (sparks, a clank, its light goes out); slower, the car just stops. Hydrants never move, but one hit at speed sprays a fountain for about 20 seconds. Palms, walls, buildings and signal masts never give. The Disco Tank flattens lamps, palms, hydrants and everything loose. Knocked props tumble, settle and rest, and go back to their spot a few minutes later once nobody is looking. None of it adds heat.
 - **Night streets.** Every street lamp throws a warm pool of light on the ground, lit shop windows and doors spill onto the pavement, the side streets and the far side of both back avenues have their own lamps now, and the night ambient is a little brighter, so the inner city reads at midnight without losing the mood.
 - **Beach life.** Crabs scuttle sideways over the sand and dive into it when anything comes within a few metres (more of them come out at night). Sandpipers run up and down the wet sand chasing the wave edge and burst into short flights when approached; most leave at night and they huddle under the lifeguard huts when it rains. Pelicans sit on the pier posts, stretch their wings now and then, and one takes off for a lazy glide over the water. A friendly beach dog trots about, runs over when you are on foot nearby, follows you for a bit, then wanders off. Around dusk a few sea turtles surface in the shallows. Cars and pedestrians only ever make them scatter. Quiet synthesised gull cries, peeps and a woof.
-- **The edge of the world.** The island ends at things you can see: a seawall with a railing and lamps around the city, banks of rocks where the beach meets the sides, and the surf. Lumina Boulevard runs west onto a causeway stub that stops at a storm closure (water barriers, sawhorses, cones, flashing amber lamps, a CAUSEWAY CLOSED – STORM REPAIRS sign, a repair barge in the missing span); the east end is a turnaround at the wall, and the other streets end at chevron boards and bollards. On the horizon: a mainland skyline across the bay, the Key (a little island town at the far end of the old causeway, with traffic lights streaming to the mainland at night), a hilly island to the south-east, a lighthouse with a turning beam and a cargo ship crawling along the horizon. Windows light up and twinkle at night; everything fades into the sea haze, and the sky melts into the fogged ocean so the water has no visible edge. The helicopter can fly well out to sea (about 700 m from the town centre); past that a TURNING BACK: LOW FUEL warning eases it round and pushes it home. You can only step out of it over land.
+- **The edge of the world.** The town ends at things you can see: a seawall with a railing and lamps around the city, banks of rocks where the beach meets the sides, and the surf. Lumina Boulevard runs west over the **Halcyon Causeway** (reopened: the storm repairs are finished, a pair of pylons with neon tops marks the new span) to Solano Key, which has its own seawall all round; the east end of the boulevard is a turnaround at the wall, and the other streets end at chevron boards and bollards. On the horizon: a mainland skyline across the bay with a bridge out to the key's north shore (traffic lights stream along it at night), a hilly island to the south-east, a lighthouse with a turning beam and a cargo ship crawling along the horizon. Windows light up and twinkle at night; everything fades into the sea haze, and the sky melts into the fogged ocean so the water has no visible edge. The helicopter can fly well out to sea (about 640 m from the line between the two islands); past that a TURNING BACK: LOW FUEL warning eases it round and pushes it home. You can only step out of it over land, on a roof or on a deck.
 - **Solid street furniture.** Palms, street lamps, signal masts, hydrants, phone booths, planting beds, bike racks, umbrella poles, lifeguard huts and chairs, volleyball posts, billboard stilts, surfboards and the pier rail all block you, and cars stop against them (a thud and a small bounce, never any heat; a hard hit on the Comet still throws you). Cars collide with a row of circles along the body (bike, tank and helicopter too), so the bonnet stops at the wall instead of sinking into it. The helicopter only minds the tall ones, and only when low. You can still jump over the low ones on skates. Traffic and pedestrians follow their own lanes and sidewalks, so they never snag on them.
 - **HUD.** Top right: cash, health bar, the condition of the vehicle you are in, the weapon chip (icon, name, ammo), heat stars and the clock. Top left: a round minimap that turns with the camera (roads, buildings, cars, bikes, patrol cars, pickups, the five doors as coloured squares, the next job as a star, the current target as a yellow diamond, street events as a blinking blip, a north marker), the district name and the current objective. Context hints sit bottom left; a crosshair in the middle while a blaster is out on foot.
 
@@ -144,6 +144,57 @@ Chosen to make the street read as a place without adding draw calls (almost ever
 - Life: a flock of gulls circling the pier and the beach (one instanced mesh, animated in the vertex shader).
 - Palm variety: squat and lanky palms with slightly different greens.
 
+## Solano Key (across the causeway)
+
+Drive, ride or skate west along Lumina Boulevard and over the Halcyon Causeway (a news toast at the start says it has reopened). The key is about as big as the old town, with its own road grid (signalled junctions, traffic, a sidewalk graph with crossings) joined to the boulevard, so the same traffic, Comets, Coast Patrol and pedestrians drive and walk both districts. The fleet and the crowd follow you: cars and people left far behind are brought round to where you are, out of sight.
+
+| District | What is there |
+| --- | --- |
+| **Glasswater** (downtown) | Glass towers up to 112 m with rooftop helipads (lit pad rings, a red beacon on a mast), office blocks with ribbon windows, the Pelican Point Lofts and other apartment blocks with balconies. A helicopter waits on the Glasswater Tower helipad. |
+| **Sunbowl** | An open-air stadium: stepped stands in team colours with a crowd, canopies, four floodlight masts that glare at dusk and night, a pitch with its markings, a dot-matrix scoreboard (STINGRAYS 3, PILOTS 1) and a big car park with a pay booth. |
+| **Moonlite** | The Moonlite Motor Inn: two storeys with an open walkway, and a roadside sign with VACANCY in red neon. |
+| **Fernwood Park** | Lawns, paths, a pond, a bandstand, benches you can sit on, palms and trees, low hedges, and a grassy hill with a kicker on top. |
+| **Mango Grove** | A suburban street of pastel houses (Kenney City Kit Suburban, recoloured) with fenced front yards, driveways, porch lights and trees, plus a row of houses along Halcyon Avenue. |
+| **Halcyon Avenue** | Art-deco hotels (Hotel Mirabel, The Azure Palms) by the causeway landing, the pastel Seafoam Galleria mall with a glass atrium, a fountain plaza, apartment blocks. |
+| **Starboard Marina** | Boardwalk, a pier with pontoons, ladders and moored boats, the marina office. |
+| **Tradewind Docks** | Warehouses, rows of stacked containers, three gantry cranes on the quay, and an unfinished raised overpass. |
+
+Street lights in the key are Quaternius models (the glass is see-through, the bulbs glow at night) and the junctions have stop, give-way and no-parking signs. The minimap shows both islands, the causeway, the helipads, the stadium and the stunt ramps; the district name under it covers both.
+
+## Billboards
+
+Rooftop billboards, wall ads on the end walls that face the side streets in the old town, and billboards on stilts, all with invented 80s ads (Hyperwave Cassettes, Glo-Cola, Laser Lanes Bowling, Radvision VHS, Sunset Sneakers, Mega Byte Arcade, Starlite Drive-In, Synthwave 99.1 and more). Each has lamps on arms over it; they and the ads brighten at night.
+
+## Traffic variety
+
+Besides the procedural 80s coupes, the traffic has taxis, vans, delivery vans, pickup trucks, a garbage truck and an ambulance (Kenney Car Kit). Vans and trucks get pastel paint; taxis, the ambulance and the garbage truck keep their own. They take damage like every other vehicle (smoke, sputter, fire, cartoon explosion, charred wreck) and you can take them (`E`). A few are parked in the Sunbowl car park.
+
+## Rooftops
+
+Every flat roof is solid, in both districts: the cornice ring and the raised parapet step in the old town, the roof slabs and helipads in the key, and the container tops at the docks.
+
+- **The helicopter can land** on any flat roof or helipad; `E` gets you out onto the roof (on the side with room to stand).
+- **Walk the roofs.** Rooftop clutter (air-con units, water tanks, aerials, dishes, plant rooms, penthouse tiers, sign frames, billboards) is solid.
+- **Mind the edge.** Walk off and you fall: a short drop is nothing, a few storeys hurts (OUCH), a long way knocks you out (**KNOCKED OUT**, the usual clinic bill).
+- **Roof doors.** Every roof has a stair hut with a lit door: `F` (touch: **Stairs down**) takes the stairs down and you come out at the street door below.
+
+## Stunt jumps
+
+Eight ramps, painted in hazard stripes with neon edges and chevrons on the run-up (orange arrows on the minimap):
+
+| Jump | Where |
+| --- | --- |
+| Dune Run | Old town: off the promenade across the beach |
+| Promenade Leap | Old town: along the promenade |
+| Sunbowl Kicker | Over the show cars in the stadium car park |
+| Fernwood Hill | Up the park hill and off the kicker on top |
+| Container Leap | Over a container across the docks yard |
+| Overpass Gap | Up the unfinished overpass and across the gap to the other deck |
+| Marina Splash | Off the end of the marina pier into the sea |
+| Galleria Hop | Over the mall's fountain plaza |
+
+Cars and bikes now have vertical physics: they follow ramps and decks, fly on with the speed the ramp gave them and land on whatever is below (a bad landing dents the car a little; the side of a ramp or a deck is a wall). Hit a ramp fast enough and land in its zone for a clean jump: a moment of slow motion with the camera off to the side (no camera move with reduced motion), the **AIRTIME!** card with the distance, height and flips (steer hard as you leave a kicker for a barrel roll), and cash (more the first time). The pause panel shows **stunts found x/8**; found jumps are kept with your save.
+
 ## Controls
 
 | Key | On skates | Car | Comet bike | Disco Tank | Helicopter |
@@ -152,8 +203,8 @@ Chosen to make the street read as a place without adding draw calls (almost ever
 | `Shift` | sprint | | | | |
 | `Space` | jump | handbrake (drift) | | | climb |
 | `C` or `Ctrl` | | | | | descend |
-| `E` | get in or on the nearest vehicle, or take an occupied one | get out | get off | get out | get out (land first) |
-| `F` | sit down near a seat or on the sand, get up; buy from a vending machine; on the club dance floor: dance | | | fire | |
+| `E` | get in or on the nearest vehicle, or take an occupied one | get out | get off | get out | get out (land first, on the ground or a roof) |
+| `F` | sit down near a seat or on the sand, get up; buy from a vending machine; on the club dance floor: dance; at a roof door: take the stairs down | | | fire | |
 | Mouse drag | orbit the camera (right-drag too) | orbit | orbit | aim the turret | orbit |
 | Click / `R` | fire the blaster (aim with the camera; hold `R` to keep firing) | fire ahead (auto-aim) | fire ahead (auto-aim) | fire | |
 | `G` | throw a firework bang (hold for distance) | drop a bang behind you | drop a bang behind you | | |
@@ -216,7 +267,7 @@ A forced weather holds for about four game hours before the sky starts making it
 
 ## Hardware notes
 
-- Built for integrated laptop graphics: a typical street frame is about 55 draw calls with all traffic, pedestrians, beach animals, loose props, planters and the horizon on screen. The new effects add at most a handful while something is happening: smoke and debris, beams, shockwave rings, projectiles, the blaster in your hand and an event's bag and ring are each one pooled or instanced draw call, drawn only while in use. Indoors the camera only renders the room's layer (the room, the cast, the courier, the rings), so Club Prism with its whole crowd, lasers, lights and lounge is about 28 draw calls. No shadow maps, no post-processing. Interiors are built the first time you walk in and hidden when you leave.
+- Built for integrated laptop graphics: a typical street frame is about 52 to 56 draw calls in the old town and 40 to 52 in Solano Key (57 on the causeway, where both districts are in view) with all traffic, pedestrians, beach animals, loose props, planters and the horizon on screen. The new effects add at most a handful while something is happening: smoke and debris, beams, shockwave rings, projectiles, the blaster in your hand and an event's bag and ring are each one pooled or instanced draw call, drawn only while in use. Indoors the camera only renders the room's layer (the room, the cast, the courier, the rings), so Club Prism with its whole crowd, lasers, lights and lounge is about 28 draw calls. No shadow maps, no post-processing. Interiors are built the first time you walk in and hidden when you leave. Each district keeps its detailed meshes in one group; from more than about 240 m away the group is hidden and a one-draw-call silhouette (hazed boxes with night windows) stands in for it. The key's walls all take their windows from one shader (punched, curtain glass or ribbon windows from the world position, lit at random at night), so its whole skyline is one draw call; its detailed street lights are drawn only within about 190 m (their glow sprites carry them further at night).
 - The pixel ratio is capped at 2 (1.5 on phones and tablets), and it is checked again whenever the window, the zoom or the screen changes. If it still struggles on a high-DPI screen, zoom the page in (`Ctrl` / `Cmd` + `+`) or shrink the window: fewer pixels is the big lever.
 - Needs WebGL 2. Without it you get a plain explanatory message instead of a black page. Make sure hardware acceleration is switched on in the browser.
 - Rendering and audio pause while the tab is hidden.
@@ -236,12 +287,14 @@ then open `dist/index.html`. `npm run dev` rebuilds (unminified) whenever a file
 
 ## How it works
 
-- **Single file.** No images, models, audio files, fonts or CDN requests. System font stacks only.
+- **Single file.** No images, audio files, fonts or CDN requests; system font stacks only. The few licensed models (see [Credits](#credits)) are flattened by `tools/bake-models.mjs` at build time into one compact binary (positions quantised to 16 bits, colours baked per vertex from the material colours or Kenney's colormap into a small palette, flags for car paint, glass and lamp bulbs), which esbuild embeds; `src/world/kits.js` expands a model into a flat-shaded vertex-coloured geometry that merges and instances like the procedural town.
 - **Procedural town.** `src/world/layout.js` lays out the island from a seeded random generator; the ground, the collision boxes and the minimap are all drawn from that one description. `src/world/roads.js` derives the lane graph and signal timing from the same road numbers.
 - **Few draw calls.** All buildings, rooftop clutter, street furniture and beach props are merged into one mesh with vertex colours, all neon tubes into another. Windows (about 9,000), palms, street lamps, umbrellas, signal masts and signal lamps are each one `InstancedMesh`. The whole car fleet is one instanced mesh for bodies, one for glass, one for shadows, one for headlight pools; the Comets are one more. All pedestrians and drivers together are five: torsos, heads, limbs, hats, blob shadows.
 - **Daily curves.** `TRAFFIC_CURVE` (actors/traffic.js) and `CROWD_CURVE` (actors/peds.js) give the share of the fleet and the crowd out at each hour; a small manager parks or returns one car or person at a time, only where the camera cannot see (`unseen` / `outOfSight` in core/util.js).
 - **Animals.** `src/actors/animals.js`: one InstancedMesh per species. Legs, wings, flippers and the dog's tail are moved in the vertex shader from a per-instance action attribute; the meshes are hidden and the logic idles when the camera is far from the beach.
-- **Horizon.** `src/world/horizon.js`: all distant scenery is one merged mesh with its own distance haze and night windows, plus one point-light set (also used for the closure's flashing lamps) and the lighthouse beam. The ocean plane follows the camera out to the far plane. `src/world/edges.js` builds the seawall, rocks, causeway stub and dead ends into the city's merged meshes, and `clampToWorld` in layout.js lines up with them.
+- **Horizon.** `src/world/horizon.js`: all distant scenery is one merged mesh with its own distance haze and night windows, plus one point-light set (also used for a pair of blinking amber lamps left on the causeway) and the lighthouse beam; the same material draws each district's silhouette. The ocean plane follows the camera out to the far plane. `src/world/edges.js` builds the seawall, rocks, causeway and dead ends into the city's merged meshes, and `clampToWorld` in layout.js lines up with them.
+- **Solano Key.** `src/world/key.js` is the key as data (buildings, roads, lamps, the stadium, park, grove, marina, docks, stunt ramps); `src/world/keyCity.js` builds it (ground canvas, one solid mesh with shader windows, neon, Quaternius lamps with LOD, palms, glow); `src/world/districts.js` swaps each district for its silhouette from far away; `src/world/ads.js` is one atlas and one mesh for every billboard and venue sign in the key and the old town's wall ads.
+- **Rooftops and ramps.** `src/world/surfaces.js`: every flat roof, helipad, container top, ramp and deck is a surface in a static grid; the courier, cars, bikes and the helicopter ask it for the ground height. `src/game/rooftops.js` does the roof doors and fall damage, `src/game/stunts.js` the jumps (takeoff and landing come from `vehicles.js`), the slow motion, the side camera and the AIRTIME card.
 - **Cheap AI.** Traffic follows lane polylines kinematically and only falls back to physics for a couple of seconds when something hits it. Neighbour queries go through a uniform spatial hash rebuilt each frame. Cars and people far from the player tick at a third or a quarter of the frame rate.
 - **Textures from canvas.** The ground (roads, markings, crossings, promenade tiles, sand) is one 2048x1024 canvas; the 16 neon signs, 8 billboards and 2 edge signs share one 1024x1664 atlas.
 - **Shaders.** Gradient sky with a striped sun, stars, a moon and a drifting procedural cloud deck; animated ocean with surf; windows that light up at night from a per-instance seed; palms swaying in the vertex shader; rain as wrapped line segments animated in the vertex shader; wet-road highlights computed in the ground's fragment shader from a formula for the lamp positions.
@@ -261,10 +314,11 @@ then open `dist/index.html`. `npm run dev` rebuilds (unminified) whenever a file
 
 | Part | Minified |
 | --- | --- |
-| three.js 0.187.0 (tree-shaken) | about 578 KB |
-| Game code | about 346 KB |
-| HTML + CSS | about 33 KB |
-| **`dist/index.html`** | **about 957 KB** |
+| three.js 0.187.0 (tree-shaken) | about 602 KB |
+| Game code | about 522 KB |
+| Embedded models (base64) | about 343 KB |
+| HTML + CSS | about 36 KB |
+| **`dist/index.html`** | **about 1.5 MB** |
 
 ### Source layout
 
@@ -274,14 +328,16 @@ src/
   main.js           boot, loading bar, main loop
   core/             input, shared helpers, spatial grid
   world/            layout, roads + traffic lights, canvas textures, sky + ocean, city builder, details (rooftops, props,
-                    billboards, boats, gulls), edges (seawall, causeway closure), horizon (distant scenery),
+                    billboards, boats, gulls), edges (seawall, causeway), horizon (distant scenery + silhouettes),
+                    key + keyCity (Solano Key), districts (culling), ads (billboard atlas), surfaces (roofs, ramps),
+                    rampGeo, kits (the embedded models),
                     glow sprites, day/night + weather, props (solid street furniture + seats, spatial grid),
                     loose (knock-over physics, lamps / hydrants / palms, vending machines)
   actors/           AI traffic + Coast Patrol, pedestrians + drivers, beach animals, dance moves (shared by courier and crowd)
   game/             story.js (all dialogue + mission data), missions (story engine), cutscene (director), activity (sitting, dancing + rhythm),
                     interiors (the five rooms + cast), places (doors, walking indoors, shops),
                     rules (heat, cash, health, pickups, carjack), damage (vehicle condition, fire, explosions),
-                    combat (blasters, fireworks, patrol lasers), events (random street events)
+                    combat (blasters, fireworks, patrol lasers), events (random street events), rooftops, stunts
   player/           the courier model + skating controller, follow camera
   vehicles/         car / bike / tank / helicopter models and physics, effect pools (sparks, smoke, beams, rings)
   cheats/           cheat console and codes
@@ -289,3 +345,15 @@ src/
   ui/               minimap, cash / health / heat / clock, objective, hints, toast, perf panel; touch.js: touch controls,
                     control-mode choice, pause + settings
 ```
+
+## Credits
+
+Neon Coast's town, characters, story, textures and sound are original and generated in code. These licensed models are embedded in `dist/index.html` (baked at build time from `assets/packed/`, recoloured in places to the Neon Coast palette):
+
+| Pack | Author | Licence | Used for |
+| --- | --- | --- | --- |
+| [Car Kit](https://www.kenney.nl/assets/car-kit) 2.0 | Kenney (www.kenney.nl) | CC0 1.0 | taxi, van, delivery van, pickup truck, garbage truck, ambulance |
+| [City Kit Suburban](https://www.kenney.nl/assets/city-kit-suburban) 1.0 | Kenney (www.kenney.nl) | CC0 1.0 | eight houses, a fence, two trees |
+| Street Pack | Quaternius | CC0 1.0 | the street light, stop / give-way / no-parking signs |
+
+CC0 needs no attribution; it is given here with thanks. None of the MIT-licensed Kenney starter-kit models are embedded. Licence texts are in `assets/licenses/`; the whole asset library is described in `assets/README.md` and `assets/CREDITS.md`.

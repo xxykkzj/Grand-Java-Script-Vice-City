@@ -1,6 +1,5 @@
-// Distant scenery so the island sits in a bigger world: a mainland skyline to the north, the Key
-// (a small island town) to the west at the far end of the old causeway, a hilly island to the
-// south-east, a lighthouse on a rock with a turning beam, and a cargo ship crawling along the
+// Distant scenery so the islands sit in a bigger world: a mainland skyline to the north with a busy
+// bridge out to Solano Key's north shore, a hilly island to the south-east, a lighthouse on a rock with a turning beam, and a cargo ship crawling along the
 // southern horizon. Three draw calls: one merged mesh (hazed by distance, windows that light up
 // and twinkle at night, the ship moved in the vertex shader), one set of point lights (windows,
 // causeway traffic, aviation and ship lights, the closure's amber flashers), and the beam.
@@ -9,8 +8,8 @@ import { box, cyl, tint, merge, rng, timeU, fogU, FOG_PARS, nightU, pointScaleU,
 
 const SHIP_Z = 1350, SHIP_SPAN = 4400, SHIP_SPEED = 3;
 export const LIGHTHOUSE = { x: 470, z: 330 };
-// the open half of the far causeway: from the Key's north shore to the mainland
-const CW_A = [-880, -55], CW_B = [-985, -1120];
+// the mainland bridge: from off Solano Key's north shore to the mainland
+const CW_A = [-880, -168], CW_B = [-985, -1120];
 
 export function createHorizon(scene, blinkers) {
   const r = rng(2024);
@@ -47,16 +46,7 @@ export function createHorizon(scene, blinkers) {
   for (let i = 0; i < 16; i++) tower(380 + (r() - 0.5) * 300, -1170 - r() * 50, 14 + r() * 16, 14 + r() * 14, 14 + r() * 36, PAST[i % PAST.length]);
   for (let i = 0; i < 70; i++) light(-1600 + r() * 2400, 4 + r() * 3, -1125 - r() * 10, r() < 0.7 ? '#ffcf8a' : '#bff4ff', 7, 1);   // waterfront
 
-  // ---- the Key: a little island town west of the causeway gap
-  const KX = -860, KZ = 60;
-  add(tint(new THREE.CylinderGeometry(135, 145, 3, 16).translate(KX, -1.4, KZ), '#e8d3a4'));
-  dome(KX, KZ, 120, 22, '#7f9a6e');
-  for (let i = 0; i < 12; i++) {
-    const a = r() * PI * 2, d = 30 + r() * 70;
-    tower(KX + Math.cos(a) * d, KZ + Math.sin(a) * d, 10 + r() * 12, 10 + r() * 12, 14 + r() * 22, PAST[i % PAST.length]);
-  }
-  add(box(1.2, 60, 1.2, KX + 20, 50, KZ - 30, '#a0a0aa')); light(KX + 20, 81, KZ - 30, '#ff3040', 10, 2);
-  // the old causeway: closed and dark from our stub to the Key, busy from the Key to the mainland
+  // the mainland bridge (busy at night: car lights stream along it)
   const span = (x0, z0, x1, z1, y, piers) => {
     const dx = x1 - x0, dz = z1 - z0, len = Math.hypot(dx, dz), yaw = Math.atan2(-dz, dx);
     add(box(len, 1.4, 14, (x0 + x1) / 2, y, (z0 + z1) / 2, '#8d8796', 0, yaw));
@@ -64,7 +54,6 @@ export function createHorizon(scene, blinkers) {
     for (let t = 0; t <= len; t += piers) add(box(3, y + 6, 10, x0 + dx * t / len, (y - 6) / 2, z0 + dz * t / len, '#a89e96', 0, yaw));
     return { dx: dx / len, dz: dz / len, len };
   };
-  span(-392, 53, KX + 134, 53, -0.7, 36);
   const s2 = span(CW_A[0], CW_A[1], CW_B[0], CW_B[1], 4, 45);
   for (let t = 20; t < s2.len; t += 60) light(CW_A[0] + s2.dx * t - s2.dz * 7, 13, CW_A[1] + s2.dz * t + s2.dx * 7, '#ffcf8a', 7, 0);
   // car lights: white one way, red the other, sliding along the deck in the shader
@@ -209,8 +198,24 @@ export function createHorizon(scene, blinkers) {
   beam.position.set(LX, 28, LZ); beam.frustumCulled = false; beam.renderOrder = 5;
   scene.add(beam);
 
+  // A whole district as a cheap far-away silhouette (a few boxes, the same haze and night windows):
+  // shown instead of its detailed meshes when the camera is far from it (see world/districts.js).
+  const silhouette = (boxes) => {
+    const ps = boxes.map(([x0, x1, z0, z1, h, hex, win = 1]) => {
+      const g = box(x1 - x0, h, z1 - z0, (x0 + x1) / 2, h / 2, (z0 + z1) / 2, hex);
+      const n = g.attributes.position.count;
+      g.setAttribute('aWin', new THREE.BufferAttribute(new Float32Array(n).fill(win), 1));
+      g.setAttribute('aMove', new THREE.BufferAttribute(new Float32Array(n), 1));
+      return g;
+    });
+    const m = new THREE.Mesh(merge(ps), mat);
+    m.frustumCulled = false; m.visible = false;
+    scene.add(m);
+    return m;
+  };
+
   return {
-    mesh, pts, beam,
+    mesh, pts, beam, silhouette,
     update(env) {
       const c = env.cur;
       U.uAmb.value.copy(c.hemiS).multiplyScalar(c.hemiI * 0.42).lerp(c.hor, 0.25);

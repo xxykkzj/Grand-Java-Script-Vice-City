@@ -2,7 +2,10 @@
 import * as THREE from 'three';
 import { timeU, pointScaleU, pushOut, pause, reducedMotion, createGrid, beatU, beatNow, BEAT_LEN, nightU } from './core/util.js';
 import { createInput } from './core/input.js';
-import { makeLayout, clampToWorld, onIsland, PIER, CAUSEWAY, HX, propsOnRoad } from './world/layout.js';
+import { makeLayout, clampToWorld, onLand, propsOnRoad, zoneName } from './world/layout.js';
+import { buildKey } from './world/keyCity.js';
+import { buildAds } from './world/ads.js';
+import { createDistricts } from './world/districts.js';
 import { createLoose, LAMP_BREAK } from './world/loose.js';
 import { LAMP_GAIN } from './world/city.js';
 import { CLUB_CROWD } from './game/story.js';
@@ -31,6 +34,8 @@ import { createActivity } from './game/activity.js';
 import { createDamage } from './game/damage.js';
 import { createCombat } from './game/combat.js';
 import { createEvents } from './game/events.js';
+import { createRooftops } from './game/rooftops.js';
+import { createStunts } from './game/stunts.js';
 import { createSwim } from './player/swim.js';
 import { createUnderwater } from './world/underwater.js';
 import { createMarine } from './actors/marine.js';
@@ -96,7 +101,12 @@ async function boot() {
   const groundCanvas = buildGround(scene, L, renderer);
   await progress(0.38, 'RAISING DECO HOTELS…');
   const city = buildCity(scene, L);
+  await progress(0.5, 'OPENING THE HALCYON CAUSEWAY…');
+  const keyCity = buildKey(scene, L, renderer, L.adSigns);
+  const ads = buildAds(scene, L.adSigns);
   const horizon = createHorizon(scene, city.blinkers);
+  const districts = createDistricts(horizon, L, city.group, keyCity.group);
+  { const set = city.setLights; city.setLights = (n, l, g) => { set(n, l, g); keyCity.setLights(n, l, g); ads.setLights(n); }; }
   await progress(0.62, 'PARKING THE CARS…');
   const audio = createAudio();
   const fx = createFx(scene);
@@ -106,7 +116,7 @@ async function boot() {
   const cam = createFollowCamera(camera, L.solids);
   const env = createEnvironment(scene, sky, ocean, city, camera, audio);
   const input = createInput(canvas);
-  const hud = createHud(L, groundCanvas, renderer);
+  const hud = createHud(L, groundCanvas, renderer, keyCity.groundCanvas);
   const R = makeRoads();
   const signals = buildSignals(scene, R, city.bodyMat, L.props);
   L.props.build();
@@ -116,7 +126,7 @@ async function boot() {
 
   game = {
     mode: 'foot', paused: false, vehicle: null, started: false,
-    input, hud, audio, env, vehicles, player, L, cam, camera, renderer, scene, fx, R, grid, wanted: 0, busy: null,
+    input, hud, audio, env, vehicles, player, L, cam, camera, renderer, scene, fx, R, grid, wanted: 0, busy: null, districts,
     focus: () => (game.vehicle ? game.vehicle : player.pos),
     heading: () => (game.vehicle ? game.vehicle.yaw : player.yaw),
   };
@@ -141,6 +151,11 @@ async function boot() {
   const act = game.act = createActivity(game);
   const combat = game.combat = createCombat(game, scene);
   const events = game.events = createEvents(game, scene);
+  const roofs = game.roofs = createRooftops(game);
+  const stunts = game.stunts = createStunts(game);
+  // a second helicopter waits on the Glasswater Tower helipad downtown
+  const padT = L.key.buildings.find((b) => b.name === 'Glasswater Tower');
+  vehicles.spawnHeli(padT.pad.x, padT.pad.z, Math.PI / 2, 1, padT.roofY);
   // the sea: swimming, everything under the surface, sea life, sinking vehicles
   const sea = game.sea = createUnderwater(scene, camera, sky, ocean, env, game);
   const swim = game.swim = createSwim(game);
@@ -231,6 +246,19 @@ async function boot() {
     event: (type) => events.start(type),
     evt: () => events.state(),
     evtStats: () => ({ ...events.stats }),
+    // ---- the key, rooftops, stunts (automated checks)
+    spots: () => ({ causeway: [-390, 53], keyAve: [-640, 53], stadium: [-790, -40], downtown: [-600, -46], park: [-790, 20], grove: [-1000, 0], marina: [-790, 140], docks: [-960, 110] }),
+    roofOf: (name) => { const b = [...L.buildings, ...L.key.buildings].find((k) => k.name === name); return b && { x: b.cx, z: b.cz, y: b.roofY, door: { x: b.door.x, z: b.door.z, out: b.door.out }, pad: b.pad || null }; },
+    onRoof: (name) => { const b = [...L.buildings, ...L.key.buildings].find((k) => k.name === name); if (game.vehicle) rules.leaveVehicle(); player.pos.set(b.cx, b.roofY + 0.05, b.cz + (b.pad ? b.pad.r + 2 : 0)); player.vel.set(0, 0, 0); player.vy = 0; player.onGround = true; return player.pos.toArray(); },
+    ground: (x, z, y = 999) => L.surf.at(x, z, y),
+    helis: () => vehicles.helis.map((h) => ({ x: +h.x.toFixed(1), y: +h.y.toFixed(2), z: +h.z.toFixed(1), floor: +(h.floor || 0).toFixed(2), driven: h.driven, hp: Math.round(h.hp) })),
+    roofs: () => ({ ...roofs.stats, near: !!roofs.near(), y: +player.pos.y.toFixed(2), onGround: player.onGround, health: Math.round(game.health), busy: game.busy }),
+    roofDoor: () => roofs.down(),
+    stunt: (id, speed) => stunts.line(id, speed),
+    stunts: () => ({ ...stunts.stats, found: stunts.found(), total: stunts.total, scale: stunts.scale, money: game.money, v: game.vehicle && { x: +game.vehicle.x.toFixed(1), y: +game.vehicle.y.toFixed(2), z: +game.vehicle.z.toFixed(1), air: !!game.vehicle.air, hp: Math.round(game.vehicle.hp) } }),
+    districts: () => ({ a: districts.showA, b: districts.showB }),
+    zone: () => { const f = game.focus(); return zoneName(f.x, f.z); },
+    nearCount: (r = 150) => { const f = game.focus(); return { cars: vehicles.cars.filter((c) => !c.off && c.ai && Math.hypot(c.x - f.x, c.z - f.z) < r).length, peds: peds.peds.filter((p) => !p.off && Math.hypot(p.x - f.x, p.z - f.z) < r).length, kit: vehicles.cars.filter((c) => !c.off && c.model && c.ai).length }; },
     evtGo: (off = 0.6) => { const t = events.target(); if (!t) return null; const v = game.vehicle; if (v) { v.x = t.x + off; v.z = t.z; v.vx = v.vz = 0; } else player.pos.set(t.x + off, 0, t.z); return t; },
   };
   game.signalAt = (n, h) => signal(n, h, timeU.value);
@@ -242,15 +270,20 @@ async function boot() {
     if (act.mode) { act.toggle(); return; }
     if (game.inside) { places.use(); return; }
     if (v) {
-      if (v.kind === 'heli' && v.y > 0.6) { hud.toast('LAND FIRST', 'HOLD C TO DESCEND'); return; }
-      const dry = onIsland(v.x, v.z) || (v.x > PIER.x0 - 1 && v.x < PIER.x1 + 1 && v.z < PIER.z1 + 1) || (v.x > CAUSEWAY.x0 && v.x < -HX && v.z > CAUSEWAY.z0 && v.z < CAUSEWAY.z1);
+      const floor = v.floor || 0;
+      if (v.kind === 'heli' && v.y - floor > 0.6) { hud.toast('LAND FIRST', 'HOLD C TO DESCEND'); return; }
+      const dry = onLand(v.x, v.z) || floor > 0.3;
       if (v.kind === 'heli' && !dry) { hud.toast('NOWHERE TO STAND', 'FLY BACK OVER LAND FIRST'); return; }
       v.driven = false;
+      // step out beside it, on whatever it stands on (a roof, a deck); if that side is off the edge, try the other
       const side = v.radius + 1.1;
-      player.pos.set(v.x + Math.cos(v.yaw) * side, 0, v.z - Math.sin(v.yaw) * side);
-      for (let i = 0; i < 2; i++) for (const b of L.solids) pushOut(player.pos, 0.6, b);
+      let px = v.x + Math.cos(v.yaw) * side, pz = v.z - Math.sin(v.yaw) * side;
+      if (floor > 0.3 && Math.abs(L.surf.at(px, pz, floor + 0.5) - floor) > 0.4) { px = v.x - Math.cos(v.yaw) * side; pz = v.z + Math.sin(v.yaw) * side; }
+      if (floor > 0.3 && Math.abs(L.surf.at(px, pz, floor + 0.5) - floor) > 0.4) { px = v.x - Math.sin(v.yaw) * (v.radius + 1.6); pz = v.z - Math.cos(v.yaw) * (v.radius + 1.6); }
+      player.pos.set(px, floor > 0.3 ? L.surf.at(px, pz, floor + 0.5) : 0, pz);
+      if (player.pos.y < 0.3) for (let i = 0; i < 2; i++) for (const b of L.solids) pushOut(player.pos, 0.6, b);
       clampToWorld(player.pos, 0.6);
-      player.vel.set(0, 0, 0); player.vy = 0; player.yaw = v.yaw;
+      player.vel.set(0, 0, 0); player.vy = 0; player.yaw = v.yaw; player.fallFrom = player.pos.y;
       player.setHidden(false);
       game.vehicle = null; game.mode = 'foot';
       audio.thud(0.25);
@@ -307,8 +340,10 @@ async function boot() {
   function frame(now) {
     raf = requestAnimationFrame(frame);
     if (game.paused) { last = now; renderer.render(scene, camera); input.endFrame(); return; }
-    const raw = Math.min(Math.max((now - last) / 1000, 0), 0.5), dt = Math.min(raw, 0.05);
+    const raw = Math.min(Math.max((now - last) / 1000, 0), 0.5);
     last = now;
+    stunts.update(Math.min(raw, 0.05));
+    const dt = Math.min(raw, 0.05) * stunts.scale;       // slow motion while a stunt jump is in the air
     timeU.value += dt; game.dt = dt;
     // the shared music clock: free-runs on real time, pulled onto the synth's own position when there is sound
     {
@@ -361,7 +396,7 @@ async function boot() {
     if (game.mode === 'bike' && game.vehicle) player.ride(game.vehicle);
     peds.update(dt, timeU.value, frameN, vehicles.cars);
     animals.update(dt);
-    if (game.started) { rules.update(dt); story.update(dt); places.update(dt, ctl); events.update(dt); marine.blips(rules.blips); }
+    if (game.started) { rules.update(dt); story.update(dt); places.update(dt, ctl); events.update(dt); marine.blips(rules.blips); roofs.update(dt); }
     city.tick(timeU.value);
     fx.update(dt);
     player.tickFace(dt);
@@ -372,6 +407,7 @@ async function boot() {
     if (!game.started && !reducedMotion) cam.yaw += dt * 0.04;
     if (cut.active) cut.update(dt);
     else if (game.inside) { /* places.update owns the camera indoors */ }
+    else if (stunts.cam) stunts.camUpdate(dt);
     else cam.update(dt, input, game.mode, game.focus(), game.heading(), speed, fx, player.phase);
     // in first person on foot the courier's own body would sit inside the camera
     cockpit.update(dt, v, cam.first && !cut.active && !game.inside && !!v, ctl.steer);
@@ -402,10 +438,11 @@ async function boot() {
       } else if (v.kind === 'car') hud.setHint([['E', 'exit car'], ['WASD', 'drive'], ['Space', 'handbrake'], ...combat.hints(), ['V', 'camera view']]);
       else if (v.kind === 'bike') hud.setHint([['E', 'get off'], ['W', 'throttle (wheelie from low speed)'], ['A D', 'lean'], ['S', 'brake'], ...combat.hints(), ['V', 'camera view']]);
       else if (v.kind === 'tank') hud.setHint([['E', 'exit tank'], ['WASD', 'drive'], ['Drag', 'aim turret'], ['Click / F', 'fire'], ['V', 'camera view']]);
-      else hud.setHint([['W S', 'forward / back'], ['A D', 'yaw'], ['Space', 'up'], ['C / Ctrl', 'down'], ['E', v.y > 0.6 ? 'land to exit' : 'exit helicopter'], ['V', 'camera view']]);
+      else hud.setHint([['W S', 'forward / back'], ['A D', 'yaw'], ['Space', 'up'], ['C / Ctrl', 'down'], ['E', v.y - (v.floor || 0) > 0.6 ? 'land to exit' : 'exit helicopter'], ['V', 'camera view']]);
       hudState.focus = game.focus(); hudState.heading = game.heading(); hudState.camYaw = cam.yaw; hudState.inVehicle = v;
       hudState.counts[0] = traffic.count(); hudState.counts[1] = peds.active; hudState.blips = rules.blips;
       hudState.counts[2] = traffic.target; hudState.counts[3] = peds.target; hudState.counts[4] = animals.count();
+      hudState.districts = (districts.showA ? 'OLD TOWN ' : '') + (districts.showB ? 'SOLANO KEY' : '');
       hud.update(dt, hudState);
       touch.update();
     }
@@ -424,6 +461,8 @@ async function boot() {
     sound.fire = damage.sound.fire; sound.cough = !!(v && v.cut && v.stage >= 2);
     audio.update(sound);
 
+    districts.update(camera);
+    keyCity.update(camera);
     renderer.render(scene, camera);
     input.endFrame();
   }
@@ -433,8 +472,11 @@ async function boot() {
   horizon.update(env);
   cam.update(0.016, input, 'foot', player.pos, player.yaw, 0, fx, 0);
   sea.warm(true); marine.warm(true);
+  // compile both districts and both silhouettes up front (no shader hitch on the causeway)
+  city.group.visible = keyCity.group.visible = districts.silA.visible = districts.silB.visible = true;
   renderer.compile(scene, camera);
   sea.warm(false); marine.warm(false);
+  districts.update(camera);
   await progress(1, 'READY');
   raf = requestAnimationFrame(frame);
 
@@ -456,6 +498,8 @@ async function boot() {
     setTimeout(() => { title.hidden = true; }, 700);
     hud.show();
     hud.toast('HELICOPTER PARKED NEARBY', input.touchMode ? 'WALK UP AND TAP E · CODES: TAP CODES' : 'WALK UP AND PRESS E · CODES: PRESS T');
+    // the local news: the causeway is open again (once the helicopter toast has had its turn)
+    setTimeout(() => hud.toast('WAVE 86 NEWS: HALCYON CAUSEWAY REOPENS', 'STORM REPAIRS DONE · SOLANO KEY IS A SHORT DRIVE WEST'), 3200);
     input.enabled = true;
     go.blur();
   };

@@ -4,11 +4,11 @@
 // nobody is looking (the same clean-up the damage system uses).
 import { clamp, unseen, PI } from '../core/util.js';
 import { WL, bedAt, depthAt, onDeck } from '../world/sea.js';
-import { HX, HZ, CAUSEWAY } from '../world/layout.js';
+import { onLand } from '../world/layout.js';
 
 const RATE = { car: 0.6, bike: 0.8, tank: 1.3, heli: 0.9 };    // m/s once under
 const KEEL = { car: 0.04, bike: 0.02, tank: 0.1, heli: 0.05 };  // how far the base rests above the sand
-const dry = (x, z) => (Math.abs(x) <= HX && Math.abs(z) <= HZ) || onDeck(x, z) || (x < -HX && x > CAUSEWAY.x0 - 2 && z > CAUSEWAY.z0 - 1 && z < CAUSEWAY.z1 + 1);
+const dry = (x, z) => onLand(x, z) || onDeck(x, z);
 
 export function createSinking(game) {
   const { vehicles, player, hud, audio, fx, camera } = game;

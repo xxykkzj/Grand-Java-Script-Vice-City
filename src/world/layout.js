@@ -2,6 +2,9 @@
 // ground painter, the city builder, collision and the minimap all read one source.
 import { rng, clamp } from '../core/util.js';
 import { createProps } from './props.js';
+import { createSurfaces, registerRamps } from './surfaces.js';
+import { KEY, MPIER, makeKey, KEY_ROAD_RECTS, KEY_JUNCTIONS, inKey, onMarinaPier, keyZone } from './key.js';
+export { KEY, MPIER };
 
 export const HX = 300, HZ = 150;                          // island half extents
 export const PIER = { x0: 34, x1: 46, z0: 150, z1: 250 };
@@ -125,6 +128,10 @@ export function makeLayout() {
   // Beach furniture
   const UMB = ['#ff5fa8', '#27d8cf', '#ffd447', '#ffffff', '#ff8a4c', '#9b7bff'];
   for (let i = 0; i < 34; i++) umbrellas.push({ x: -285 + r() * 570, z: 90 + r() * 38, color: pick(UMB), yaw: r() * 6.283 });
+  // keep the stunt runs on the beach clear (see A_RAMPS)
+  const inRun = (x, z, m) => A_RAMPS.some((k) => x > k.clear.x0 - m && x < k.clear.x1 + m && z > k.clear.z0 - m && z < k.clear.z1 + m);
+  for (let i = umbrellas.length - 1; i >= 0; i--) if (inRun(umbrellas[i].x, umbrellas[i].z, 2.5)) umbrellas.splice(i, 1);
+  for (let i = palms.length - 1; i >= 0; i--) if (inRun(palms[i].x, palms[i].z, 0.8)) palms.splice(i, 1);
   huts.push({ x: -120, z: 100, color: '#ffd447', accent: '#ff4fa3' }, { x: 150, z: 104, color: '#8fe3d9', accent: '#ff8a3d' });
 
   // Small solid props (spatial grid, see props.js) and the seats around town.
@@ -159,7 +166,17 @@ export function makeLayout() {
   props.line(PIER.x1 - 3.2, PIER.z1 - 0.75, PIER.x1 - 1.5, PIER.z1 - 0.75, 0, 0, 'ground');
 
   // Collision boxes (xz) with a height so the helicopter can fly over them.
-  const solids = buildings.map((b) => ({ x0: b.x0, x1: b.x1, z0: b.z0, z1: b.z1, h: b.h + 1 }));
+  // h is the cornice top: anything higher (a helicopter, someone walking the roof) is over it
+  const solids = buildings.map((b) => ({ x0: b.x0, x1: b.x1, z0: b.z0, z1: b.z1, h: b.h + 0.45, b }));
+  // flat roofs you can walk and land on: the cornice ring and the raised parapet step inside it, with a
+  // stair door in one corner (world/details.js builds the hut and the rooftop clutter)
+  const surf = createSurfaces();
+  for (const b of buildings) {
+    b.roofY = b.h + 1.4;
+    surf.rect(b.x0, b.x1, b.z0, b.z1, b.h + 0.5, 'roof', { b });
+    surf.rect(b.cx - (b.w - 3) / 2, b.cx + (b.w - 3) / 2, b.cz - (b.d - 3) / 2, b.cz + (b.d - 3) / 2, b.roofY, 'roof', { b });
+    b.door = surf.door(b.x0 + 3, b.z0 + 3, b.roofY, { x: b.x0 + 3.2, z: b.z1 + 2.4, yaw: 0 }, b);
+  }
   for (const h of huts) solids.push({ x0: h.x - 2, x1: h.x + 2, z0: h.z - 2, z1: h.z + 2, h: 6 });
   solids.push({ x0: 37, x1: 43, z0: 239, z1: 245, h: 5 });   // kiosk at the end of the pier
 
@@ -188,15 +205,28 @@ export function makeLayout() {
   for (const b of booths) solids.push({ x0: b.x - 0.6, x1: b.x + 0.6, z0: b.z - 0.6, z1: b.z + 0.6, h: 2.8 });
 
   // the edge: sawhorses in front of the causeway closure, bollards where the side streets stop
-  for (const z of [ROADS.blvd.z - 5.5, ROADS.blvd.z, ROADS.blvd.z + 5.5]) solids.push({ x0: CAUSEWAY.bar + 2.8, x1: CAUSEWAY.bar + 3.4, z0: z - 1.6, z1: z + 1.6, h: 1.3 });
   for (const s of SIDE_X) solids.push({ x0: s - 5.3, x1: s + 5.3, z0: ROADS.sideZ0 - 0.8, z1: ROADS.sideZ0 - 0.4, h: 1 });
 
-  return { buildings, lamps, palms, parking, umbrellas, huts, solids, bar, station, clinic, places, bikes, booths, props, cafe, loose: [], planters: [] };
+  // Solano Key, across the causeway (world/key.js): its own buildings, lamps and palms, but one collision
+  // list, one prop grid and one fleet of parked cars
+  const key = makeKey(props, solids, surf);
+  for (const p of key.parking) parking.push(p);
+  const ramps = [...A_RAMPS, ...key.ramps];
+  registerRamps(surf, ramps, solids);
+  return { buildings, lamps, palms, parking, umbrellas, huts, solids, bar, station, clinic, places, bikes, booths, props, cafe, loose: [], planters: [], key, ramps, surf };
 }
+
+// The two stunt ramps in the old town (the key's are in world/key.js): off the promenade across the
+// sand, and along the promenade past the planting beds. Same shape as the key's (see game/stunts.js).
+export const A_RAMPS = [
+  { id: 'dune', name: 'DUNE RUN', x: 100, z: 88, yaw: 0, len: 9, w: 5, h: 3.2, land: { x0: 88, x1: 112, z0: 102, z1: 130 }, vmin: 15, beach: true, clear: { x0: 94, x1: 106, z0: 62, z1: 132 } },
+  { id: 'promenade', name: 'PROMENADE LEAP', x: -205, z: 70, yaw: Math.PI / 2, len: 9, w: 5, h: 2.4, land: { x0: -194, x1: -166, z0: 64, z1: 77 }, vmin: 16, clear: { x0: -262, x1: -160, z0: 66.5, z1: 73.5 } },
+];
 
 // The carriageways (lanes and parking lanes, crossings included): nothing may stand on them.
 export const ROAD_RECTS = [
-  { name: 'Lumina Boulevard', x0: -HX - 60, x1: HX, z0: ROADS.blvd.z - ROADS.blvd.w / 2, z1: ROADS.blvd.z + ROADS.blvd.w / 2 },
+  ...KEY_ROAD_RECTS,
+  { name: 'Lumina Boulevard', x0: KEY.x1 - 2, x1: HX, z0: ROADS.blvd.z - ROADS.blvd.w / 2, z1: ROADS.blvd.z + ROADS.blvd.w / 2 },
   { name: 'back avenue 1', x0: -HX, x1: HX, z0: ROADS.back1.z - ROADS.back1.w / 2, z1: ROADS.back1.z + ROADS.back1.w / 2 },
   { name: 'back avenue 2', x0: -HX, x1: HX, z0: ROADS.back2.z - ROADS.back2.w / 2, z1: ROADS.back2.z + ROADS.back2.w / 2 },
   ...SIDE_X.map((s) => ({ name: 'side street ' + s, x0: s - ROADS.sideW / 2, x1: s + ROADS.sideW / 2, z0: ROADS.sideZ0, z1: ROADS.blvd.z - ROADS.blvd.w / 2 })),
@@ -205,6 +235,7 @@ export const ROAD_RECTS = [
 // The crossing and corner area of every side-street junction: palms and street furniture stay out of it.
 const JUNCTIONS = [];
 for (const sx of SIDE_X) for (const [rz, hz] of [[ROADS.blvd.z, 13.8], [ROADS.back1.z, 10.2], [ROADS.back2.z, 10.2]]) JUNCTIONS.push({ x0: sx - 12, x1: sx + 12, z0: rz - hz, z1: rz + hz });
+for (const j of KEY_JUNCTIONS) JUNCTIONS.push({ x0: j.x - 12, x1: j.x + 12, z0: j.z - j.h.hz, z1: j.z + j.h.hz });
 export function inJunction(x, z, r = 0) {
   return JUNCTIONS.some((j) => x > j.x0 - r && x < j.x1 + r && z > j.z0 - r && z < j.z1 + r);
 }
@@ -237,34 +268,47 @@ export function propsOnRoad(L) {
 }
 
 // The edge of the island is a seawall (x = ±HX, z = -HZ) and the waterline on the beach (z = +HZ).
-// The boulevard runs on past the west wall onto a causeway stub that ends at the storm closure.
+// Lumina Boulevard runs on past the west wall onto the Halcyon Causeway (reopened after the storm
+// repairs) and lands on Solano Key (world/key.js), which has a seawall all round, broken only by the
+// causeway and the marina pier.
 export const WALL = 0.8;                                     // inner face of the seawall, from the island edge
-export const CAUSEWAY = { x0: -352, bar: -338, z0: 44, z1: 62 };   // deck end, barrier line, deck sides
-// Helicopters (anything at sea) may roam out to this radius; beyond it they are steered back.
-export const SEA_R = 700;
-export const EDGE_SIGNS = ['Causeway Closed – Storm Repairs', 'Lumina Point · Road Ends'];
+export const CAUSEWAY = { x0: KEY.x1, z0: 44, z1: 62 };      // deck from the key's wall to the old town's, deck sides
+// Helicopters (anything at sea) may roam out to this distance from the two islands' centre line; beyond it they are steered back.
+export const SEA_R = 640;
+const SEA_A = [0, 0], SEA_B = [(KEY.x0 + KEY.x1) / 2, 0];
+// how far (x, z) is out past the soft boundary, and which way is home: { over, nx, nz } (over <= 0 inside)
+export function seaPull(x, z) {
+  const t = clamp((x - SEA_A[0]) / (SEA_B[0] - SEA_A[0]), 0, 1), cx = SEA_A[0] + (SEA_B[0] - SEA_A[0]) * t, cz = 0;
+  const dx = x - cx, dz = z - cz, d = Math.hypot(dx, dz) || 1;
+  return { over: d - SEA_R, nx: dx / d, nz: dz / d, cx, cz };
+}
+export const EDGE_SIGNS = ['Halcyon Causeway · Solano Key', 'Lumina Point · Road Ends'];
 export const onIsland = (x, z) => Math.abs(x) <= HX && Math.abs(z) <= HZ;
+export const onCauseway = (x, z, m = 0) => x < -HX + m && x > KEY.x1 - m && z > CAUSEWAY.z0 - m && z < CAUSEWAY.z1 + m;
+// dry ground you can stand on: either island, the causeway, either pier
+export const onLand = (x, z) => onIsland(x, z) || inKey(x, z) || onCauseway(x, z, 0.5) || onMarinaPier(x, z, 0.5) || (x > PIER.x0 - 1 && x < PIER.x1 + 1 && z > 0 && z < PIER.z1 + 1);
 
-// Keep something inside the walkable world (the island inside its seawall, the pier and the causeway stub).
+// Keep something inside the walkable world (both islands inside their seawalls, the piers and the causeway).
 // w (default 0: stay dry) is a set of bits for things that may leave it by water:
 //   1  the beach: walk or drive on into the sea (nothing stops you at the waterline)
-//   2  the pier: hard enough, and you go through the rail over its sides and end
+//   2  a pier: hard enough, and you go through the rail over its sides and end
 //   4  the seawall: fast enough, and you go through the railing
 // The caller (swimming, sinking vehicles) decides what happens once something is out there.
 export function clampToWorld(o, m, w = 0) {
   let hit = false;
   const x = m > 1 ? 1.4 : 0, e = WALL + m + x, C = CAUSEWAY;   // vehicles keep their noses off the wall
-  if (o.x > HX - e) { if (w & 4) edgeHit = 'wall'; else { o.x = HX - e; hit = true; } }
-  if (o.x < -HX + e) {
-    const onDeck = o.z > C.z0 + m - 0.4 && o.z < C.z1 - m + 0.4;
-    if (!onDeck) {
-      // already out on the causeway heading sideways: the parapets stop you; otherwise the seawall does
-      if (o.x < -HX - 0.5) { o.z = clamp(o.z, C.z0 + m - 0.4, C.z1 - m + 0.4); hit = true; }
-      else if (w & 4) edgeHit = 'wall';
-      else { o.x = -HX + e; hit = true; }
+  const deck = o.z > C.z0 + m - 0.4 && o.z < C.z1 - m + 0.4;
+  if (o.x < -HX + e && o.x > KEY.x1 - e) {
+    // between the islands: the causeway, or the seawalls either side of it
+    if (!deck) {
+      if (o.x < -HX - 0.5 && o.x > KEY.x1 + 0.5) { o.z = clamp(o.z, C.z0 + m - 0.4, C.z1 - m + 0.4); hit = true; }
+      else if (o.x >= -HX - 0.5) { if (w & 4) edgeHit = 'wall'; else { o.x = -HX + e; hit = true; } }
+      else if (w & 4) edgeHit = 'wall'; else { o.x = KEY.x1 - e; hit = true; }
     }
-    if (o.x < C.bar + 0.5 + m + x) { o.x = C.bar + 0.5 + m + x; hit = true; }
+    return hit;
   }
+  if (o.x <= KEY.x1 - e) return clampKeyEdge(o, m, w, e);
+  if (o.x > HX - e) { if (w & 4) edgeHit = 'wall'; else { o.x = HX - e; hit = true; } }
   if (o.z < -HZ + e) { if (w & 4) edgeHit = 'wall'; else { o.z = -HZ + e; hit = true; } }
   if (o.z > HZ - m) {
     const onPier = o.x > PIER.x0 + m - 0.4 && o.x < PIER.x1 - m + 0.4;
@@ -277,12 +321,28 @@ export function clampToWorld(o, m, w = 0) {
   }
   return hit;
 }
+// the key: a seawall all round, the marina pier out of the south side
+function clampKeyEdge(o, m, w, e) {
+  let hit = false;
+  if (o.x < KEY.x0 + e) { if (w & 4) edgeHit = 'wall'; else { o.x = KEY.x0 + e; hit = true; } }
+  if (o.z < KEY.z0 + e) { if (w & 4) edgeHit = 'wall'; else { o.z = KEY.z0 + e; hit = true; } }
+  if (o.z > KEY.z1 - e) {
+    const onPier = o.x > MPIER.x0 + m - 0.4 && o.x < MPIER.x1 - m + 0.4;
+    if (!onPier) {
+      if (o.z > KEY.z1 + 0.5) { if (w & 2) edgeHit = 'pier'; else { o.x = clamp(o.x, MPIER.x0 + m - 0.4, MPIER.x1 - m + 0.4); hit = true; } }
+      else if (w & 4) edgeHit = 'wall'; else { o.z = KEY.z1 - e; hit = true; }
+    } else if (o.z > MPIER.z1 - m) { if (w & 2) edgeHit = 'pier'; else { o.z = MPIER.z1 - m; hit = true; } }
+  }
+  return hit;
+}
 // set by clampToWorld when a mover pushed through an edge it was allowed to break (see the w bits): 'pier' | 'wall'
 export let edgeHit = null;
 export const takeEdge = () => { const e = edgeHit; edgeHit = null; return e; };
 
 export function zoneName(x, z) {
-  if (x < -HX && z > CAUSEWAY.z0 - 2 && z < CAUSEWAY.z1 + 2 && x > CAUSEWAY.x0 - 4) return 'STORM CAUSEWAY';
+  if (onCauseway(x, z, 2)) return 'HALCYON CAUSEWAY';
+  const k = keyZone(x, z);
+  if (k) return k;
   if (z > HZ && x > PIER.x0 - 3 && x < PIER.x1 + 3 && z < PIER.z1 + 3) return 'DRIFTWOOD PIER';
   if (!onIsland(x, z)) return 'OPEN WATER';
   if (z > 78) return 'CORAL BEACH';

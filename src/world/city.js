@@ -9,6 +9,7 @@ import { addEdges } from './edges.js';
 import { paintGround, paintSigns, SIGN_ROWS } from './textures.js';
 import { addDetails, buildLife } from './details.js';
 import { createGlow } from './glow.js';
+import { rampParts } from './rampGeo.js';
 
 function roundedShape(w, d, r) {
   const s = new THREE.Shape();
@@ -69,33 +70,27 @@ function createLampMap(L) {
 const clampN = (v, a, b) => (v < a ? a : v > b ? b : v);
 export const LAMP_GAIN = 1.7;
 
-export function buildGround(scene, L, renderer) {
-  const canvas = paintGround(L);
-  const lampMap = L.lampMap = createLampMap(L);
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-  const geo = new THREE.PlaneGeometry(HX * 2, HZ * 2);
-  geo.rotateX(-PI / 2);
-  // Wet roads without a second pass: darker asphalt, a fresnel sky sheen, Blinn-Phong streaks
-  // from the boulevard's street lamps (their positions are a formula, so no light list), rain speckle.
+// The ground material: albedo from a painted canvas, lamp pools at night, and (in the rain) darker asphalt,
+// a sky sheen, lamp streaks and rain speckle, all in the one fragment shader. x0/z0/W/H: the rectangle the
+// canvases cover; streaks: the old town's boulevard lamps make reflections (their positions are a formula).
+export function groundMaterial(tex, lampTex, x0, z0, W, H, streaks) {
   const mat = new THREE.MeshLambertMaterial({ map: tex });
   mat.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, { uWet: wetU, uRain: rainU, uNight: nightU, uTime: timeU, uSkyC: reflU.sky, uSunC: reflU.sun, uSunD: reflU.dir, uLampMap: { value: lampMap.tex } });
+    Object.assign(sh.uniforms, { uWet: wetU, uRain: rainU, uNight: nightU, uTime: timeU, uSkyC: reflU.sky, uSunC: reflU.sun, uSunD: reflU.dir, uLampMap: { value: lampTex } });
     sh.vertexShader = 'varying vec3 vWP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vWP = (modelMatrix * vec4(position, 1.0)).xyz;');
     sh.fragmentShader = 'uniform float uWet, uRain, uNight, uTime; uniform vec3 uSkyC, uSunC, uSunD; uniform sampler2D uLampMap; varying vec3 vWP;\n' + sh.fragmentShader
       .replace('#include <map_fragment>', /* glsl */`#include <map_fragment>
         float wetK = uWet * (0.5 + 0.5 * smoothstep(0.45, 0.12, dot(diffuseColor.rgb, vec3(0.333))));
         diffuseColor.rgb *= 1.0 - 0.4 * wetK;`)
       .replace('#include <opaque_fragment>', /* glsl */`
-        vec3 lampL = texture2D(uLampMap, vec2((vWP.x + ${HX.toFixed(1)}) / ${(HX * 2).toFixed(1)}, (vWP.z + ${HZ.toFixed(1)}) / ${(HZ * 2).toFixed(1)})).rgb;
+        vec3 lampL = texture2D(uLampMap, vec2((vWP.x - ${x0.toFixed(1)}) / ${W.toFixed(1)}, (vWP.z - ${z0.toFixed(1)}) / ${H.toFixed(1)})).rgb;
         outgoingLight += diffuseColor.rgb * lampL * uNight * ${LAMP_GAIN.toFixed(2)};
         if (uWet > 0.01) {
           vec3 V = normalize(cameraPosition - vWP);
           vec3 N = normalize(vec3(sin(vWP.x * 3.1 + sin(vWP.z * 2.3)) * 0.03, 1.0, cos(vWP.x * 2.2 + vWP.z * 3.3) * 0.03));
           vec3 refl = uSkyC * pow(1.0 - max(dot(V, N), 0.0), 4.0) * 0.7;
           vec3 lampC = vec3(1.0, 0.76, 0.46) * uNight;
-          for (int r = 0; r < 2; r++) {
+          ${streaks ? `for (int r = 0; r < 2; r++) {
             float lz = r == 0 ? 44.05 : 61.95, lx = r == 0 ? -285.0 : -270.0;
             float bx = floor((vWP.x - lx) / 30.0 + 0.5);
             for (int k = -1; k <= 1; k++) {
@@ -104,7 +99,7 @@ export function buildGround(scene, L, renderer) {
               vec3 Hh = normalize(Ld * inversesqrt(d2) + V);
               refl += lampC * pow(max(dot(N, Hh), 0.0), 240.0) * 16.0 / (1.0 + d2 * 0.012);
             }
-          }
+          }` : 'refl += lampL * lampC * 0.6 * pow(1.0 - max(dot(V, N), 0.0), 2.0);'}
           refl += uSunC * pow(max(dot(N, normalize(uSunD + V)), 0.0), 140.0);
           vec2 cell = floor(vWP.xz * 2.5);
           refl += vec3(0.55, 0.6, 0.7) * step(0.991, fract(sin(dot(cell, vec2(12.9898, 78.233)) + floor(uTime * 9.0) * 3.7) * 43758.5453)) * uRain * 0.5;
@@ -112,15 +107,31 @@ export function buildGround(scene, L, renderer) {
         }
         #include <opaque_fragment>`);
   };
-  scene.add(new THREE.Mesh(geo, mat));
+  return mat;
+}
+
+export function buildGround(scene, L, renderer) {
+  const canvas = paintGround(L);
+  const lampMap = L.lampMap = createLampMap(L);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  const geo = new THREE.PlaneGeometry(HX * 2, HZ * 2);
+  geo.rotateX(-PI / 2);
+  const ground = new THREE.Mesh(geo, groundMaterial(tex, lampMap.tex, -HX, -HZ, HX * 2, HZ * 2, true));
   // sandy skirt so the island has an edge where it meets the water
   const skirt = new THREE.Mesh(new THREE.BoxGeometry(HX * 2, 3, HZ * 2), new THREE.MeshLambertMaterial({ color: '#c9a878' }));
   skirt.position.y = -1.52;
-  scene.add(skirt);
+  // both belong to the old town's district group (world/districts.js hides them from far away)
+  L.groundMeshes = [ground, skirt];
   return canvas;
 }
 
-export function buildCity(scene, L) {
+export function buildCity(scene0, L) {
+  // everything the old town draws goes in one group, so it can be swapped for a silhouette from far away
+  const scene = new THREE.Group();
+  scene0.add(scene);
+  if (L.groundMeshes) scene.add(...L.groundMeshes);
   const r = rng(404);
   const solid = [], neon = [], winM = [], winSeed = [], signs = [], glows = [];
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), UP = new THREE.Vector3(0, 1, 0);
@@ -202,6 +213,7 @@ export function buildCity(scene, L) {
   }
 
   addDetails(L, solid, neon, glows, addWin, signs);
+  for (const rp of L.ramps) if (rp.x > -HX) rampParts(rp, solid, neon);
   const blinkers = addEdges(solid, neon, glows, signs);
 
   // --- pier
@@ -210,7 +222,7 @@ export function buildCity(scene, L) {
   for (let z = PIER.z0 + 2; z < PIER.z1; z += 4) solid.push(box(11.6, 0.02, 0.18, px, 0.012, z, '#93683f'));
   for (const sx of [PIER.x0 + 0.15, PIER.x1 - 0.15]) {
     // the rail opens at each ladder (LADDER_GAP metres either side)
-    const gaps = LADDERS.filter((l) => (l.s < 0) === (sx < px)).map((l) => l.z).sort((a, b) => a - b);
+    const gaps = LADDERS.filter((l) => l.pier === 'a' && (l.s < 0) === (sx < px)).map((l) => l.z).sort((a, b) => a - b);
     let a0 = PIER.z0;
     for (const gz of [...gaps, PIER.z1 + LADDER_GAP]) {
       const a1 = Math.min(gz - LADDER_GAP, PIER.z1);
@@ -224,7 +236,7 @@ export function buildCity(scene, L) {
     for (let z = PIER.z0 + 6; z <= PIER.z1; z += 12.5) solid.push(cyl(0.32, 0.32, 4, 6, sx, -2, z, '#6b4a30'));
   }
   // ladders: two steel rails and rungs from under the water up over the deck edge, with grab handles
-  for (const l of LADDERS) {
+  for (const l of LADDERS.filter((k) => k.pier === 'a')) {
     const sx = l.x + l.s * 0.22, hx = l.x - l.s * 0.35;
     for (const o of [-0.3, 0.3]) {
       solid.push(box(0.07, 3.9, 0.07, sx, -0.75, l.z + o, '#cfd6dd'));
@@ -335,55 +347,7 @@ export function buildCity(scene, L) {
   scene.add(lamps);
 
   // --- palms: trunk + fronds in one geometry, swaying in the vertex shader
-  const palmParts = [];
-  const trunk = new THREE.CylinderGeometry(0.16, 0.3, 7, 6, 5);
-  trunk.translate(0, 3.5, 0);
-  { const p = trunk.attributes.position; for (let i = 0; i < p.count; i++) { const t = p.getY(i) / 7; p.setX(i, p.getX(i) + t * t * 1.2); } }
-  trunk.computeVertexNormals();
-  palmParts.push(tint(trunk, '#9a6b4a'));
-  for (let k = 0; k < 9; k++) {
-    const len = 3.2 + (k % 3) * 0.5;
-    const f = new THREE.PlaneGeometry(len, 1.1, 5, 1);
-    f.rotateX(-PI / 2); f.translate(len / 2, 0, 0);
-    const p = f.attributes.position;
-    for (let i = 0; i < p.count; i++) {
-      const t = p.getX(i) / len;
-      p.setZ(i, p.getZ(i) * (1 - t * 0.85) * (0.5 + Math.sin(t * PI) * 0.9));
-      p.setY(i, Math.sin(t * 2.2) * 0.7 - t * t * (1.6 + (k % 2) * 0.6) + Math.abs(p.getZ(i)) * -0.35);
-    }
-    f.rotateY((k / 9) * PI * 2 + 0.2); f.translate(1.2, 7, 0);
-    f.computeVertexNormals();
-    palmParts.push(tint(f, k % 2 ? '#2fa36b' : '#3fbf7a'));
-  }
-  palmParts.push(tint(new THREE.SphereGeometry(0.34, 6, 4).translate(1.2, 6.9, 0), '#7a5a3a'));
-  const palmGeo = merge(palmParts);
-  const palmMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
-  palmMat.onBeforeCompile = (sh) => {
-    sh.uniforms.uTime = timeU;
-    sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>', /* glsl */`
-      #include <begin_vertex>
-      #ifdef USE_INSTANCING
-        float ph = instanceMatrix[3][0] * 0.31 + instanceMatrix[3][2] * 0.17;
-      #else
-        float ph = 0.0;
-      #endif
-      float hh = clamp(position.y / 7.0, 0.0, 1.0); hh *= hh;
-      float tipD = length(position.xz - vec2(1.2, 0.0)) * step(4.5, position.y);
-      transformed.x += sin(uTime * 1.1 + ph) * 0.3 * hh;
-      transformed.z += cos(uTime * 0.9 + ph * 1.3) * 0.22 * hh;
-      transformed.y += sin(uTime * 2.4 + ph + position.x * 1.7 + position.z * 1.3) * 0.07 * tipD;
-    `);
-  };
-  const palms = new THREE.InstancedMesh(palmGeo, palmMat, L.palms.length), pcol = new THREE.Color();
-  L.palms.forEach((p, i) => {
-    // variety: squat and lanky palms, a few sun-bleached or deep green
-    const tall = 0.78 + ((i * 37) % 11) / 16;
-    p.sc = [p.s * (1.12 - tall * 0.12), p.s * tall, p.s * (1.12 - tall * 0.12)];
-    m4.compose(v.set(p.x, 0, p.z), q.setFromAxisAngle(UP, p.yaw), sc.set(...p.sc));
-    palms.setMatrixAt(i, m4);
-    palms.setColorAt(i, pcol.set(['#ffffff', '#e4ffc8', '#fff2c4', '#cfeedd', '#ffffff'][(i * 7) % 5]));
-  });
-  palms.frustumCulled = false;
+  const palms = palmMesh(L.palms);
   scene.add(palms);
 
   // --- beach umbrellas (instance colour = canopy colour)
@@ -427,7 +391,7 @@ export function buildCity(scene, L) {
   };
 
   return {
-    windowCount: winM.length, bodyMat, tick: life.tick, blinkers,
+    group: scene, windowCount: winM.length, bodyMat, tick: life.tick, blinkers,
     tipLamp(i, ang, dir) { const l = L.lamps[i]; tip(lamps, i, l.x, l.z, l.yaw, [1, 1, 1], ang, dir); },
     tipPalm(i, ang, dir) { const p = L.palms[i]; tip(palms, i, p.x, p.z, p.yaw, p.sc, ang, dir); },
     // a lamp's light: its glow sprite and its pool on the ground
@@ -444,6 +408,66 @@ export function buildCity(scene, L) {
       winU.uGlass.value.copy(glass);
     },
   };
+}
+
+// Palms: trunk + fronds in one geometry (shared by both districts), swaying in the vertex shader.
+// Sets p.sc (the instance scale) on every palm in the list.
+let palmGeo = null, palmMat = null;
+export function palmMesh(list) {
+  if (!palmGeo) {
+    const palmParts = [];
+    const trunk = new THREE.CylinderGeometry(0.16, 0.3, 7, 6, 5);
+    trunk.translate(0, 3.5, 0);
+    { const p = trunk.attributes.position; for (let i = 0; i < p.count; i++) { const t = p.getY(i) / 7; p.setX(i, p.getX(i) + t * t * 1.2); } }
+    trunk.computeVertexNormals();
+    palmParts.push(tint(trunk, '#9a6b4a'));
+    for (let k = 0; k < 9; k++) {
+      const len = 3.2 + (k % 3) * 0.5;
+      const f = new THREE.PlaneGeometry(len, 1.1, 5, 1);
+      f.rotateX(-PI / 2); f.translate(len / 2, 0, 0);
+      const p = f.attributes.position;
+      for (let i = 0; i < p.count; i++) {
+        const t = p.getX(i) / len;
+        p.setZ(i, p.getZ(i) * (1 - t * 0.85) * (0.5 + Math.sin(t * PI) * 0.9));
+        p.setY(i, Math.sin(t * 2.2) * 0.7 - t * t * (1.6 + (k % 2) * 0.6) + Math.abs(p.getZ(i)) * -0.35);
+      }
+      f.rotateY((k / 9) * PI * 2 + 0.2); f.translate(1.2, 7, 0);
+      f.computeVertexNormals();
+      palmParts.push(tint(f, k % 2 ? '#2fa36b' : '#3fbf7a'));
+    }
+    palmParts.push(tint(new THREE.SphereGeometry(0.34, 6, 4).translate(1.2, 6.9, 0), '#7a5a3a'));
+    palmGeo = merge(palmParts);
+    palmMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+    palmMat.onBeforeCompile = (sh) => {
+      sh.uniforms.uTime = timeU;
+      sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>', /* glsl */`
+        #include <begin_vertex>
+        #ifdef USE_INSTANCING
+          float ph = instanceMatrix[3][0] * 0.31 + instanceMatrix[3][2] * 0.17;
+        #else
+          float ph = 0.0;
+        #endif
+        float hh = clamp(position.y / 7.0, 0.0, 1.0); hh *= hh;
+        float tipD = length(position.xz - vec2(1.2, 0.0)) * step(4.5, position.y);
+        transformed.x += sin(uTime * 1.1 + ph) * 0.3 * hh;
+        transformed.z += cos(uTime * 0.9 + ph * 1.3) * 0.22 * hh;
+        transformed.y += sin(uTime * 2.4 + ph + position.x * 1.7 + position.z * 1.3) * 0.07 * tipD;
+      `);
+    };
+  }
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), UP = new THREE.Vector3(0, 1, 0), v = new THREE.Vector3(), sc = new THREE.Vector3();
+  const palms = new THREE.InstancedMesh(palmGeo, palmMat, Math.max(1, list.length)), pcol = new THREE.Color();
+  list.forEach((p, i) => {
+    // variety: squat and lanky palms, a few sun-bleached or deep green
+    const tall = 0.78 + ((i * 37) % 11) / 16;
+    p.sc = [p.s * (1.12 - tall * 0.12), p.s * tall, p.s * (1.12 - tall * 0.12)];
+    m4.compose(v.set(p.x, p.y || 0, p.z), q.setFromAxisAngle(UP, p.yaw), sc.set(...p.sc));
+    palms.setMatrixAt(i, m4);
+    palms.setColorAt(i, pcol.set(['#ffffff', '#e4ffc8', '#fff2c4', '#cfeedd', '#ffffff'][(i * 7) % 5]));
+  });
+  palms.count = list.length;
+  palms.frustumCulled = false;
+  return palms;
 }
 
 // Shrub + grass + flower clump for the planting beds. Flowers are marked with aFlower = 1 and take the

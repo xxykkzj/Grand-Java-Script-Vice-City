@@ -83,7 +83,7 @@ export function addEdges(S, N, glows, signs) {
   };
   sign(EDGE_SIGNS[1], HX - 0.9, 3.4, BZ, -PI / 2, 9, '#18f0ff');
 
-  // ---- the causeway stub to the west, closed for storm repairs
+  // ---- the Halcyon Causeway to Solano Key: reopened after the storm repairs (the new span is a fresher grey)
   const len = -HX - C.x0, cx = (-HX + C.x0) / 2, wz = C.z1 - C.z0;
   S.push(box(len, 1.3, wz, cx, -0.65, BZ, ASPH));
   S.push(box(len, 0.02, 0.25, cx, 0.012, BZ - 0.32, '#ffd35c'), box(len, 0.02, 0.25, cx, 0.012, BZ + 0.32, '#ffd35c'));
@@ -97,38 +97,19 @@ export function addEdges(S, N, glows, signs) {
       glows.push([x, 6.1, z + (z < BZ ? 1.2 : -1.2), '#ffcf8a', 6.5, 0]);
     }
   }
-  for (const x of [-HX - 10, -HX - 26, C.x0 + 9]) S.push(box(3, 9, wz - 4, x, -5.6, BZ, '#cbbfb0'));
-  // the broken end: a ragged lip and rebar sticking out over the gap
-  for (let z = C.z0 + 1; z < C.z1 - 1; z += 1.4) {
-    S.push(box(0.8 + r() * 1.2, 1.1, 1.3, C.x0 - 0.3, -0.6 - r() * 0.3, z, '#5a5468', 0, r() * 0.4, (r() - 0.5) * 0.4));
-    S.push(box(1.8 + r() * 1.6, 0.06, 0.06, C.x0 - 1.2, -0.3 - r() * 0.5, z + 0.5, '#7a4a2e', 0, (r() - 0.5) * 0.5, -0.2 - r() * 0.4));
+  // piers under the deck, and the repaired middle span marked by a pair of pylons with neon tops
+  for (let x = -HX - 10; x > C.x0 + 4; x -= 22) S.push(box(3, 9, wz - 4, x, -5.6, BZ, '#cbbfb0'));
+  const mx = (-HX + C.x0) / 2;
+  for (const z of [C.z0 - 0.6, C.z1 + 0.6]) {
+    S.push(box(1.4, 14, 1.4, mx, 6, z, '#e9d8c4'), box(1.8, 0.6, 1.8, mx, 13.2, z, '#27c9bf'));
+    N.push(box(0.5, 0.5, 0.5, mx, 13.8, z, '#ff2bd1'));
+    glows.push([mx, 14, z, '#ff2bd1', 6, 0.1]);
   }
-  // the closure: a line of orange-and-white water barriers, sawhorses, cones and amber lamps
-  const bx = C.bar;
-  for (let z = C.z0 + 0.9; z < C.z1 - 0.8; z += 2.1) {
-    S.push(box(0.8, 0.95, 1.95, bx, 0.48, z + 0.95, '#ff6a3d'), box(0.82, 0.22, 1.97, bx, 0.62, z + 0.95, '#fbf7f0'));
-    N.push(box(0.2, 0.2, 0.2, bx, 1.08, z + 0.95, '#ffb000'));
-    blink.push([bx, 1.12, z + 0.95]);
-  }
-  for (const z of [BZ - 5.5, BZ, BZ + 5.5]) {
-    const x = bx + 3.2;
-    S.push(box(0.1, 1.1, 0.1, x, 0.55, z - 1.4, '#fbf7f0', 0, 0, 0.25), box(0.1, 1.1, 0.1, x, 0.55, z + 1.4, '#fbf7f0', 0, 0, 0.25));
-    S.push(box(0.1, 1.1, 0.1, x - 0.4, 0.55, z - 1.4, '#fbf7f0', 0, 0, -0.25), box(0.1, 1.1, 0.1, x - 0.4, 0.55, z + 1.4, '#fbf7f0', 0, 0, -0.25));
-    S.push(box(0.08, 0.36, 3.4, x - 0.2, 0.95, z, '#fbf7f0'));
-    for (let k = -1.4; k <= 1.4; k += 0.7) S.push(box(0.09, 0.34, 0.26, x - 0.2, 0.95, z + k, '#ff6a3d', 0.6));
-    N.push(box(0.18, 0.18, 0.18, x - 0.2, 1.24, z, '#ffb000'));
-    blink.push([x - 0.2, 1.28, z]);
-  }
-  for (let i = 0; i < 9; i++) {
-    const x = bx + 5 + i * 2.2, z = C.z0 + 3 + ((i * 7) % 12) + r();
-    S.push(tint(new THREE.ConeGeometry(0.26, 0.75, 8).translate(x, 0.375, z), '#ff6a3d'), cyl(0.2, 0.22, 0.1, 8, x, 0.32, z, '#fbf7f0'), box(0.5, 0.04, 0.5, x, 0.02, z, '#ff6a3d'));
-  }
-  sign(EDGE_SIGNS[0], bx - 0.6, 3.6, BZ, PI / 2, 12, '#ffb000');
-  // a repair barge with a crane, moored in the gap
-  const gx = C.x0 - 22;
-  S.push(box(16, 2, 9, gx, -0.3, BZ, '#5a6a7a'), box(16.2, 0.3, 9.2, gx, 0.75, BZ, '#ffd447'), box(4, 2.6, 4, gx + 4, 2, BZ + 1.5, '#fbf7f0'));
-  S.push(box(1.2, 9, 1.2, gx - 3, 5, BZ - 1.5, '#ffb000'), box(1, 0.8, 16, gx - 3, 9, BZ + 4, '#ffb000', -0.42));
-  S.push(box(0.06, 6, 0.06, gx - 3, 9.3, BZ + 11.2, '#22203a'), box(0.8, 0.8, 0.8, gx - 3, 6.2, BZ + 11.2, '#3b3350'));
-  blink.push([gx - 3, 9.9, BZ - 1.5]);
+  S.push(box(1, 0.8, wz + 2.4, mx, 13.6, BZ, '#e9d8c4'));
+  N.push(box(0.14, 0.14, wz + 2.4, mx - 0.55, 13.2, BZ, '#18f0ff'));
+  // a welcome sign over the old closure line, facing traffic heading out to the key
+  sign(EDGE_SIGNS[0], mx + 0.8, 10.4, BZ, PI / 2, 12, '#ffb000');
+  // a couple of amber lamps where the barrier used to be, left as a memento (they blink slowly)
+  for (const z of [C.z0 + 0.25, C.z1 - 0.25]) { N.push(box(0.22, 0.22, 0.22, -338, 1.1, z, '#ffb000')); blink.push([-338, 1.16, z]); }
   return blink;
 }

@@ -147,7 +147,7 @@ export function createDamage(game) {
 
   // the helicopter hits the ground with no lift: sparks, a crunch, and it starts to burn
   vehicles.onCrash = (h, vy) => {
-    if (vy > 2) { fx.sparks(h.x, 0.6, h.z, 40); fx.debris(h.x, 1, h.z, 10); audio.crunch(1.2); audio.thud(1); }
+    if (vy > 2) { fx.sparks(h.x, h.y + 0.6, h.z, 40); fx.debris(h.x, h.y + 1, h.z, 10); audio.crunch(1.2); audio.thud(1); }
     if (!(h.burn > 0)) ignite(h);
     if (vy > 14 && game.vehicle !== h) explode(h);
   };
@@ -168,7 +168,7 @@ export function createDamage(game) {
 
   function clear(v) {
     if (v.kind === 'tank') { vehicles.removeTank(); return; }
-    if (v.kind === 'heli') { const h = v.home; if (h && unseen(game.camera, h.x, h.z, 50)) vehicles.spawnHeli(h.x, h.z, h.yaw); return; }
+    if (v.kind === 'heli') { const h = v.home; if (h && unseen(game.camera, h.x, h.z, 50)) vehicles.spawnHeli(h.x, h.z, h.yaw, v.hi || 0, h.y || 0); return; }
     const home = v.kind === 'bike' && v.hx !== undefined ? { x: v.hx, z: v.hz, yaw: v.hyaw } : v.park;
     if (!v.traffic && !v.police && home && !unseen(game.camera, home.x, home.z, 50)) return;
     resetDamage(v); vehicles.retint(v);

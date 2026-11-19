@@ -3,11 +3,12 @@
 // cost five draw calls. They walk a sidewalk graph and cross on the walk phase.
 import * as THREE from 'three';
 import { box, cyl, merge, angleDelta, clamp, PI, dailyCurve, outOfSight } from '../core/util.js';
-import { SIDE_X } from '../world/layout.js';
+import { SIDE_X, KEY } from '../world/layout.js';
+import { KH, KV, KEY_JUNCTIONS } from '../world/key.js';
 import { crowdParts } from './figure.js';
 import { H_ROADS, walkOK } from '../world/roads.js';
 
-const N = 52, DRIVERS = 56;
+const N = 52, DRIVERS = 90;
 const WALK_Z = [65, 41.4, 4, -12, -60, -76], DX = 8.8;
 const SHIRT = ['#ff5fa8', '#27d8cf', '#ffd447', '#f6f1e7', '#ff8a4c', '#9b7bff', '#7fe0ff', '#ff3f6a', '#8dff9a', '#f7b3c6', '#2a2140', '#ffb000'];
 const LEGS = ['#f6f1e7', '#3b5a9a', '#c9b38a', '#22203a', '#ff8fb0', '#5a7ac8', '#e8e0d0', '#2f8f86'];
@@ -38,6 +39,33 @@ export function createPeds(scene, R, grid, game) {
   for (let xi = 1; xi <= 10; xi++) for (let zi = 0; zi < 5; zi++) {
     link(nodes[zi * 12 + xi], nodes[(zi + 1) * 12 + xi], zi % 2 === 0 ? { n: R.at(SIDE_X[(xi - 1) >> 1], H_ROADS[zi >> 1].z), h: true } : null);
   }
+
+  // ---- Solano Key's sidewalks: lines beside every road, corners at every junction, crossings on the walk phase
+  {
+    const K = new Map(), at = (x, z) => { const k = Math.round(x * 10) + ',' + Math.round(z * 10); let n = K.get(k); if (!n) { n = { x, z, adj: [], key: true }; K.set(k, n); nodes.push(n); } return n; };
+    for (const h of KH) {
+      const dz = h.hw + 2.6, js = KEY_JUNCTIONS.filter((j) => j.h === h);
+      const xs = [h.x0 + 2, h.x1 - 3];
+      for (const j of js) { xs.push(j.x - DX, j.x + DX); }
+      xs.sort((a, b) => a - b);
+      for (const sz of [-1, 1]) for (let i = 0; i < xs.length - 1; i++) {
+        const j = js.find((q) => xs[i] < q.x && xs[i + 1] > q.x && (sz < 0 ? q.v.z0 < q.z : q.v.z1 > q.z));
+        link(at(xs[i], h.z + sz * dz), at(xs[i + 1], h.z + sz * dz), j ? { n: R.at(j.x, j.z), h: false } : null);
+      }
+    }
+    for (const v of KV) {
+      const js = KEY_JUNCTIONS.filter((j) => j.v === v), zs = [];
+      if (!js.some((j) => j.z === v.z0)) zs.push(v.z0 + 2);
+      if (!js.some((j) => j.z === v.z1)) zs.push(v.z1 - 2);
+      for (const j of js) { const dz = j.h.hw + 2.6; if (j.z > v.z0) zs.push(j.z - dz); if (j.z < v.z1) zs.push(j.z + dz); }
+      zs.sort((a, b) => a - b);
+      for (const sx of [-1, 1]) for (let i = 0; i < zs.length - 1; i++) {
+        const j = js.find((q) => zs[i] < q.z && zs[i + 1] > q.z);
+        link(at(v.x + sx * DX, zs[i]), at(v.x + sx * DX, zs[i + 1]), j ? { n: R.at(j.x, j.z), h: true } : null);
+      }
+    }
+  }
+  const inKeyF = () => game.focus().x < KEY.x1 + 20;
 
   // ---- instanced body parts
   const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
@@ -296,13 +324,13 @@ export function createPeds(scene, R, grid, game) {
     for (let k = 0; k < 4; k++) limb.setMatrixAt(p.i * 4 + k, ZERO);
   }
   function spawn(p) {
-    const { night, day } = mood(), r = Math.random();
-    const kind = night && r < 0.5 ? (r < 0.3 ? 'club' : 'bar') : day && r < 0.38 ? 'beach' : null;
+    const { night, day } = mood(), r = Math.random(), K = inKeyF();
+    const kind = K ? null : night && r < 0.5 ? (r < 0.3 ? 'club' : 'bar') : day && r < 0.38 ? 'beach' : null;
     // take a seat: a fair share by day, a few on the boulevard benches in the evening
     if (!kind && Math.random() < (day ? 0.4 : mood().h < 1 || mood().h > 6 ? 0.18 : 0.05)) {
       for (let i = 0; i < 10; i++) {
         const st = SEATS[Math.floor(Math.random() * SEATS.length)];
-        if (st.taken || (!day && (st.kind === 'lounger' || st.kind === 'towel')) || !hid(st.x, st.z, 40)) continue;
+        if (st.taken || Math.hypot(st.x - game.focus().x, st.z - game.focus().z) > 280 || (!day && (st.kind === 'lounger' || st.kind === 'towel')) || !hid(st.x, st.z, 40)) continue;
         dress(p); st.taken = p;
         Object.assign(p, { off: false, hang: { x: st.x, z: st.z, cx: st.x + Math.sin(st.yaw), cz: st.z + Math.cos(st.yaw), src: st, seat: st, kind: 'seat', t: 99, wx: 0, wz: 0 }, state: SIT,
           sitY: st.y, sitK: st.kind, ox: 0, oz: 0, ovx: 0, ovz: 0, tilt: 0, flee: 0, x: st.x, z: st.z, yaw: st.yaw, v: 0 });
@@ -322,9 +350,11 @@ export function createPeds(scene, R, grid, game) {
       }
     }
     // a walker on a sidewalk node out of sight (the boulevard is busiest at night)
-    for (let i = 0; i < 12; i++) {
+    const f = game.focus();
+    for (let i = 0; i < 24; i++) {
       const a = nodes[Math.floor(Math.random() * nodes.length)];
-      if (night && a.z < 30 && Math.random() < 0.6) continue;
+      if (Math.hypot(a.x - f.x, a.z - f.z) > 280 && i < 20) continue;
+      if (night && !a.key && a.z < 30 && Math.random() < 0.6) continue;
       if (!hid(a.x, a.z, 50)) continue;
       dress(p); p.off = false; p.hang = null; put(p, a); p.lane = (Math.random() - 0.5) * 2.2;
       p.x = a.x; p.z = a.z;
@@ -341,6 +371,12 @@ export function createPeds(scene, R, grid, game) {
     densT -= dt; churnT -= dt;
     if (densT > 0) return;
     densT = 0.1;
+    // someone left far behind (the other district) goes home, so they can come out again near you
+    if (active >= target) {
+      const f = game.focus();
+      const far = peds.find((p) => !p.off && !p.evtLock && p.state !== DOWN && Math.hypot(p.x - f.x, p.z - f.z) > 340);
+      if (far) { release(far); active--; return; }
+    }
     if (active > target) {
       // send home someone out of sight; people standing in the "wrong" place for the hour go first
       let best = null, bs = -1;

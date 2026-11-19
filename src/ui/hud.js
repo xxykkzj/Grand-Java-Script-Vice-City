@@ -1,11 +1,11 @@
 // DOM HUD. Top-left: a round minimap that turns with the camera, the district name and the
 // current objective. Top-right: cash, health, wanted stars and the clock. Also hints, toast, perf panel.
-import { HX, HZ, PIER, CAUSEWAY, zoneName } from '../world/layout.js';
+import { HX, HZ, PIER, CAUSEWAY, KEY, MPIER, zoneName } from '../world/layout.js';
 import { WEATHER } from '../world/environment.js';
 
 const $ = (id) => document.getElementById(id);
 
-export function createHud(L, groundCanvas, renderer) {
+export function createHud(L, groundCanvas, renderer, keyCanvas) {
   const el = {};
   for (const id of ['hud', 'time', 'phase', 'wx', 'zone', 'hint', 'toast', 'perf', 'map', 'money', 'cash', 'hpfill', 'stars', 'obj', 'objt', 'objs', 'objm']) el[id] = $(id);
   const starEls = [...el.stars.children];
@@ -25,21 +25,34 @@ export function createHud(L, groundCanvas, renderer) {
     bEl.setAttribute('aria-label', 'Breath ' + Math.round(sw.S.breath * 100) + ' percent');
   }
 
-  // static minimap layer: 1 px per world unit, painted once
-  const PAD = 110, MW = HX * 2 + PAD * 2, MH = HZ * 2 + PAD * 2;
+  // static minimap layer: 1 px per world unit, painted once; both islands and the causeway between them
+  const PAD = 110, OX = PAD - KEY.x0, OZ = PAD + HZ, MW = HX - KEY.x0 + PAD * 2, MH = HZ * 2 + PAD * 2;
   const base = document.createElement('canvas');
   base.width = MW; base.height = MH;
   const b = base.getContext('2d');
   b.fillStyle = '#0d1440'; b.fillRect(0, 0, MW, MH);
-  b.globalAlpha = 0.55; b.drawImage(groundCanvas, PAD, PAD, HX * 2, HZ * 2); b.globalAlpha = 1;
-  b.fillStyle = 'rgba(20,8,48,.35)'; b.fillRect(PAD, PAD, HX * 2, HZ * 2);
-  b.fillStyle = '#b98a5e'; b.fillRect(PAD + PIER.x0 + HX, PAD + PIER.z0 + HZ, PIER.x1 - PIER.x0, PIER.z1 - PIER.z0);
-  b.fillStyle = '#3b3548'; b.fillRect(PAD + CAUSEWAY.x0 + HX, PAD + CAUSEWAY.z0 + HZ, -HX - CAUSEWAY.x0, CAUSEWAY.z1 - CAUSEWAY.z0);
-  b.fillStyle = '#ff8a3d'; b.fillRect(PAD + CAUSEWAY.bar + HX - 1, PAD + CAUSEWAY.z0 + HZ, 2, CAUSEWAY.z1 - CAUSEWAY.z0);
-  b.strokeStyle = 'rgba(233,216,196,.7)'; b.lineWidth = 1.5; b.strokeRect(PAD - 0.5, PAD - 0.5, HX * 2 + 1, HZ * 2 + 1);
+  b.globalAlpha = 0.55; b.drawImage(groundCanvas, OX - HX, OZ - HZ, HX * 2, HZ * 2);
+  if (keyCanvas) b.drawImage(keyCanvas, OX + KEY.x0, OZ + KEY.z0, KEY.x1 - KEY.x0, KEY.z1 - KEY.z0);
+  b.globalAlpha = 1;
+  b.fillStyle = 'rgba(20,8,48,.35)'; b.fillRect(OX - HX, OZ - HZ, HX * 2, HZ * 2); b.fillRect(OX + KEY.x0, OZ + KEY.z0, KEY.x1 - KEY.x0, KEY.z1 - KEY.z0);
+  b.fillStyle = '#b98a5e'; b.fillRect(OX + PIER.x0, OZ + PIER.z0, PIER.x1 - PIER.x0, PIER.z1 - PIER.z0); b.fillRect(OX + MPIER.x0, OZ + MPIER.z0, MPIER.x1 - MPIER.x0, MPIER.z1 - MPIER.z0);
+  b.fillStyle = '#3b3548'; b.fillRect(OX + CAUSEWAY.x0, OZ + CAUSEWAY.z0, -HX - CAUSEWAY.x0, CAUSEWAY.z1 - CAUSEWAY.z0);
+  b.strokeStyle = 'rgba(233,216,196,.7)'; b.lineWidth = 1.5; b.strokeRect(OX - HX - 0.5, OZ - HZ - 0.5, HX * 2 + 1, HZ * 2 + 1); b.strokeRect(OX + KEY.x0 - 0.5, OZ + KEY.z0 - 0.5, KEY.x1 - KEY.x0 + 1, KEY.z1 - KEY.z0 + 1);
   for (const s of L.buildings) {
     b.fillStyle = s.bar ? '#ff2bd1' : s.hotel ? '#ff7ac8' : '#c9a6ff';
-    b.fillRect(PAD + s.x0 + HX, PAD + s.z0 + HZ, s.w, s.d);
+    b.fillRect(OX + s.x0, OZ + s.z0, s.w, s.d);
+  }
+  if (L.key) {
+    for (const s of L.key.buildings) { b.fillStyle = s.style === 'tower' ? '#7fd8ff' : s.style === 'warehouse' ? '#a8a0b8' : s.hotel ? '#ff7ac8' : '#c9a6ff'; b.fillRect(OX + s.x0, OZ + s.z0, s.w, s.d); }
+    const st = L.key.stadium;
+    b.strokeStyle = '#ffe14a'; b.lineWidth = 6; b.strokeRect(OX + st.x0 + 5, OZ + st.z0 + 5, st.w - 10, st.d - 10);
+    b.fillStyle = '#ffd447'; for (const s of L.key.buildings) if (s.pad) { b.beginPath(); b.arc(OX + s.pad.x, OZ + s.pad.z, 4, 0, 6.3); b.fill(); }
+    b.fillStyle = '#e0a0a0'; for (const h of L.key.houses) b.fillRect(OX + h.x - 4.5, OZ + h.z - 4, 9, 8);
+  }
+  // stunt ramps: small orange arrows
+  for (const rp of L.ramps || []) {
+    b.save(); b.translate(OX + rp.x, OZ + rp.z); b.rotate(-rp.yaw); b.fillStyle = '#ff8a3d';
+    b.beginPath(); b.moveTo(-4, -4); b.lineTo(0, 6); b.lineTo(4, -4); b.closePath(); b.fill(); b.restore();
   }
   // the minimap is drawn in a fixed 312-unit space; the canvas backing store follows its CSS size
   // times the device pixel ratio (re-read on every resize), so it stays sharp at any window size
@@ -136,7 +149,7 @@ export function createHud(L, groundCanvas, renderer) {
           el.perf.textContent =
             `FPS         ${fps.toFixed(0)}\nDRAW CALLS  ${i.calls}\nTRIANGLES   ${(i.triangles / 1000).toFixed(1)}k\n` +
             `AI CARS     ${st.counts[0]} (TARGET ${st.counts[2]})\nPEDESTRIANS ${st.counts[1]} (TARGET ${st.counts[3]})\nANIMALS     ${st.counts[4]}\n` +
-            `GEOMETRIES  ${renderer.info.memory.geometries}\nTEXTURES    ${renderer.info.memory.textures}\nPAGE SIZE   ${pageKB.toFixed(0)} KB (1 file)\nASSET FILES 0`;
+            `GEOMETRIES  ${renderer.info.memory.geometries}\nTEXTURES    ${renderer.info.memory.textures}\nPAGE SIZE   ${pageKB.toFixed(0)} KB (1 file)\nDISTRICTS   ${st.districts || ''}`;
         }
       }
       // minimap, redrawn every third frame; "up" is where the camera looks
@@ -146,7 +159,7 @@ export function createHud(L, groundCanvas, renderer) {
       g.clearRect(0, 0, R * 2, R * 2);
       g.save();
       g.beginPath(); g.arc(R, R, R, 0, 6.2832); g.clip();
-      g.translate(R, R); g.rotate(rot); g.scale(SCALE, SCALE); g.translate(-(focus.x + HX + PAD), -(focus.z + HZ + PAD));
+      g.translate(R, R); g.rotate(rot); g.scale(SCALE, SCALE); g.translate(-(focus.x + OX), -(focus.z + OZ));
       g.drawImage(base, 0, 0);
       const flash = (performance.now() / 250) % 2 < 1;
       for (const v of st.vehicles.all()) {
@@ -156,7 +169,7 @@ export function createHud(L, groundCanvas, renderer) {
         else if (v.kind === 'car') { g.fillStyle = v.ai ? 'rgba(255,225,74,.6)' : '#ffe14a'; s = v.ai ? 3 : 4; }
         else if (v.kind === 'bike') { g.fillStyle = v.ai ? 'rgba(255,140,220,.7)' : '#ff8ad0'; s = 3; }
         else { g.fillStyle = v.kind === 'tank' ? '#8dff5a' : '#27e8ff'; s = 7; }
-        g.fillRect(v.x + HX + PAD - s / 2, v.z + HZ + PAD - s / 2, s, s);
+        g.fillRect(v.x + OX - s / 2, v.z + OZ - s / 2, s, s);
       }
       g.restore();
       // blips are clamped to the rim so far-off places still point the way

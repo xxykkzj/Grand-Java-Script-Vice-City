@@ -6,6 +6,8 @@ Everything here is original to Neon Coast. The lines live in [`src/game/story.js
 
 Summer 1986. Neon Coast is a sandbar with one boulevard, one pier and more neon than sense. Everybody on Lumina Boulevard owes somebody, and most of them pay in favours.
 
+West of town, the Halcyon Causeway runs over the water to Solano Key: glass towers in Glasswater, the Sunbowl stadium, the Starboard Marina and the Tradewind Docks. Last winter's storm took out a span and the causeway sat behind barriers all spring. The repair crews finished this week; Wave 86 News announces the reopening the morning the game starts (the toast after the helicopter's), and the boulevard's traffic is pouring over to the key again. The story still plays out on Lumina Boulevard; the key is there to explore, with its rooftops, its stunt ramps and a helicopter waiting on the Glasswater Tower helipad.
+
 Skye delivers those favours on eight wheels. Parcels, crates of Flamingo Fizz, the occasional apology. The best customer is Dee Marlowe, who owns the Velvet Flamingo and is three months behind on its lease: $5,000 by Sunday, or the landlord sells to Marty Glitz, the promoter next door at Club Prism, who wants the bar as a "VIP annexe".
 
 Saturday is the Neon Coast Dance-Off at Club Prism. The prize is $5,000. Dee has entered. Marty is running it, and Marty is a very organised man.

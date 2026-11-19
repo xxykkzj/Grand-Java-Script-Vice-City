@@ -128,6 +128,15 @@ kbd{font:700 calc(11 * var(--u)) var(--mono);color:var(--ink);background:var(--c
   border-top:2px solid var(--cyan);border-bottom:2px solid var(--cyan);background:rgba(10,5,24,.55);
   opacity:0;transition:opacity .25s,transform .25s}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(-6px)}
+#airtime{position:absolute;left:50%;top:26%;transform:translate(-50%,0) skewX(-8deg) scale(.6);opacity:0;text-align:center;padding:calc(12 * var(--u)) calc(26 * var(--u));
+  background:linear-gradient(180deg,rgba(42,11,90,.85),rgba(10,5,24,.85));border:2px solid var(--sun);box-shadow:0 0 24px rgba(255,63,180,.55);transition:opacity .3s,transform .3s cubic-bezier(.2,1.6,.4,1)}
+#airtime.on{opacity:1;transform:translate(-50%,0) skewX(-8deg) scale(1)}
+#airtime b{display:block;font:italic 900 calc(46 * var(--u)) var(--disp);letter-spacing:.06em;color:var(--sun);text-shadow:3px 3px 0 #ff2bd1,6px 6px 0 #2a0b5a}
+#airtime em{display:block;font:800 calc(13 * var(--u)) var(--mono);letter-spacing:.3em;color:var(--cyan);font-style:normal;margin:2px 0 8px}
+#airtime dl{display:grid;grid-template-columns:auto auto;gap:2px calc(14 * var(--u));margin:0 auto;width:max-content;font:700 calc(13 * var(--u)) var(--mono);letter-spacing:.14em}
+#airtime dt{color:rgba(255,246,236,.7);text-align:right}#airtime dd{margin:0;color:#fff;text-align:left}
+#airtime strong{display:block;margin-top:8px;font:900 calc(26 * var(--u)) var(--disp);color:#8dff5a;text-shadow:0 0 12px rgba(141,255,90,.7)}
+#airtime small{display:block;margin-top:4px;font:700 calc(11 * var(--u)) var(--mono);letter-spacing:.24em;color:var(--pink)}
 #toast small{display:block;margin-top:4px;font:400 calc(11 * var(--u)) var(--mono);letter-spacing:.2em;color:var(--cyan);text-shadow:none}
 
 /* ---------- touch controls ---------- */
@@ -231,6 +240,7 @@ body.touch #shop li{padding:9px 10px;min-height:48px}
 .pick button[aria-pressed="true"]::before{content:"▸ ";color:var(--pink)}
 .pick button:focus-visible{outline:2px solid var(--pink);outline-offset:2px}
 #sresume{margin-top:18px;width:100%}
+#settings .stuntc{font:800 calc(15px) var(--disp);letter-spacing:.14em;color:#fff}
 #settings small{display:block;margin-top:12px;font-size:10px;letter-spacing:.12em;color:rgba(255,246,236,.6)}
 
 /* ---------- cheat console ---------- */
@@ -282,7 +292,7 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
 #nogl{position:fixed;inset:0;z-index:10;display:grid;place-items:center;padding:24px;text-align:center;background:var(--ink);line-height:1.7}
 #nogl h2{font:italic 900 44px var(--disp);color:var(--sun);margin:0 0 8px}
 @media (max-width:700px){#hint{max-width:90vw}#note{font-size:9px}}
-@media (prefers-reduced-motion:reduce){#go,#stars.cool i.on,#getout,#sharkw,#breath.low span,#vcond.fire span{animation:none}#cine::before,#cine::after,#fade,#card{transition:none}#toast,#title,#bar i{transition:none}.tbtn.on{transform:none}}
+@media (prefers-reduced-motion:reduce){#go,#stars.cool i.on,#getout,#sharkw,#breath.low span,#vcond.fire span{animation:none}#cine::before,#cine::after,#fade,#card{transition:none}#toast,#title,#bar i,#airtime{transition:none}.tbtn.on{transform:none}}
 </style>
 </head>
 <body>
@@ -313,6 +323,7 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
   </div>
   <div id="perf" class="chip" hidden></div>
   <div id="toast" role="status" aria-live="polite"></div>
+  <div id="airtime" hidden role="status" aria-live="polite"><b>AIRTIME!</b><em id="airn"></em><dl><dt>DISTANCE</dt><dd id="aird"></dd><dt>HEIGHT</dt><dd id="airh"></dd><dt>FLIPS</dt><dd id="airf"></dd></dl><strong id="airc"></strong><small id="airs"></small></div>
   <div id="xhair" hidden></div>
   <div id="getout" hidden role="alert">GET OUT!</div>
   <div id="sharkw" hidden role="alert">SHARK!</div>
@@ -324,7 +335,7 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
     <div class="dbar" id="drivalw" hidden><span>CHIP</span><i><i id="drival"></i></i></div>
     <div id="dmoves"></div>
   </div>
-  <div id="note" class="kbonly">Everything you see and hear is generated in code — <b>0 asset files</b></div>
+  <div id="note" class="kbonly">Generated in code, plus a few CC0 models baked in — <b>one file, 0 asset files</b></div>
 </div>
 
 <div id="tzone" hidden><div id="tzl"></div><div id="tzr"></div><div id="stick" class="idle"><i></i></div></div>
@@ -342,6 +353,8 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
     <div class="pick"><button type="button" data-mode="keys" aria-pressed="false">KEYBOARD &amp; MOUSE</button><button type="button" data-mode="touch" aria-pressed="false">TOUCH CONTROLS</button></div>
     <p>SUBTITLES</p>
     <div class="pick" id="subpick"><button type="button" data-sub="n" aria-pressed="true">NORMAL</button><button type="button" data-sub="l" aria-pressed="false">LARGE</button></div>
+    <p>STUNT JUMPS</p>
+    <div id="stuntc" class="stuntc">STUNTS FOUND 0/8</div>
     <button id="sresume" class="pbtn" type="button">RESUME</button>
     <small>Your choices are remembered on this device.</small>
   </div>

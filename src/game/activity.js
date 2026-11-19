@@ -200,6 +200,8 @@ export function createActivity(game) {
       if (A.mode === 'sit') { getUp(); return true; }
       if (game.vehicle || game.busy || !player.onGround || (game.swim && game.swim.wet)) return false;
       if (onFloor()) { startDance(false); return true; }
+      const rd = game.roofs && game.roofs.near();
+      if (rd) { game.roofs.down(rd); return true; }
       const vm = !game.inside && game.loose && game.loose.vendNear(player.pos);
       if (vm) { game.places.openVend(vm); return true; }
       const s = candidate();
@@ -229,6 +231,7 @@ export function createActivity(game) {
     fHint() {
       if (game.vehicle || !player.onGround || (game.swim && game.swim.wet)) return null;
       if (onFloor()) return ['F', 'dance'];
+      if (game.roofs && game.roofs.near()) return ['F', 'stairs down'];
       if (!game.inside && game.loose && game.loose.vendNear(player.pos)) return ['F', 'buy'];
       return candidate() ? ['F', 'sit'] : null;
     },

@@ -22,11 +22,13 @@ export function createProps() {
   const P = {
     cols, seats, lines,
     // circle collider (a pole, a trunk, a bin)
-    circle(x, z, r, h = 3) { const o = { c: true, x, z, r, h, s: 0, tag: null, off: false }; cols.push(o); return o; },
+    circle(x, z, r, h = 3, y0) { const o = { c: true, x, z, r, h, s: 0, tag: null, off: false }; if (y0 !== undefined) o.y0 = y0; cols.push(o); return o; },
     // box collider; yaw rounds the box to the nearest quarter turn
-    box(x, z, w, d, h = 1, yaw = 0) {
+    // y0 (optional): the prop's base is up there (rooftop clutter), so nothing at street level bumps into it
+    box(x, z, w, d, h = 1, yaw = 0, y0) {
       if (Math.abs(Math.sin(yaw)) > 0.7) { const t = w; w = d; d = t; }
       const o = { c: false, x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, h, s: 0, tag: null, off: false };
+      if (y0 !== undefined) o.y0 = y0;
       cols.push(o); return o;
     },
     // hook for breakable / special props (lamps, hydrants, palms): onHit(prop, mover) -> 'pass' to ignore the contact
@@ -52,7 +54,7 @@ export function createProps() {
         const a = grid.get(key(i, j));
         if (!a) continue;
         for (const o of a) {
-          if (o.s === stamp || o.off || y > o.h || o.h < minH) continue;
+          if (o.s === stamp || o.off || y > o.h || o.h < minH || (o.y0 !== undefined && y < o.y0 - 0.5)) continue;
           o.s = stamp;
           let nx, nz, pen;
           if (o.c) {

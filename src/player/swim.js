@@ -11,7 +11,7 @@
 // mapping these names, nothing more.
 import { clamp, damp, angleDelta, PI, reducedMotion } from '../core/util.js';
 import { HZ, HX, PIER } from '../world/layout.js';
-import { WL, FLOAT_Y, WADE_MAX, SAFE_D, LIMIT_D, bedAt, depthAt, islandDist, onDeck, pushFromSolids, nearLadder } from '../world/sea.js';
+import { WL, FLOAT_Y, WADE_MAX, SAFE_D, LIMIT_D, bedAt, depthAt, islandDist, onDeck, pushFromSolids, nearLadder, nearestLand } from '../world/sea.js';
 
 const BREATH_S = 24;               // seconds of air
 const HIP = 0.96;                  // hip height above the feet in the model
@@ -221,7 +221,7 @@ export function createSwim(game) {
       const d = islandDist(x, z);
       let pushX = 0, pushZ = 0;
       if (d > SAFE_D) {
-        const over = d - SAFE_D, cx = Math.max(-HX, Math.min(HX, x)), cz = Math.max(-HZ, Math.min(HZ, z));
+        const over = d - SAFE_D, [cx, cz] = nearestLand(x, z);
         let nx = cx - x, nz = cz - z; const nl = Math.hypot(nx, nz) || 1; nx /= nl; nz /= nl;
         const s = Math.min(1.2 + over * 0.12, 6.5);
         pushX = nx * s; pushZ = nz * s; S.current = Math.min(1, over / 12 + 0.25);
@@ -233,7 +233,7 @@ export function createSwim(game) {
       pos.x += P.vel.x * dt; pos.z += P.vel.z * dt;
       pushFromSolids(pos, 0.5, S.sy);
       if (islandDist(pos.x, pos.z) > LIMIT_D) {      // the hard limit: held where the current is strongest
-        const cx = Math.max(-HX, Math.min(HX, pos.x)), cz = Math.max(-HZ, Math.min(HZ, pos.z)), ddx = pos.x - cx, ddz = pos.z - cz, dl = Math.hypot(ddx, ddz) || 1;
+        const [cx, cz] = nearestLand(pos.x, pos.z), ddx = pos.x - cx, ddz = pos.z - cz, dl = Math.hypot(ddx, ddz) || 1;
         pos.x = cx + ddx / dl * LIMIT_D; pos.z = cz + ddz / dl * LIMIT_D;
       }
       S.speedXZ = Math.hypot(P.vel.x, P.vel.z);

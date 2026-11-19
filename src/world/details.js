@@ -4,7 +4,8 @@
 // Gulls and boats move, so they get one draw call each.
 import * as THREE from 'three';
 import { box, cyl, tint, merge, rng, PI, timeU } from '../core/util.js';
-import { PIER, ADS, offRoad, inJunction } from './layout.js';
+import { PIER, ADS, SIDE_X, offRoad, inJunction } from './layout.js';
+import { KEY_ADS } from './key.js';
 
 const INK = '#1d1630', CREAM = '#fbf7f0', STEEL = '#b9bcc8';
 const NEON = ['#ff2bd1', '#18f0ff', '#ffe14a', '#8dff5a', '#ff6a3d', '#b388ff'];
@@ -36,7 +37,7 @@ export function addDetails(L, S, N, glows, addWin, signs) {
     const spot = () => {
       for (let i = 0; i < 8; i++) {
         const x = cx + (r() - 0.5) * (w - 8), z = cz + (r() - 0.5) * (d - 8) - (b.hotel ? 2 : 0);
-        if (Math.hypot(x - (cx + w * 0.18), z - cz) > 3.6) return [x, z];
+        if (Math.hypot(x - (cx + w * 0.18), z - cz) > 3.6 && Math.hypot(x - b.door.x, z - b.door.z) > 3.4) return [x, z];
       }
       return [cx - w * 0.3, cz - d * 0.25];
     };
@@ -45,12 +46,15 @@ export function addDetails(L, S, N, glows, addWin, signs) {
       // a set-back upper tier with its own neon band: breaks up the flat roofline
       const pw = w * 0.5, pd = d * 0.5, px = cx - w * 0.16, ph = 3.2 + Math.floor(r() * 2) * 3.2;
       S.push(box(pw, ph, pd, px, top + ph / 2 - 0.9, cz, b.color), box(pw + 0.6, 0.5, pd + 0.6, px, top + ph - 0.7, cz, b.accent));
+      P.box(px, cz, pw + 0.6, pd + 0.6, top + ph - 0.45, 0, top - 0.2);
+      L.surf.rect(px - pw / 2 - 0.3, px + pw / 2 + 0.3, cz - pd / 2 - 0.3, cz + pd / 2 + 0.3, top + ph - 0.45, 'roof', { b });
       N.push(box(pw + 0.7, 0.12, pd + 0.7, px, top + ph - 0.4, cz, b.neon));
       for (let f = 0; f < ph / 3.2; f++) for (let i = 0; i < Math.floor(pw / 3); i++) addWin(px - pw / 2 + 1.5 + i * 3, top + f * 3.2 + 0.7, cz + pd / 2 + 0.04, 0, 1.8, 1.7, Math.min(0.99, r() * b.litBias));
     } else {
       for (let i = 0, n = 1 + Math.floor(r() * 3); i < n; i++) {
         const [x, z] = spot();
         S.push(box(1.7, 0.9, 1.2, x, top + 0.45, z, '#cfd3da'), cyl(0.42, 0.42, 0.06, 8, x - 0.35, top + 0.93, z, '#4a4d5c'), box(0.5, 0.5, 0.06, x + 0.45, top + 0.5, z + 0.61, '#8a8d9c'));
+        P.box(x, z, 1.7, 1.2, top + 0.9, 0, top);
       }
     }
     const pick = r();
@@ -58,16 +62,28 @@ export function addDetails(L, S, N, glows, addWin, signs) {
       const [x, z] = spot();
       for (const [ox, oz] of [[-0.7, -0.7], [0.7, -0.7], [-0.7, 0.7], [0.7, 0.7]]) S.push(box(0.12, 1.4, 0.12, x + ox, top + 0.7, z + oz, '#5a4a3a'));
       S.push(cyl(1.15, 1.15, 1.9, 10, x, top + 2.35, z, '#a8744e'), tint(new THREE.ConeGeometry(1.3, 0.7, 10).translate(x, top + 3.65, z), '#7a5236'), cyl(1.17, 1.17, 0.1, 10, x, top + 2.1, z, '#4a3626'));
+      P.box(x, z, 1.6, 1.6, top + 4, 0, top);
     } else if (pick < 0.6) {
       const [x, z] = spot(), ah = 3 + r() * 3;
       S.push(box(0.09, ah, 0.09, x, top + ah / 2, z, STEEL), box(1.3, 0.06, 0.06, x, top + ah * 0.8, z, STEEL), box(0.9, 0.06, 0.06, x, top + ah * 0.62, z, STEEL));
+      P.circle(x, z, 0.12, top + ah, top);
       if (b.floors >= 6) glows.push([x, top + ah + 0.15, z, '#ff3040', 2.4, 0.25]);
     } else if (pick < 0.75) {
       const [x, z] = spot();
       S.push(tint(new THREE.SphereGeometry(0.9, 8, 5, 0, PI * 2, 0, PI / 2).rotateX(-0.7).translate(x, top + 1.1, z), '#e8eaf0'), box(0.14, 1.1, 0.14, x, top + 0.55, z, STEEL));
+      P.circle(x, z, 0.6, top + 1.6, top);
     }
-    S.push(box(0.9, 1, 0.9, cx - w / 2 + 2.6, top + 0.5, cz - d / 2 + 2.6, CREAM), cyl(0.2, 0.2, 0.9, 6, cx + w / 2 - 2.6, top + 0.45, cz - d / 2 + 2.6, STEEL));
+    // the stair hut: a roof door down to the street (F), lit by a little lamp over the door
+    const hx = b.door.x, hz = b.door.z;
+    S.push(box(2.2, 2.6, 2.2, hx, top + 1.3, hz, CREAM), box(2.5, 0.2, 2.5, hx, top + 2.7, hz, b.accent), box(1, 2, 0.08, hx, top + 1, hz + 1.12, '#2b2440'), box(0.12, 0.12, 0.08, hx + 0.36, top + 1.05, hz + 1.17, '#ffd166'));
+    N.push(box(0.5, 0.1, 0.1, hx, top + 2.25, hz + 1.17, '#ffe7b0'));
+    P.box(hx, hz, 2.2, 2.2, top + 2.8, 0, top - 0.2);
+    S.push(cyl(0.2, 0.2, 0.9, 6, cx + w / 2 - 2.6, top + 0.45, cz - d / 2 + 2.6, STEEL));
 
+    // the rest of the roof that stands up: the plant room, the hotel tower, a rooftop name sign
+    if (!b.hotel) P.box(cx + w * 0.18, cz, 3, 3, h + 2.1, 0, h + 0.3);
+    else P.box(cx, b.z1 + 0.5, 6, 1.6, h + 9, 0, h);
+    if (b.name && !b.hotel) { const sw = Math.min(w * 0.7, 16); P.box(cx, b.z1 - 0.8, sw + 0.3, 0.5, h + 2 + sw / 4, 0, h + 0.3); }
     if (b.place && !b.bar) placeFront(b);
     if (b.hotel) continue;
 
@@ -117,6 +133,23 @@ export function addDetails(L, S, N, glows, addWin, signs) {
     glows.push([ex, ey, z + 0.5, C, 9, 0.15]);
   }
 
+  // --- wall ads: big painted billboards on the end walls that face the side streets, lit by two lamp arms
+  L.adSigns = L.adSigns || [];
+  let wa = 0;
+  for (const b of L.buildings) {
+    if (b.floors < 4 || b.row > 1) continue;
+    const east = SIDE_X.some((s) => Math.abs(b.x1 - (s - 10)) < 3), west = SIDE_X.some((s) => Math.abs(b.x0 - (s + 10)) < 3);
+    if (!east && !west) continue;
+    const yaw = east ? PI / 2 : -PI / 2, fx = east ? b.x1 + 0.3 : b.x0 - 0.3, w = Math.min(b.d * 0.7, 14), hh = w / 4, y = Math.min(b.h - hh / 2 - 1.2, 9 + hh / 2);
+    const name = KEY_ADS[wa++ % KEY_ADS.length], sx = Math.sin(yaw);
+    S.push(box(0.25, hh + 0.5, w + 0.5, fx - sx * 0.05, y, b.cz, INK));
+    L.adSigns.push({ name, x: fx + sx * 0.1, y, z: b.cz, yaw, w, h: hh });
+    for (const o of [-w * 0.3, w * 0.3]) {
+      S.push(box(1.1, 0.08, 0.08, fx + sx * 0.55, y + hh / 2 + 0.5, b.cz + o, '#3b3350'), box(0.3, 0.14, 0.4, fx + sx * 1.05, y + hh / 2 + 0.45, b.cz + o, '#fff2c8'));
+      glows.push([fx + sx * 1.0, y + hh / 2 + 0.3, b.cz + o, '#ffe7b0', 4, 0]);
+    }
+  }
+
   // --- billboards on stilts where the promenade meets the sand (they face the boulevard)
   [[-152, 6], [118, 7], [248, 5]].forEach(([x, i]) => billboard(ADS[i], x, 6.2, 80.5, PI, 11, NEON[(i + 2) % 6]));
 
@@ -132,7 +165,8 @@ export function addDetails(L, S, N, glows, addWin, signs) {
   for (const p of L.palms) mark(p.x, p.z, 0.45);
   for (const b of L.booths) mark(b.x, b.z, 0.85);
   for (const k in L.places) mark(L.places[k].x, L.places[k].z, 2.4);
-  const spot = (x, z, rr) => { const a = offRoad(x, z, rr); if (!a || inJunction(a[0], a[1], rr) || !free(a[0], a[1], rr)) return null; mark(a[0], a[1], rr); return a; };
+  const runs = L.ramps.filter((k) => k.clear).map((k) => k.clear);
+  const spot = (x, z, rr) => { const a = offRoad(x, z, rr); if (!a || inJunction(a[0], a[1], rr) || !free(a[0], a[1], rr) || runs.some((c) => a[0] > c.x0 - rr && a[0] < c.x1 + rr && a[1] > c.z0 - rr && a[1] < c.z1 + rr)) return null; mark(a[0], a[1], rr); return a; };
   const loose = (kind, x, z, yaw = 0, rr = 0.4, extra = {}) => {
     const a = spot(x, z, rr);
     if (!a) return null;
@@ -240,8 +274,10 @@ export function addDetails(L, S, N, glows, addWin, signs) {
   }
   P.box(-51.35, 102.5, 2.25, 8, 1.3);
   S.push(box(0.14, 2.6, 0.14, -40, 1.3, 97.6, CREAM), box(0.14, 2.6, 0.14, -40, 1.3, 107.4, CREAM), box(0.05, 0.9, 9.8, -40, 2.1, 102.5, '#ffffff'), box(0.07, 0.08, 9.8, -40, 2.56, 102.5, '#ff4fa3'));
+  const inRun = (x, z) => L.ramps.some((k) => k.clear && x > k.clear.x0 - 1 && x < k.clear.x1 + 1 && z > k.clear.z0 - 1 && z < k.clear.z1 + 1);
   for (let i = 0; i < 12; i++) {
     const x = -270 + r() * 540, z = 88 + r() * 30, c = NEON[i % 6];
+    if (inRun(x, z)) continue;
     S.push(box(0.55, 2.3, 0.08, x, 1.05, z, c, 0.22 * (r() - 0.5), r() * 3, 0.1), box(0.1, 2.3, 0.09, x, 1.05, z, CREAM, 0, 0, 0.1));
     P.circle(x, z, 0.3, 2.3);
   }

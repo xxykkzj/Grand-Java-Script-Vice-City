@@ -2,6 +2,7 @@
 // Right-hand traffic. Junction nodes are boxes (hx, hz) whose edges are the stop lines.
 import * as THREE from 'three';
 import { SIDE_X } from './layout.js';
+import { KH, KV, KEY_JUNCTIONS } from './key.js';
 import { box, cyl, merge } from '../core/util.js';
 
 export const CYCLE = 30;
@@ -36,6 +37,22 @@ export function makeRoads() {
     return row;
   });
   for (let i = 1; i <= SIDE_X.length; i++) { link(rows[0][i], rows[1][i], 2, 6); link(rows[1][i], rows[2][i], 2, 6); }
+  // Solano Key: its junctions (all signalled), dead ends, and Halcyon Avenue running over the causeway
+  // into Lumina Boulevard (the boulevard's old west dead end becomes a straight pass-through)
+  const J = new Map();
+  for (const j of KEY_JUNCTIONS) J.set(j.x + ',' + j.z, node(j.x, j.z, 11, j.h.hz, true));
+  const at = (x, z) => J.get(x + ',' + z) || node(x, z, 0, 0, false);
+  for (const h of KH) {
+    const xs = [...new Set([h.x0, ...KV.filter((v) => h.z >= v.z0 && h.z <= v.z1).map((v) => v.x), ...(h.z === 53 ? [] : [h.x1])])].sort((a, b) => a - b);
+    const row = xs.map((x) => at(x, h.z));
+    for (let i = 0; i < row.length - 1; i++) link(row[i], row[i + 1], h.off, h.hw);
+    if (h.z === 53) link(row[row.length - 1], rows[0][0], h.off, h.hw);
+  }
+  for (const v of KV) {
+    const zs = [...new Set([v.z0, ...KH.filter((h) => h.z >= v.z0 && h.z <= v.z1).map((h) => h.z), v.z1])].sort((a, b) => a - b);
+    const col = zs.map((z) => at(v.x, z));
+    for (let i = 0; i < col.length - 1; i++) link(col[i], col[i + 1], 2, 6);
+  }
   return { nodes, edges, lights: nodes.filter((n) => n.light), at: (x, z) => nodes.find((n) => n.x === x && n.z === z) };
 }
 

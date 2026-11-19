@@ -69,13 +69,25 @@ export function createPlayer(scene, L) {
           if (px < PIER.x0 + 1.5) P.vel.x = Math.min(P.vel.x, -3.5); else if (px > PIER.x1 - 1.5) P.vel.x = Math.max(P.vel.x, 3.5); else P.vel.z = Math.max(P.vel.z, 3.5);
         }
       }
-      const g0 = P.groundAt ? P.groundAt(P.pos.x, P.pos.z) : 0;
+      // the ground: a roof, a ramp, a deck or a container top (world/surfaces.js), else the street or the sand shelf
+      const ground = (x, z) => { const s = L.surf.at(x, z, P.pos.y + 0.6); return s > 0 ? s : P.groundAt ? P.groundAt(x, z) : 0; };
+      const g0 = ground(P.pos.x, P.pos.z);
+      const was = P.onGround;
       P.vy -= (P.lowGravity ? 4.2 : 23) * dt;
       P.pos.y += P.vy * dt;
-      if (P.pos.y <= g0) { if (!P.onGround && P.vy < -4) audio.step(1); P.pos.y = g0; P.vy = 0; P.onGround = true; } else P.onGround = false;
+      if (P.pos.y <= g0) {
+        const hit = -P.vy;
+        if (!P.onGround && P.vy < -4) audio.step(1);
+        P.pos.y = g0; P.vy = 0; P.onGround = true;
+        // a long drop hurts (a roof edge, a deck): game/rules.js decides how much, a big one knocks you out
+        if (!was && hit > 13.6 && P.onFall) P.onFall(hit, (P.fallFrom || g0) - g0);
+      } else { if (was) P.fallFrom = P.pos.y; P.onGround = false; P.fallFrom = Math.max(P.fallFrom || 0, P.pos.y); }
+      const ox = P.pos.x, oz = P.pos.z;
       P.pos.x += P.vel.x * dt; P.pos.z += P.vel.z * dt;
-      if (P.groundAt) {          // walking down the sand shelf: stay on it instead of hopping
-        const g1 = P.groundAt(P.pos.x, P.pos.z); P.sy = g1;
+      // a ramp side or a deck is a wall unless it is a step you can take
+      if (L.surf.climb(P.pos.x, P.pos.z) - P.pos.y > 0.75) { P.pos.x = ox; P.pos.z = oz; P.vel.x *= 0.2; P.vel.z *= 0.2; }
+      {          // walking down a slope (the sand shelf, a ramp): stay on it instead of hopping
+        const g1 = ground(P.pos.x, P.pos.z); P.sy = g1;
         if (P.onGround && P.vy <= 0 && P.pos.y > g1 && P.pos.y - g1 < 0.35) P.pos.y = g1;
       }
 
@@ -127,7 +139,7 @@ export function createPlayer(scene, L) {
       m.root.position.copy(P.pos); m.root.rotation.set(0, P.yaw, 0);
       drape();
       shadow.position.set(P.pos.x, P.floor + P.sy + 0.03, P.pos.z);
-      const sk = 1 / (1 + (P.pos.y - P.floor) * 0.35); shadow.scale.set(sk, 1, sk);
+      const sk = 1 / (1 + Math.max(0, P.pos.y - P.floor - P.sy) * 0.35); shadow.scale.set(sk, 1, sk);
     },
     // dancing / sitting: pose the model from a pose object (see actors/moves.js); the legs pivot at the hips
     applyPose(o) {

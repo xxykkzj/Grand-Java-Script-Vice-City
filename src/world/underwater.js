@@ -6,7 +6,7 @@
 // water, so the street view pays nothing. Respects reduced motion (still caustics and shafts).
 import * as THREE from 'three';
 import { box, cyl, tint, merge, rng, clamp, lerp, timeU, nightU, fogU, pointScaleU, reducedMotion, PI } from '../core/util.js';
-import { HX, HZ, PIER } from './layout.js';
+import { HX, HZ, PIER, KEY } from './layout.js';
 import { WL, bedAt, depthAt, islandDist, MOUNDS } from './sea.js';
 
 // ---- shared uniforms for every underwater material
@@ -133,7 +133,7 @@ export function createUnderwater(scene, camera, sky, ocean, env, game) {
 
   // ---------------- the seabed: a grid over every bit of sea within reach, heights from bedAt()
   {
-    const X0 = -HX - 260, X1 = HX + 260, Z0 = -HZ - 260, Z1 = HZ + 262, ST = 8;
+    const X0 = KEY.x0 - 260, X1 = HX + 260, Z0 = -HZ - 260, Z1 = HZ + 262, ST = 8;
     const nx = Math.round((X1 - X0) / ST) + 1, nz = Math.round((Z1 - Z0) / ST) + 1;
     const pos = new Float32Array(nx * nz * 3), colr = new Float32Array(nx * nz * 3), idx = [];
     const c = new THREE.Color(), sand = col('#dcc794'), wet = col('#c9b27c'), rockC = col('#8e8479'), green = col('#76946a'), dark = col('#04101c');
@@ -151,7 +151,7 @@ export function createUnderwater(scene, camera, sky, ocean, env, game) {
     }
     for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) {
       const x = X0 + i * ST, z = Z0 + j * ST;
-      if (Math.abs(x + ST / 2) < HX - 4 && Math.abs(z + ST / 2) < HZ - 4) continue;      // under the island
+      if (islandDist(x + ST / 2, z + ST / 2) < -4) continue;      // under an island
       if (islandDist(x + ST / 2, z + ST / 2) > 268) continue;
       const a = j * nx + i, b = a + 1, d = a + nx, e = d + 1;
       idx.push(a, d, b, b, d, e);

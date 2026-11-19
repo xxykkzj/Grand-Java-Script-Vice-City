@@ -126,7 +126,7 @@ export function createTouch(game) {
       if (v.kind === 'car') return [['Space', 'DRIFT'], ['KeyE', 'EXIT'], ['KeyS', 'BRAKE'], ...wb];
       if (v.kind === 'bike') return [['KeyS', 'BRAKE'], ['KeyE', 'GET OFF'], ...wb];
       if (v.kind === 'tank') return [['KeyF', 'FIRE'], ['KeyE', 'EXIT']];
-      return [['Space', 'UP'], ['KeyC', 'DOWN'], ['KeyE', v.y > 0.6 ? 'LAND' : 'EXIT']];
+      return [['Space', 'UP'], ['KeyC', 'DOWN'], ['KeyE', v.y - (v.floor || 0) > 0.6 ? 'LAND' : 'EXIT']];
     }
     if (game.swim && game.swim.wet) return game.swim.touchButtons();
     if (act.dancing) return [];
@@ -168,6 +168,7 @@ export function createTouch(game) {
     if (on === !settings.hidden) return;
     settings.hidden = !on;
     game.paused = on;
+    if (on && game.stunts) $('stuntc').textContent = `STUNTS FOUND ${game.stunts.found()}/${game.stunts.total}`;
     releaseAll(); input.clearKeys();
     if (on) { audio.suspend(); const b = settings.querySelector('[aria-pressed="true"]'); if (b && !input.touchMode) b.focus(); }
     else if (game.started) audio.resume();
