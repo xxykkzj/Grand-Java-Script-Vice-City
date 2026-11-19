@@ -16,6 +16,9 @@ import { box, merge, unseen, outOfSight, timeU, reducedMotion } from '../core/ut
 import { CAST } from './story.js';
 import { readTime, makeMarker } from './cutscene.js';
 import { zoneName } from '../world/layout.js';
+
+// Street events are switched off for now; set to true to bring the random director back.
+export const EVENTS_ON = false;
 import { disabled, frac } from './damage.js';
 
 const $ = (id) => document.getElementById(id);
@@ -319,7 +322,9 @@ export function createEvents(game, scene) {
     state() { return E ? { type: E.type, phase: E.phase, t: +E.t.toFixed(1), reward: E.reward, carHp: E.car ? Math.round(E.car.hp) : null, copChase: !!(E.cop && E.cop.ai && E.cop.ai.chase), target: api.target() } : { type: null, next: +next.toFixed(1), last: stats.last }; },
     update(dt) {
       if (!E) {
-        if (canStart()) { next -= dt; if (next <= 0) { if (!api.start()) next = 10; } }
+        // Random street events are offline for now (too buggy); flip EVENTS_ON to bring them back.
+        // debug.event(type) can still start one for testing.
+        if (EVENTS_ON && canStart()) { next -= dt; if (next <= 0) { if (!api.start()) next = 10; } }
         return;
       }
       // a story job, a knock-out or a bust ends the event quietly
