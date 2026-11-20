@@ -1,4 +1,4 @@
-// Beach wildlife: crabs, sandpipers on the waterline, pelicans on the pier posts, a friendly dog and
+// Beach wildlife: crabs, sandpipers on the waterline, pelicans on the pier posts, a friendly dog (pat it: F) and
 // sea turtles at dusk. One InstancedMesh per species (five draw calls, all hidden when the camera is
 // far from the beach); legs, wings, flippers and the dog's tail move in the vertex shader from a
 // per-instance "action" attribute, so the CPU only writes a matrix and three numbers per animal.
@@ -34,7 +34,9 @@ function speciesMaterial(o) {
         transformed.x = side * (uRoot + rx * cos(flap));
         transformed.y = position.y + rx * sin(flap);
       } else if (aPart > 2.5) {
-        transformed.x += sin(uTime * (8.0 + aAct.y * 10.0) + aAct.x) * 0.1 * clamp(-position.z - 0.25, 0.0, 1.0) * 3.0;
+        // the dog's tail: faster with its trot, and a happy blur while it sits for a pat (wag > 1.5)
+        float happy = step(1.5, aAct.z);
+        transformed.x += sin(uTime * (8.0 + aAct.y * 10.0 + happy * 14.0) + aAct.x) * (0.1 + happy * 0.04) * clamp(-position.z - 0.25, 0.0, 1.0) * 3.0;
       }`);
   };
   return m;
@@ -95,6 +97,12 @@ export function createAnimals(scene, game) {
   const pelM = makeMesh(scene, pelGeo, speciesMaterial({ root: 0.18, flap: 7, leg: 10, legAmp: 0.04, legTop: 0.3 }), PELICANS);
   const dogM = makeMesh(scene, dogGeo, speciesMaterial({ leg: 13, legAmp: 0.14, legTop: 0.34 }), 1);
   const turM = makeMesh(scene, turtleGeo, speciesMaterial({ root: 0.3, flap: 2.5 }), TURTLES);
+  // little hearts over the dog after a pat: one tiny instanced mesh, only drawn while they float
+  const HEARTS = 6, heartGeo = merge([box(0.13, 0.13, 0.04, 0, 0, 0, '#ff4f9a', 0, 0, PI / 4), box(0.1, 0.1, 0.045, -0.05, 0.05, 0, '#ff4f9a'), box(0.1, 0.1, 0.045, 0.05, 0.05, 0, '#ff4f9a')]);
+  const heartM = new THREE.InstancedMesh(heartGeo, new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }), HEARTS);
+  heartM.frustumCulled = false; heartM.visible = false; heartM.count = HEARTS;
+  scene.add(heartM);
+  const hearts = [...Array(HEARTS)].map(() => ({ t: 0, x: 0, y: 0, z: 0, vx: 0, vz: 0 }));
 
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(0, 0, 0, 'YXZ'), V = new THREE.Vector3(), S = new THREE.Vector3();
   const put = (mesh, i, x, y, z, yaw, s = 1, pitch = 0, roll = 0) => mesh.setMatrixAt(i, M.compose(V.set(x, y, z), Q.setFromEuler(E.set(pitch, yaw, roll)), S.set(s, s, s)));
@@ -245,11 +253,30 @@ export function createAnimals(scene, game) {
   }
 
   // ---- the beach dog
-  const dogA = { x: -30, z: 96, yaw: 0, st: 'wander', t: 2, tx: -30, tz: 96, sp: 0, cool: 3, ph: 0, wag: 0.3 };
+  const dogA = { x: -30, z: 96, yaw: 0, st: 'wander', t: 2, tx: -30, tz: 96, sp: 0, cool: 3, ph: 0, wag: 0.3, patCd: 0, pats: 0 };
+  // can the courier pat the dog right now? (on foot, close, the dog not running off, not just patted)
+  function canPat(pos) {
+    const D = dogA;
+    if (game.vehicle || game.inside || game.busy || (game.player && game.player.hidden) || D.patCd > 0) return false;
+    if (D.st === 'flee' || D.st === 'shelter' || D.st === 'sit') return false;
+    return Math.abs(pos.y) < 0.6 && Math.hypot(pos.x - D.x, pos.z - D.z) < 3.0;
+  }
+  function pat(pos) {
+    if (!canPat(pos)) return null;
+    const D = dogA;
+    D.st = 'sit'; D.t = 1.9; D.patCd = 3.5; D.pats++; D.sp = 0; D.tx = D.x; D.tz = D.z;
+    D.yaw = Math.atan2(pos.x - D.x, pos.z - D.z);
+    if (audio.happyBark) audio.happyBark();
+    for (let i = 0; i < HEARTS; i++) {
+      const h = hearts[i], a = (i / HEARTS) * PI * 2;
+      Object.assign(h, { t: 1.4 + i * 0.12, x: D.x + Math.cos(a) * 0.15, y: 0.9 + i * 0.05, z: D.z + Math.sin(a) * 0.15, vx: Math.cos(a) * 0.25, vz: Math.sin(a) * 0.25, d: i * 0.12 });
+    }
+    return D;
+  }
   function dogStep(dt, rain) {
     const D = dogA, f = game.focus(), onFoot = !game.vehicle && !game.inside && !game.busy && !(game.player && game.player.hidden);
     const dp = Math.hypot(f.x - D.x, f.z - D.z);
-    D.t -= dt; D.cool -= dt;
+    D.t -= dt; D.cool -= dt; D.patCd -= dt;
     let want = 0;
     if (nearest(D.x, D.z, 7, false) && game.vehicle && Math.hypot(game.vehicle.vx || 0, game.vehicle.vz || 0) > 4 && D.st !== 'flee') {
       D.st = 'flee'; D.t = 1.6; const d = threat.d || 1; D.tx = D.x + (D.x - threat.x) / d * 14; D.tz = D.z + (D.z - threat.z) / d * 14;
@@ -276,6 +303,11 @@ export function createAnimals(scene, game) {
         if (!D.going) { D.going = true; D.cool = rnd(35, 60); D.tx = clamp(D.x + rnd(-90, 90), BEACH.x0 + 20, BEACH.x1 - 20); D.tz = rnd(90, 136); D.t = 25; }
         want = 3; D.wag = 0.3;
         if (Math.hypot(D.tx - D.x, D.tz - D.z) < 1.5 || D.t <= 0) { D.st = 'wander'; D.t = rnd(2, 5); D.going = false; }
+        break;
+      case 'sit':
+        // sits for the pat, tail going, then tags along for longer than usual
+        want = 0; D.wag = 2;
+        if (D.t <= 0) { D.st = 'follow'; D.t = rnd(40, 55); D.going = false; }
         break;
       case 'flee':
         want = 7.5; D.wag = 0;
@@ -322,7 +354,8 @@ export function createAnimals(scene, game) {
   let acc = 0, frame = 0, nearBeach = true;
   const stats = { crabs: 0, birds: 0, pelicans: PELICANS, turtles: 0, dog: dogA };
   const api = {
-    crabs, birds, pelicans: pels, dog: dogA, turtles: turts, stats,
+    crabs, birds, pelicans: pels, dog: dogA, turtles: turts, stats, canPat, pat,
+    get hearts() { return hearts.filter((h) => h.t > 0).length; },
     update(dt) {
       frame++;
       const cam = game.camera.position;
@@ -336,8 +369,19 @@ export function createAnimals(scene, game) {
       const t = timeU.value, h = env.tod, night = env.isNight(), rain = env.w.rain > 0.3, dusk = h > 18.2 && h < 21.4;
       // the dog: one more lap of the frame budget
       dogStep(step, rain);
-      put(dogM, 0, dogA.x, 0, dogA.z, dogA.yaw, 1.1);
-      act(dogM, 0, 0, clamp(dogA.sp / 4, 0, 1.6), dogA.wag);
+      if (dogA.st === 'sit') { put(dogM, 0, dogA.x, -0.1, dogA.z, dogA.yaw, 1.1, -0.5); act(dogM, 0, 0, 0, dogA.wag); }
+      else { put(dogM, 0, dogA.x, 0, dogA.z, dogA.yaw, 1.1); act(dogM, 0, 0, clamp(dogA.sp / 4, 0, 1.6), dogA.wag); }
+      // the hearts drift up, wobble and shrink away
+      let hv = 0;
+      for (let i = 0; i < HEARTS; i++) {
+        const h = hearts[i];
+        if (h.t <= 0) { hide(heartM, i); continue; }
+        h.t -= step; if (h.d > 0) { h.d -= step; hide(heartM, i); hv++; continue; }
+        h.y += step * 0.7; h.x += h.vx * step; h.z += h.vz * step;
+        const sc = clamp(h.t * 1.6, 0, 1) * (1 + Math.sin(t * 9 + i) * 0.12);
+        if (sc > 0) { put(heartM, i, h.x + Math.sin(t * 4 + i) * 0.06, h.y, h.z, Math.atan2(cam.x - h.x, cam.z - h.z), sc); hv++; } else hide(heartM, i);
+      }
+      heartM.visible = near && hv > 0; if (hv) heartM.instanceMatrix.needsUpdate = true;
       // crabs: more of them out at night
       const outN = night ? CRABS : rain ? 14 : 11;
       let nc = 0;

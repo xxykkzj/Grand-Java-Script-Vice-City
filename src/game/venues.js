@@ -4,9 +4,11 @@
 //   motel   the safehouse: sleep to morning / golden hour, which saves your cash and the clock
 //   mall    Kiki's pretzel cart, and a coin in the wishing fountain
 //   bait    Cap'n Rudy's counter: a snorkel vest (more breath under water), tackle trivia, taffy
+//   lounge  the Blue Pelican: Birdie's drinks (a little health), the jukebox / stage skip the record
+//           (audio/music.js streams them), a now-playing card with title, artist and licence
 // Menus reuse the shop panel (game/places.js asks menu(kind) for a provider).
 import { clamp, rng, PI, reducedMotion, angleDelta } from '../core/util.js';
-import { CAST, BARKS, DINER_MENU, DINER_SIT, JUKEBOX, MOTEL_MENU, MOTEL_WAKE, PRETZELS, WISHES, BAIT_MENU, TRIVIA, TRIVIA_RIGHT, TRIVIA_WRONG } from './story.js';
+import { CAST, BARKS, DINER_MENU, DINER_SIT, JUKEBOX, MOTEL_MENU, MOTEL_WAKE, PRETZELS, WISHES, BAIT_MENU, TRIVIA, TRIVIA_RIGHT, TRIVIA_WRONG, LOUNGE_MENU } from './story.js';
 import { OY } from './interiors.js';
 
 const $ = (id) => document.getElementById(id);
@@ -40,6 +42,11 @@ export function createVenues(game) {
       title: "KIKI'S KNOTS", label: 'BUY',
       items: () => PRETZELS.filter((o) => o.id !== 'wish'), greet: () => say('mall', n++),
       pick: (o) => feed(o, 'KIKI SAYS SAVE ROOM FOR DESSERT. THIS IS DESSERT.'),
+    },
+    lounge: {
+      title: 'THE BLUE PELICAN · BAR', label: 'ORDER',
+      items: () => LOUNGE_MENU, greet: () => say('lounge', n++),
+      pick: (o) => feed(o, 'BIRDIE PUTS IT ON ICE FOR LATER.'),
     },
     bait: {
       get title() { return trivia ? 'TACKLE TRIVIA' : 'STARBOARD BAIT & TACKLE'; },
@@ -181,6 +188,24 @@ export function createVenues(game) {
   function closeArcade() { if (A.mode === 'play') { A.mode = 'over'; stats.lastScore = Math.floor(A.score); if (stats.lastScore > best()) { save.arcade = stats.lastScore; game.persist(); } } A.mode = 'attract'; box.hidden = true; game.busy = null; }
   const arcFoot = () => { foot.textContent = game.input.touchMode ? '◀ ▶ steer · PLAY again · QUIT' : '← → / A D steer · Enter play again · Esc quit'; };
 
+  // ---- the Blue Pelican's now-playing card ------------------------------------------------------------
+  const np = $('nowplay'), music = game.music;
+  let npT = 0;
+  const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function nowPlaying(hold = 8) {
+    if (!np || !music) return;
+    const t = music.current(), S = music.state;
+    if (t) {
+      np.innerHTML = `<b>♪ NOW PLAYING</b><i>${esc(t.title)}</i><span>${esc(t.artist || 'Unknown artist')}</span><small>${esc(t.licence)}${t.genre ? ' · ' + esc(t.genre) : ''}</small>`;
+      np.classList.remove('synth');
+    } else {
+      np.innerHTML = `<b>♪ HOUSE SYNTH</b><i>The band is on a break</i><small>${esc(S.note || 'Loading the record crate…')}</small>`;
+      np.classList.add('synth');
+    }
+    np.hidden = false; npT = hold;
+  }
+  if (music) music.onChange = () => { if (game.inside && game.inside.key === 'lounge') nowPlaying(); };
+
   // ---- the API -------------------------------------------------------------------------------------
   const api = {
     stats, arcade: A, canvas: cv,
@@ -189,7 +214,12 @@ export function createVenues(game) {
     closeMenu: () => game.places.closeShop(),
     // the arcade cabinet's screen in the room shows the same canvas
     screen(tex) { screenTex = tex; },
-    entered(p) { sitSeen = null; if (p.key === 'arcade') { A.mode = 'attract'; } },
+    entered(p) {
+      sitSeen = null; if (p.key === 'arcade') { A.mode = 'attract'; }
+      if (p.key === 'lounge' && music) music.load().then(() => { if (game.inside === p) nowPlaying(9); });
+    },
+    nowPlaying,
+    get cardShown() { return !!np && !np.hidden; },
     // E at a use spot: true when handled here
     use(p, u) {
       const k = u.kind || p.key;
@@ -207,6 +237,12 @@ export function createVenues(game) {
         return true;
       }
       if (k === 'arcade') { openArcade(); return true; }
+      if (k === 'records') {
+        stats.songs++;
+        if (music && music.skip()) { audio.blip(true); nowPlaying(); }
+        else { audio.blip(false); hud.toast('NO RECORDS IN THE CRATE', 'THE HOUSE SYNTH KEEPS PLAYING'); nowPlaying(); }
+        return true;
+      }
       if (MENUS[k]) { game.places.openShop(k); return true; }
       return false;
     },
@@ -230,6 +266,7 @@ export function createVenues(game) {
     // every frame while inside a venue (idle animation of the attract screen, diner counter flavour)
     tick(dt) {
       const p = game.inside;
+      if (np && !np.hidden) { npT -= dt; if (npT <= 0 || !p || p.key !== 'lounge') np.hidden = true; }
       if (!p || !p.venue) return;
       if (p.key === 'arcade' && game.busy !== 'arcade') { A.t += dt; screenT -= dt; if (screenT <= 0) { screenT = 0.12; draw(); blit(); } }
       if (p.key === 'diner' && game.act.mode === 'sit' && game.act.seat && sitSeen !== game.act.seat.ref) { sitSeen = game.act.seat.ref; hud.toast(game.act.seat.kind === 'stool' ? 'AT THE COUNTER' : 'IN A BOOTH', pickOf(DINER_SIT, stats.meals + (game.act.seat.kind === 'stool' ? 0 : 1)) + (game.input.touchMode ? '' : ' · E AT THE COUNTER TO ORDER')); }

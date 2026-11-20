@@ -20,6 +20,7 @@ import { createPlayer } from './player/player.js';
 import { createFollowCamera } from './player/camera.js';
 import { createCockpit } from './player/cockpit.js';
 import { createAudio } from './audio/audio.js';
+import { createMusic } from './audio/music.js';
 import { createHud } from './ui/hud.js';
 import { createTouch, coarse } from './ui/touch.js';
 import { createCheats } from './cheats/cheats.js';
@@ -120,6 +121,7 @@ async function boot() {
   { const set = city.setLights; city.setLights = (n, l, g) => { set(n, l, g); keyCity.setLights(n, l, g); ads.setLights(n); }; }
   await progress(0.62, 'PARKING THE CARS…');
   const audio = createAudio();
+  const music = createMusic(audio);
   const fx = createFx(scene);
   const vehicles = createVehicles(scene, L, fx, audio);
   await progress(0.76, 'LACING UP THE SKATES…');
@@ -145,7 +147,7 @@ async function boot() {
 
   game = {
     mode: 'foot', paused: false, vehicle: null, started: false,
-    input, hud, audio, env, vehicles, player, L, cam, camera, renderer, scene, fx, R, grid, wanted: 0, busy: null, districts, adaptive, bloom, motes, quality,
+    input, hud, audio, music, env, vehicles, player, L, cam, camera, renderer, scene, fx, R, grid, wanted: 0, busy: null, districts, adaptive, bloom, motes, quality,
     focus: () => (game.vehicle ? game.vehicle : player.pos),
     heading: () => (game.vehicle ? game.vehicle.yaw : player.yaw),
   };
@@ -298,6 +300,8 @@ async function boot() {
     useAt: (i = 0) => { const r = game.inside && game.inside.room; if (!r) return null; const u = (r.uses || [r.use])[i]; player.pos.set(r.ox + u.x, player.floor, r.oz + u.z); places.use(); return game.busy; },
     choose: (i) => places.choose(i),
     exitRoom: () => places.exit(),
+    // the Blue Pelican's record player and its now-playing card
+    music: () => { const S = music.state, el = document.getElementById('nowplay'); return { status: S.status, tracks: S.tracks.length, note: S.note, playing: S.playing, level: +S.level.toFixed(2), rec: +music.rec.toFixed(2), skips: S.skips, room: sound.room, card: el && !el.hidden ? el.textContent : null }; },
     venueKeys: () => [...Object.keys(L.places), ...Object.keys(L.venues)],
     evtGo: (off = 0.6) => { const t = events.target(); if (!t) return null; const v = game.vehicle; if (v) { v.x = t.x + off; v.z = t.z; v.vx = v.vz = 0; } else player.pos.set(t.x + off, 0, t.z); return t; },
   };
@@ -387,7 +391,7 @@ async function boot() {
   }
   function frame(now) {
     raf = requestAnimationFrame(frame);
-    if (game.paused) { last = now; draw(); input.endFrame(); return; }
+    if (game.paused) { last = now; music.update(0, true, true); draw(); input.endFrame(); return; }
     adaptive.tick(now - last);
     const raw = Math.min(Math.max((now - last) / 1000, 0), 0.5);
     last = now;
@@ -507,7 +511,9 @@ async function boot() {
     sound.skate = !v && player.onGround && !player.swimming && !cut.active && !act.mode ? Math.min(player.speed / 13.5, 1) : 0;
     sound.rotor = vehicles.heli ? vehicles.heli.spool * (v === vehicles.heli ? 1 : 0.35) : 0;
     sound.rain = env.rainAmt; sound.siren = game.siren || 0; sound.duck = cut.active;
-    sound.room = !game.inside ? 0 : game.inside.key === 'club' ? 2 : 1;
+    sound.room = !game.inside ? 0 : game.inside.key === 'club' ? 2 : game.inside.key === 'lounge' ? 3 : 1;
+    music.update(dt, !!game.inside && game.inside.key === 'lounge' && game.busy !== 'door', game.paused);
+    sound.rec = music.rec;
     sound.club = game.inside && game.inside.key === 'club' ? game.inside.room.level.music : 1;
     sound.lounge = game.inside && game.inside.room.inLounge && game.inside.room.inLounge(player.pos.x - game.inside.room.ox) ? 1 : 0;
     sound.hum = game.inside ? 0 : loose.sound.hum; sound.spray = game.inside ? 0 : loose.sound.spray;
@@ -537,7 +543,7 @@ async function boot() {
   raf = requestAnimationFrame(frame);
 
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { cancelAnimationFrame(raf); raf = 0; audio.suspend(); input.clearKeys(); }
+    if (document.hidden) { cancelAnimationFrame(raf); raf = 0; audio.suspend(); music.update(0, true, true); input.clearKeys(); }
     else if (!raf) { last = performance.now(); adaptive.reset(); raf = requestAnimationFrame(frame); if (game.started && !game.paused) audio.resume(); }
   });
 
@@ -559,7 +565,7 @@ async function boot() {
     input.enabled = true;
     go.blur();
   };
-  title.addEventListener('click', (e) => { if (!e.target.closest('#ctlpick')) start(); });
+  title.addEventListener('click', (e) => { if (!e.target.closest('#ctlpick,#tlinks')) start(); });
   go.focus({ preventScroll: true });
 }
 

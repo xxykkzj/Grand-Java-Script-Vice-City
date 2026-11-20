@@ -79,6 +79,11 @@ export const LAMP_GAIN = 1.7;
 // canvases cover; streaks: the old town's boulevard lamps make reflections (their positions are a formula).
 export function groundMaterial(tex, lampTex, x0, z0, W, H, streaks) {
   const mat = new THREE.MeshLambertMaterial({ map: tex });
+  // The rectangle and the streaks are baked into the shader text, so each ground needs its own program.
+  // Without this key three.js shares one program between grounds (the cache key defaults to the source of
+  // onBeforeCompile, identical for both), and Solano Key sampled its lamp map with the old town's
+  // rectangle: its street-light pools never showed and its roads went black at night.
+  mat.customProgramCacheKey = () => `ground:${x0},${z0},${W},${H},${streaks ? 1 : 0}`;
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, { uWet: wetU, uRain: rainU, uNight: nightU, uTime: timeU, uSkyC: reflU.sky, uSunC: reflU.sun, uSunD: reflU.dir, uLampMap: { value: lampTex } });
     sh.vertexShader = 'varying vec3 vWP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vWP = (modelMatrix * vec4(position, 1.0)).xyz;');

@@ -1,5 +1,6 @@
 // All sound is synthesised with Web Audio: a looping synthwave track (bass arpeggio,
-// pad, pluck arp, drum machine) plus engine, rotor, skates, rain and explosions.
+// pad, pluck arp, drum machine) plus engine, rotor, skates, rain and explosions. The one exception is the
+// Blue Pelican Lounge, which streams recorded tracks from assets/music (audio/music.js) through recordBus().
 import { BPM } from '../core/util.js';
 const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
 const STEP = 60 / BPM / 4;
@@ -92,6 +93,12 @@ export function createAudio() {
       return (song - (nextT - ctx.currentTime + lat) / STEP) / 4;
     },
     setMuted(m) { A.muted = m; if (ctx) master.gain.setTargetAtTime(m ? 0 : 0.85, ctx.currentTime, 0.03); },
+    // a bus for recorded music (audio/music.js): it goes through the master gain, so M mutes it too
+    recordBus() {
+      if (!ctx) return null;
+      if (!A._rec) { A._rec = ctx.createGain(); A._rec.gain.value = 0.9; A._rec.connect(master); }
+      return { ctx, out: A._rec };
+    },
     toggleMute() { A.setMuted(!A.muted); return A.muted; },
     suspend() { if (ctx) ctx.suspend(); },
     resume() { if (ctx) ctx.resume(); },
@@ -120,9 +127,13 @@ export function createAudio() {
       // room: 0 street, 1 a shop or the bar (radio in the corner), 2 Club Prism (loud)
       // Club Prism: s.club scales the system (quiet before the flyers go out, louder at the Dance-Off),
       // s.lounge is 1 in the booth lounge, where the music is softer and duller
-      const ck = s.club || 1, lg = s.lounge || 0;
-      music.gain.setTargetAtTime(s.room === 2 ? (s.duck ? 0.5 : 1.05) * ck * (1 - lg * 0.4) : s.duck ? 0.3 : s.room === 1 ? 0.42 : 0.55, t, 0.3);
-      mfilt.frequency.setTargetAtTime(s.room === 1 ? 1500 : s.room === 2 ? 16000 - lg * 13000 - (1 - Math.min(ck, 1)) * 9000 : 16000, t, 0.25);
+      // room 3: the Blue Pelican Lounge. Its recorded tracks (s.rec, 0..1 as they fade in) take over from the
+      // synth; with no records the house synth plays there, a little softer and warmer than on the street
+      const ck = s.club || 1, lg = s.lounge || 0, rec = s.rec || 0;
+      const mg = s.room === 2 ? (s.duck ? 0.5 : 1.05) * ck * (1 - lg * 0.4) : s.duck ? 0.3 : s.room === 1 ? 0.42 : s.room === 3 ? 0.46 : 0.55;
+      music.gain.setTargetAtTime(mg * (1 - rec), t, 0.3);
+      mfilt.frequency.setTargetAtTime(s.room === 1 ? 1500 : s.room === 3 ? 5200 : s.room === 2 ? 16000 - lg * 13000 - (1 - Math.min(ck, 1)) * 9000 : 16000, t, 0.25);
+      if (A._rec) A._rec.gain.setTargetAtTime(s.duck ? 0.5 : 0.9, t, 0.3);
     },
     club: false,
     // ---- the sea: a splash, a stroke, wading steps, bubbles, the shark's tense sting and its chomp (all synthesised)
@@ -158,6 +169,8 @@ export function createAudio() {
     // beach life, kept quiet: a gull's cry, a sandpiper's peep, the dog's woof
     gull(vol = 1) { if (vol <= 0) return; tone('sawtooth', 1450, 820, 0.22, 0.018 * vol); tone('sawtooth', 1650, 900, 0.26, 0.015 * vol, 0.28); },
     peep(vol = 1) { if (vol <= 0) return; tone('sine', 3200, 2600, 0.05, 0.02 * vol); tone('sine', 3300, 2700, 0.05, 0.018 * vol, 0.08); },
+    // a pat: two short, bright, rising yips
+    happyBark(vol = 1) { tone('square', 330, 520, 0.07, 0.045 * vol); tone('triangle', 420, 700, 0.08, 0.06 * vol, 0.02); tone('square', 380, 620, 0.07, 0.04 * vol, 0.16); tone('triangle', 480, 820, 0.09, 0.055 * vol, 0.18); },
     woof(vol = 1) { if (vol <= 0) return; tone('square', 240, 130, 0.08, 0.04 * vol); tone('triangle', 300, 150, 0.1, 0.06 * vol, 0.12); },
     horn(vol = 1) { if (vol <= 0) return; tone('square', 392, 392, 0.32, 0.05 * vol); tone('square', 494, 494, 0.32, 0.05 * vol); },
     // dancing on the beat: a bright tick for a hit (brighter when perfect), a dull one for a miss

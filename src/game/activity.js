@@ -1,4 +1,4 @@
-// Things the courier does standing still: sitting down (benches, loungers, stools, sofas, the seawall,
+// Things the courier does standing still: patting the beach dog, sitting down (benches, loungers, stools, sofas, the seawall,
 // the pier, the sand...) and dancing on the Club Prism floor, with a light rhythm game on top:
 // hit a move key on the beat to build a combo and the vibe meter, the floor flares, the crowd cheers
 // and copies you, and a hot streak earns tips.
@@ -83,6 +83,33 @@ export function createActivity(game) {
     audio.step(0.6);
   }
   function getUp() { if (A.mode === 'sit' && dir >= 0) { dir = -1; audio.step(0.5); } }
+  // ---- patting the beach dog: a short crouch, a few pats, back up (actors/animals.js does the dog's side)
+  let patT = 0;
+  const PAT_T = 1.6;
+  function pat() {
+    const d = game.animals && game.animals.pat(player.pos);
+    if (!d) return false;
+    A.mode = 'pat'; patT = 0;
+    from = { x: player.pos.x, z: player.pos.z, yaw: player.yaw };
+    A.patYaw = Math.atan2(d.x - player.pos.x, d.z - player.pos.z);
+    player.vel.set(0, 0, 0); player.speed = 0;
+    return true;
+  }
+  function patUpdate(dt, ctl) {
+    patT += dt;
+    if (patT > 0.5 && (ctl.move || ctl.strafe)) patT = Math.max(patT, PAT_T - 0.2);
+    player.yaw += angleDelta(player.yaw, A.patYaw) * (1 - Math.exp(-10 * dt));
+    player.pos.y = player.floor;
+    // down in 0.35 s, pat pat pat, up in 0.3 s
+    const e = ease(Math.min(patT / 0.35, (PAT_T - patT) / 0.3, 1)), t = patT;
+    copyPose(stand, cur);
+    cur.y = -0.42 * e; cur.rx = 0.42 * e; cur.hx = 0.25 * e;
+    cur.lL[0] = -1.25 * e; cur.lR[0] = -0.35 * e; cur.lR[1] = -0.08 * e;
+    cur.aR[0] = -1.05 * e + (reducedMotion ? 0 : Math.max(0, Math.sin(t * 15)) * 0.32 * e); cur.aR[2] = -0.1;
+    cur.aL[0] = -0.35 * e; cur.aL[2] = 0.25 * e;
+    player.applyPose(cur);
+    if (patT >= PAT_T) { A.mode = null; player.resetPose(); }
+  }
   function endSit() {
     if (A.seat && A.seat.ref && A.seat.ref.taken === 'player') A.seat.ref.taken = null;
     A.mode = null; A.seat = null; player.resetPose();
@@ -193,17 +220,19 @@ export function createActivity(game) {
   }
 
   Object.assign(A, {
-    candidate, onFloor, sit, getUp, startDance, stopDance, press,
+    candidate, onFloor, sit, getUp, startDance, stopDance, press, pat,
     // F: dance on the floor, sit by a seat, stop dancing, get up
     toggle() {
       if (A.mode === 'dance') { stopDance(); return true; }
       if (A.mode === 'sit') { getUp(); return true; }
+      if (A.mode === 'pat') return true;
       if (game.vehicle || game.busy || !player.onGround || (game.swim && game.swim.wet)) return false;
       if (onFloor()) { startDance(false); return true; }
       const rd = game.roofs && game.roofs.near();
       if (rd) { game.roofs.down(rd); return true; }
       const vm = !game.inside && game.loose && game.loose.vendNear(player.pos);
       if (vm) { game.places.openVend(vm); return true; }
+      if (!game.inside && game.animals && game.animals.canPat(player.pos) && pat()) return true;
       const s = candidate();
       if (s) { sit(s); return true; }
       return false;
@@ -211,6 +240,7 @@ export function createActivity(game) {
     // movement keys and E get you up; WASD stops the dance (the arrows pick moves while dancing)
     update(dt, ctl, input) {
       if (A.mode === 'sit') sitUpdate(dt, ctl);
+      else if (A.mode === 'pat') patUpdate(dt, ctl);
       else if (A.mode === 'dance') {
         if (input && input.isDown('KeyW', 'KeyA', 'KeyS', 'KeyD')) { stopDance(); return; }
         danceUpdate(dt);
@@ -219,12 +249,14 @@ export function createActivity(game) {
     // drop everything at once (scene cuts, leaving a room, a new job step)
     reset() {
       if (A.mode === 'dance') stopDance();
+      if (A.mode === 'pat') { A.mode = null; player.resetPose(); }
       if (A.mode === 'sit') { const s = A.seat; endSit(); player.pos.set(from.x, player.floor, from.z); if (s) player.yaw = from.yaw; }
       A.contest = false; A.rival = null;
     },
     hint() {
       if (A.mode === 'dance') return [['1-8', 'moves on the beat'], ['← →', 'next / previous move'], ['↑ ↓', 'repeat move'], ['F / WASD', 'stop dancing']];
       if (A.mode === 'sit') return [['F / E / WASD', 'get up']];
+      if (A.mode === 'pat') return [['♥', 'good dog!']];
       return null;
     },
     // extra hint while walking about: is F useful here?
@@ -233,6 +265,7 @@ export function createActivity(game) {
       if (onFloor()) return ['F', 'dance'];
       if (game.roofs && game.roofs.near()) return ['F', 'stairs down'];
       if (!game.inside && game.loose && game.loose.vendNear(player.pos)) return ['F', 'buy'];
+      if (!game.inside && game.animals && game.animals.canPat(player.pos)) return ['F', 'pat'];
       return candidate() ? ['F', 'sit'] : null;
     },
   });

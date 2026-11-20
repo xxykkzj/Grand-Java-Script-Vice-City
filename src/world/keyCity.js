@@ -122,14 +122,35 @@ function keyLampMap(K) {
     for (const l of K.lamps) pool(l.x - KEY.x0 + Math.sin(l.yaw) * 1.2, l.z - KEY.z0 + Math.cos(l.yaw) * 1.2, 10, 0.85);
     const st = K.stadium;
     pool(st.cx - KEY.x0, st.cz - KEY.z0, 60, 0.75, '230,240,255');
-    for (const b of K.buildings) if (b.style !== 'warehouse') pool(b.cx - KEY.x0, (b.door ? b.door.out.z : b.z1 + 2) - KEY.z0, 7, 0.3, '255,214,160');
+    // lit shopfronts and windows spill warm light over the pavement in front of each street face
+    for (const b of K.buildings) {
+      if (b.style === 'warehouse') continue;
+      const o = b.door ? b.door.out : { x: b.cx, z: b.z1 + 2.4, yaw: 0 }, sx = Math.sin(o.yaw), sz = Math.cos(o.yaw);
+      const fw = Math.abs(sx) > 0.5 ? b.d : b.w, fx = o.x - sx * 2.4 - KEY.x0, fz = o.z - sz * 2.4 - KEY.z0;
+      g.save(); g.translate(fx, fz); g.rotate(-o.yaw);
+      const sp = g.createLinearGradient(0, 0, 0, 6);
+      sp.addColorStop(0, 'rgba(255,214,160,0.5)'); sp.addColorStop(1, 'rgba(255,214,160,0)');
+      g.fillStyle = sp; g.fillRect(-fw * 0.38, 0, fw * 0.76, 6);
+      g.restore();
+      pool(o.x - KEY.x0, o.z - KEY.z0, 7, 0.32, '255,214,160');
+    }
     // the big neon signs throw a pool of their own colour (High quality)
     if (quality.high) for (const n of neon) pool(n.x - KEY.x0, n.z - KEY.z0, n.r, n.a, n.rgb);
     tex.needsUpdate = true;
+    data = null;
   };
+  let data = null;
   paint();
   // once the key's glow sprites are all placed: which of them are neon; and again when the quality changes
-  return { tex, repaint: paint, setNeon(list) { neon = list; paint(); } };
+  return {
+    tex, repaint: paint, setNeon(list) { neon = list; paint(); },
+    // the lamp-light term (0..1+) the ground gets at (x, z) at full night, for checks
+    sample(x, z) {
+      if (!data) data = g.getImageData(0, 0, W, H).data;
+      const i = (Math.floor(Math.min(H - 1, Math.max(0, z - KEY.z0))) * W + Math.floor(Math.min(W - 1, Math.max(0, x - KEY.x0)))) * 4;
+      return (data[i] + data[i + 1] + data[i + 2]) / 765;
+    },
+  };
 }
 
 // ---------------------------------------------------------------- the key

@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bakeModels } from './tools/bake-models.mjs';
+import { writeMusicCredits } from './tools/build-music-credits.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const PLACEHOLDER = '/*%%BUNDLE%%*/';
@@ -73,4 +74,5 @@ if (watch) {
   console.log('watching src/ — open dist/index.html and refresh after each rebuild');
 } else {
   emit(await esbuild.build(options));
+  if (writeMusicCredits()) console.log('README: music credits updated from assets/music/manifest.json');
 }

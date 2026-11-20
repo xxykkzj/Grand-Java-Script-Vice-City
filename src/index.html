@@ -128,6 +128,17 @@ kbd{font:700 calc(11 * var(--u)) var(--mono);color:var(--ink);background:var(--c
   border-top:2px solid var(--cyan);border-bottom:2px solid var(--cyan);background:rgba(10,5,24,.55);
   opacity:0;transition:opacity .25s,transform .25s}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(-6px)}
+/* the Blue Pelican Lounge's now-playing card (game/venues.js): title, artist, licence */
+#nowplay{position:absolute;left:50%;bottom:calc(96 * var(--u) + var(--sab));transform:translateX(-50%);width:max-content;max-width:min(88vw,calc(420 * var(--u)));
+  padding:calc(10 * var(--u)) calc(18 * var(--u));text-align:center;background:rgba(14,18,48,.78);border:1px solid rgba(79,141,255,.7);border-left:4px solid #ffcf7a;
+  border-radius:calc(6 * var(--u));box-shadow:0 0 18px rgba(79,141,255,.35);animation:npIn .35s ease-out}
+#nowplay b{display:block;font:800 calc(10 * var(--u)) var(--mono);letter-spacing:.3em;color:#ffcf7a}
+#nowplay i{display:block;margin-top:3px;font:italic 800 calc(17 * var(--u)) var(--disp);color:#fff;letter-spacing:.04em}
+#nowplay span{display:block;font:600 calc(12 * var(--u)) var(--mono);color:#9fd0ff;letter-spacing:.08em}
+#nowplay small{display:block;margin-top:4px;font:400 calc(10 * var(--u)) var(--mono);color:rgba(255,246,236,.7);letter-spacing:.06em}
+#nowplay.synth{border-color:rgba(255,255,255,.3)}
+@keyframes npIn{from{opacity:0;transform:translate(-50%,8px)}}
+@media (prefers-reduced-motion:reduce){#nowplay{animation:none}}
 #airtime{position:absolute;left:50%;top:26%;transform:translate(-50%,0) skewX(-8deg) scale(.6);opacity:0;text-align:center;padding:calc(12 * var(--u)) calc(26 * var(--u));
   background:linear-gradient(180deg,rgba(42,11,90,.85),rgba(10,5,24,.85));border:2px solid var(--sun);box-shadow:0 0 24px rgba(255,63,180,.55);transition:opacity .3s,transform .3s cubic-bezier(.2,1.6,.4,1)}
 #airtime.on{opacity:1;transform:translate(-50%,0) skewX(-8deg) scale(1)}
@@ -276,7 +287,7 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
 
 /* ---------- title card ---------- */
 #title{position:fixed;inset:0;z-index:9;display:flex;text-align:center;cursor:pointer;overflow-y:auto;touch-action:pan-y;
-  padding:var(--sat) var(--sar) var(--sab) var(--sal);
+  padding:var(--sat) var(--sar) calc(var(--sab) + 46px) var(--sal);
   background:radial-gradient(120% 90% at 50% 100%,rgba(255,96,60,.35),rgba(64,14,92,.55) 45%,rgba(10,5,24,.9));
   transition:opacity .6s}
 #title.out{opacity:0;pointer-events:none}
@@ -295,8 +306,11 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
 #status{margin:12px 0 0;font-size:11px;letter-spacing:.24em;color:rgba(255,246,236,.75);min-height:1.2em}
 #ctlpick{margin:clamp(12px,3.4vmin,26px) auto 0;max-width:460px;cursor:default}
 #ctlpick p{margin:0 0 8px;font-size:10px;letter-spacing:.34em;color:var(--cyan)}
-#go{margin:clamp(12px,3.6vmin,28px) 0 0;min-height:56px;font:800 clamp(17px,3vmin,22px) var(--disp);letter-spacing:.3em;color:#fff;background:none;border:2px solid var(--pink);padding:12px 26px 12px 32px;cursor:pointer;
+#startgrp{display:flex;flex-direction:column;align-items:center}
+#go{display:block;margin:clamp(12px,3.6vmin,28px) auto 0;min-height:56px;font:800 clamp(17px,3vmin,22px) var(--disp);letter-spacing:.3em;color:#fff;background:none;border:2px solid var(--pink);padding:12px 26px 12px 32px;cursor:pointer;
   text-shadow:0 0 10px var(--pink);box-shadow:0 0 18px rgba(255,63,180,.5),inset 0 0 14px rgba(255,63,180,.3);animation:pulse 1.6s ease-in-out infinite}
+#go[hidden]{display:none}
+@media (max-height:520px){#title #keys,#title #tkeys{display:none}#bar{margin-top:14px}}
 #go:focus-visible{outline:2px solid var(--cyan);outline-offset:4px}
 #keys,#tkeys{margin:clamp(12px,3.4vmin,26px) auto 0;font-size:clamp(10px,1.6vmin,11px);line-height:2.1;letter-spacing:.08em;color:rgba(255,246,236,.85);max-width:640px}
 @keyframes pulse{50%{box-shadow:0 0 30px rgba(255,63,180,.9),inset 0 0 20px rgba(255,63,180,.5)}}
@@ -334,6 +348,7 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
   </div>
   <div id="perf" class="chip" hidden></div>
   <div id="toast" role="status" aria-live="polite"></div>
+  <div id="nowplay" role="status" aria-live="polite" hidden></div>
   <div id="airtime" hidden role="status" aria-live="polite"><b>AIRTIME!</b><em id="airn"></em><dl><dt>DISTANCE</dt><dd id="aird"></dd><dt>HEIGHT</dt><dd id="airh"></dd><dt>FLIPS</dt><dd id="airf"></dd></dl><strong id="airc"></strong><small id="airs"></small></div>
   <div id="xhair" hidden></div>
   <div id="getout" hidden role="alert">GET OUT!</div>
@@ -398,10 +413,10 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
     <p class="sub">SKATE · DRIVE · DELIVER</p>
     <div id="bar"><i></i></div>
     <p id="status">WARMING UP THE NEON…</p>
-    <div id="ctlpick" hidden><p>CONTROLS</p><div class="pick" role="group" aria-label="Controls"><button type="button" data-mode="keys" aria-pressed="false">KEYBOARD &amp; MOUSE</button><button type="button" data-mode="touch" aria-pressed="false">TOUCH CONTROLS</button></div></div>
-    <button id="go" type="button" hidden>CLICK TO START</button>
-    <button id="whyBtn" type="button">WHY 3D ON THE WEB?</button>
-    <a id="deckBtn" href="https://xxykkzj.github.io/Grand-Java-Script-Vice-City/deck/">VIEW THE SLIDE DECK</a>
+    <div id="startgrp">
+      <div id="ctlpick" hidden><p>CONTROLS</p><div class="pick" role="group" aria-label="Controls"><button type="button" data-mode="keys" aria-pressed="false">KEYBOARD &amp; MOUSE</button><button type="button" data-mode="touch" aria-pressed="false">TOUCH CONTROLS</button></div></div>
+      <button id="go" type="button" hidden>CLICK TO START</button>
+    </div>
     <p id="tkeys" class="tonly" hidden>
       <b>Left thumb</b>: stick to skate, drive and steer (push it all the way to sprint) &nbsp;·&nbsp; <b>right side</b>: swipe to look<br>
       Buttons on the right change with what you are doing: jump, <kbd>E</kbd> enter / use, <kbd>F</kbd> sit / dance, drift, fire, up / down<br>
@@ -413,6 +428,10 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
       <kbd>~</kbd> / <kbd>T</kbd> cheat console &nbsp; <kbd>N</kbd> time of day &nbsp; <kbd>[</kbd> <kbd>]</kbd> time speed &nbsp; <kbd>M</kbd> mute &nbsp; <kbd>P</kbd> perf panel &nbsp; <kbd>K</kbd> cinematic camera
     </p>
   </div>
+  <nav id="tlinks" aria-label="About this demo">
+    <button id="whyBtn" type="button">WHY 3D ON THE WEB?</button>
+    <a id="deckBtn" href="https://xxykkzj.github.io/Grand-Java-Script-Vice-City/deck/">VIEW THE SLIDE DECK</a>
+  </nav>
 </div>
 
 <div id="nogl" hidden>
@@ -459,8 +478,12 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
   </div>
 </div>
 <style>
-#whyBtn{margin-top:10px;background:transparent;border:1px solid rgba(255,255,255,.35);color:#eaf6ff;font:600 13px/1 system-ui,sans-serif;letter-spacing:.12em;padding:10px 16px;border-radius:999px;cursor:pointer}
-#deckBtn{display:inline-block;margin:10px 0 0 8px;background:transparent;border:1px solid rgba(255,255,255,.35);color:#eaf6ff;font:600 13px/1 system-ui,sans-serif;letter-spacing:.12em;padding:10px 16px;border-radius:999px;text-decoration:none}
+/* the two talk links sit in a quiet row pinned to the bottom of the title screen, outside the card, so they
+   never push CLICK TO START off centre; the title keeps room for them at the bottom */
+#tlinks{position:fixed;left:0;right:0;bottom:calc(var(--sab, 0px) + 10px);display:flex;justify-content:center;gap:8px;flex-wrap:wrap;pointer-events:none;z-index:1}
+#tlinks>*{pointer-events:auto}
+#title.out #tlinks{pointer-events:none}
+#whyBtn,#deckBtn{display:inline-block;margin:0;background:rgba(10,5,24,.35);border:1px solid rgba(255,255,255,.22);color:rgba(234,246,255,.72);font:600 10px/1 system-ui,sans-serif;letter-spacing:.12em;padding:7px 12px;border-radius:999px;cursor:pointer;text-decoration:none}
 #deckBtn:hover,#deckBtn:focus-visible{border-color:#ff4fae;color:#ff4fae;outline:none}
 #whyBtn:hover,#whyBtn:focus-visible{border-color:#2ff3ff;color:#2ff3ff;outline:none}
 #whySlide{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:16px;background:rgba(8,6,20,.82);backdrop-filter:blur(6px)}

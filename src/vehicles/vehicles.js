@@ -106,20 +106,42 @@ export function createVehicles(scene, L, fx, audio) {
   const kitGid = {};
   for (const id of kitIds) kitGid[id] = kitMesh.addGeometry(kitGeo[id]);
   kitMesh.sortObjects = false;
+  // The object-level frustum test uses BatchedMesh.boundingSphere, which three.js computes ONCE (on the
+  // first render, when every instance still sat at the origin) and never refreshes when instances move.
+  // With it left on, the whole batch was culled whenever that stale sphere (radius ~3 m round the world
+  // origin) was off screen, so taxis, vans and trucks blinked out and back in as the camera turned
+  // ("see-through" cars: only their shadow, lights and driver left). Per-instance culling below still
+  // uses each vehicle's own, up-to-date sphere, so nothing is drawn off screen.
+  kitMesh.frustumCulled = false;
+  kitMesh.perObjectFrustumCulled = true;
   scene.add(kitMesh);
   const v4 = new THREE.Vector4();
-  // headlight pools on the road: one additive instanced quad per car, faded in by the night uniform
-  const poolGeo = new THREE.PlaneGeometry(5.5, 10); poolGeo.rotateX(-PI / 2); poolGeo.translate(0, 0.06, 7.2);
+  // headlight pools on the road: one additive instanced quad per car (traffic, kit vehicles, patrol, the
+  // Comets and yours), faded in by the night uniform. The instance colour's red channel is the strength:
+  // your own car throws a longer, brighter beam than the traffic. One draw call on Low and High alike.
+  const poolGeo = new THREE.PlaneGeometry(6, 14); poolGeo.rotateX(-PI / 2); poolGeo.translate(0, 0.06, 9);
   const pools = new THREE.InstancedMesh(poolGeo, new THREE.ShaderMaterial({
     uniforms: { uNight: nightU, uWet: wetU }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
-    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0); }',
-    fragmentShader: `uniform float uNight, uWet; varying vec2 vUv;
+    vertexShader: `varying vec2 vUv; varying float vK;
+      void main(){
+        vUv = uv;
+        #ifdef USE_INSTANCING_COLOR
+          vK = instanceColor.r;
+        #else
+          vK = 1.0;
+        #endif
+        gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: `uniform float uNight, uWet; varying vec2 vUv; varying float vK;
       void main(){
         float far = 1.0 - vUv.y, w = abs(vUv.x - 0.5) * 2.0;
-        float a = pow(1.0 - far, 1.4) * smoothstep(1.0, 0.15, w / (0.3 + far * 0.7)) * smoothstep(0.0, 0.06, far);
-        gl_FragColor = vec4(vec3(1.0, 0.92, 0.72) * a * uNight * (0.34 + uWet * 0.3), 1.0);
+        // two lamps: a bright hot spot a few metres ahead fading into a wide, soft throw
+        float a = pow(1.0 - far, 1.15) * smoothstep(1.0, 0.1, w / (0.28 + far * 0.72)) * smoothstep(0.0, 0.05, far);
+        a += 0.6 * exp(-pow((far - 0.2) * 5.0, 2.0)) * smoothstep(0.75, 0.0, w);
+        gl_FragColor = vec4(vec3(1.0, 0.9, 0.7) * a * uNight * (0.5 + uWet * 0.3) * vK, 1.0);
       }`,
   }), CAP);
+  for (let i = 0; i < CAP; i++) pools.setColorAt(i, new THREE.Color(1, 1, 1));
   pools.frustumCulled = false; pools.renderOrder = 2;
   scene.add(pools);
   const shGeo = new THREE.PlaneGeometry(2.7, 5.2); shGeo.rotateX(-PI / 2);
@@ -597,6 +619,7 @@ export function createVehicles(scene, L, fx, audio) {
           const lit = (c.driven || !!c.ai) && !c.wreck;
           if (lit && c.y - (c.gy || 0) < 0.5) m4.compose(p3.set(c.x, c.gy || 0, c.z), q, s3.set(0.6, 1, 0.8)); else m4.makeScale(0, 0, 0);
           pools.setMatrixAt(c.idx, m4); s3.set(1, 1, 1);
+          pools.setColorAt(c.idx, col.setScalar(c.driven ? 0.7 : 0.5));
           if (c.sink) { m4.makeScale(0, 0, 0); shadows.setMatrixAt(c.idx, m4); pools.setMatrixAt(c.idx, m4); for (let k = 0; k < 5; k++) glow.hide(g + k); continue; }
           const brk = c.driven ? inp.throttle < 0 : !!c.ai && c.ai.braking;
           glow.set(g, c.x - fx_ * 1.3, y + 0.16, c.z - fz * 1.3, '#ff1830', brk ? 2.4 : lit ? 1.5 : 0.9, brk ? 1 : lit ? 0.3 : 0);
@@ -624,8 +647,9 @@ export function createVehicles(scene, L, fx, audio) {
         q.setFromEuler(e);
         m4.compose(p3.set(c.x, gy + 0.03, c.z), q, s3.set(sk, 1, sk));
         shadows.setMatrixAt(c.idx, m4); s3.set(1, 1, 1);
-        if (on && c.y - gy < 0.5) m4.compose(p3.set(c.x, gy, c.z), q, s3); else m4.makeScale(0, 0, 0);
-        pools.setMatrixAt(c.idx, m4);
+        if (on && c.y - gy < 0.5) m4.compose(p3.set(c.x, gy, c.z), q, c.driven ? s3.set(1.15, 1, 1.35) : s3); else m4.makeScale(0, 0, 0);
+        pools.setMatrixAt(c.idx, m4); s3.set(1, 1, 1);
+        pools.setColorAt(c.idx, col.setScalar(c.driven ? 0.8 : 0.55));
         const braking = c.driven ? inp.throttle < 0 : !!c.ai && c.ai.braking;
         const ts = braking ? 2.6 : on ? 1.7 : 1.1, tb = braking ? 1 : on ? 0.3 : 0;
         glow.set(g, c.x - fx_ * 2.25 + fz * 0.62, y, c.z - fz * 2.25 - fx_ * 0.62, '#ff1830', ts, tb);
@@ -635,7 +659,7 @@ export function createVehicles(scene, L, fx, audio) {
         if (burning) glow.set(g + 4, c.x + fx_ * 1.5, c.y + 1.3, c.z + fz * 1.5, '#ff8a3d', 6 + Math.random() * 2.5, 0.7);
         else if (neon) glow.set(g + 4, c.x, c.y + 0.5, c.z, HOT_PINK, 9, 0.35); else glow.hide(g + 4);
       }
-      glass.count = pools.count = cars.length;
+      glass.count = pools.count = cars.length; pools.instanceColor.needsUpdate = true;
       kit.count = nk; kit.instanceMatrix.needsUpdate = true; kit.instanceColor.needsUpdate = true; bikeMesh.instanceMatrix.needsUpdate = true; pools.instanceMatrix.needsUpdate = true;
       dentCar.needsUpdate = true; dentBike.needsUpdate = true;
       carMesh.instanceMatrix.needsUpdate = true; shadows.instanceMatrix.needsUpdate = true;

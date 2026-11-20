@@ -1,5 +1,6 @@
 // The venue interiors (what you do in them is game/venues.js): the Sunset Strip Diner, the Seahorse
-// Arcade, room 7 at the Moonlite Motor Inn, the Seafoam Galleria atrium and Starboard Bait & Tackle,
+// Arcade, room 7 at the Moonlite Motor Inn, the Seafoam Galleria atrium, Starboard Bait & Tackle and the
+// Blue Pelican Lounge,
 // plus their residents in the same refined-block style as the story cast (actors/blocky.js).
 // Rooms are authored around (0, 0, 0) with the door on +z, like game/interiors.js.
 import * as THREE from 'three';
@@ -63,6 +64,20 @@ export const VENUE_LOOKS = {
       P.head.push(K.B(0.33, 0.1, 0.31, 0, 0.38, 0, '#f6f1e7', 'weave'), K.B(0.335, 0.04, 0.315, 0, 0.33, 0, BLK), K.B(0.26, 0.025, 0.15, 0, 0.315, 0.2, BLK),
         K.B(0.07, 0.05, 0.012, 0, 0.36, 0.158, GOLD), K.B(0.32, 0.18, 0.07, 0, 0.21, -0.125, '#d8d8d8', 'hair'), K.B(0.03, 0.12, 0.14, 0.155, 0.24, -0.06, '#d8d8d8', 'hair'),
         K.B(0.03, 0.12, 0.14, -0.155, 0.24, -0.06, '#d8d8d8', 'hair'), K.B(0.025, 0.025, 0.12, 0.07, 0.06, 0.19, '#c9a66a'), K.C(0.03, 0.03, 0.06, 8, 0.07, 0.09, 0.25, '#c9a66a'));
+    } },
+  // Birdie: the Blue Pelican's host and bartender. A tan cowboy hat over a silver bob, a teal waistcoat on a
+  // white shirt, a turquoise bolo tie, a dark skirt and red boots
+  BIRDIE: { skin: '#b07850', top: '#f6f1e7', topPat: 'weave', legs: '#2a2440', sleeve: '#f6f1e7', cuff: '#f6f1e7', shoe: '#c0303a', shin: '#c0303a', belt: '#5a3a20',
+    wear(K, P) {
+      const V = '#1f8a8a', HAT = '#c89a5a', HR = '#d8d8e0';
+      P.body.push(K.B(0.17, 0.42, 0.02, 0.11, 1.2, 0.137, V, 'knit'), K.B(0.17, 0.42, 0.02, -0.11, 1.2, 0.137, V, 'knit'), K.B(0.44, 0.42, 0.25, 0, 1.2, -0.005, V, 'knit'),
+        K.B(0.02, 0.2, 0.012, 0, 1.36, 0.14, '#22203a'), K.B(0.06, 0.06, 0.014, 0, 1.44, 0.142, '#3ad6c8'), K.B(0.025, 0.025, 0.012, 0.1, 1.22, 0.145, GOLD),
+        K.B(0.025, 0.025, 0.012, 0.1, 1.1, 0.145, GOLD), K.B(0.46, 0.18, 0.28, 0, 0.88, 0, '#2a2440', 'denim'), K.B(0.5, 0.18, 0.3, 0, 0.72, 0, '#2a2440', 'denim'));
+      P.head.push(K.B(0.34, 0.2, 0.32, 0, 0.3, -0.01, HR, 'hair'), K.B(0.04, 0.2, 0.22, 0.165, 0.22, -0.02, HR, 'hair'), K.B(0.04, 0.2, 0.22, -0.165, 0.22, -0.02, HR, 'hair'),
+        K.B(0.33, 0.22, 0.07, 0, 0.2, -0.13, HR, 'hair'),
+        K.B(0.56, 0.035, 0.5, 0, 0.4, 0, HAT, 'leather'), K.B(0.1, 0.03, 0.5, 0.27, 0.43, 0, HAT, 'leather', { rz: 0.5 }), K.B(0.1, 0.03, 0.5, -0.27, 0.43, 0, HAT, 'leather', { rz: -0.5 }),
+        K.B(0.3, 0.16, 0.28, 0, 0.5, -0.01, HAT, 'leather'), K.B(0.31, 0.04, 0.29, 0, 0.44, -0.01, '#5a3a20'), K.B(0.08, 0.03, 0.29, 0, 0.585, -0.01, shadeHex(HAT, 0.8)));
+      P.arms((sx) => [K.B(0.136, 0.04, 0.146, 0, -0.235, 0, '#ffffff', 'rib')]);
     } },
 };
 
@@ -596,4 +611,173 @@ function buildBait(room) {
   });
 }
 
-export const VENUE_BUILD = { diner: buildDiner, arcade: buildArcade, motel: buildMotel, mall: buildMall, bait: buildBait };
+
+// ---- The Blue Pelican Lounge: a small jazz and country bar under Tidewater Records ----------------------------
+// A low stage with the band's instruments (upright piano, upright bass, a drum kit, a guitar on its stand, a
+// mic), Birdie's bar on the right, booths along the left wall, café tables, warm pendant light, a blue neon
+// pelican. The music is recorded tracks streamed from assets/music (audio/music.js), or the house synth.
+function buildLounge(room) {
+  const g = [], B = room.boards = boards(1024), HX = 7, HZ = 5, H = 3.8, pools = room.pools, hi = room.hiPools;
+  const WOOD = '#6a3a22', DARKW = '#3a2016', BRASS = '#d8a84a', VEL = '#1c2a6a', RED = '#9a2234';
+  shell(g, HX, HZ, H, '#5a3424', '#4a2a1c', ['#1f2a4a', '#24305a', '#22304e'], '#191a2e', '#4f8dff');
+  // dark wood wainscot with a brass rail, deep blue walls above, a pressed-tin ceiling border
+  g.push(box(14, 1.0, 0.04, 0, 0.5, -4.97, DARKW), box(0.04, 1.0, 10, -6.97, 0.5, 0, DARKW), box(0.04, 1.0, 10, 6.97, 0.5, 0, DARKW),
+    box(6.1, 1.0, 0.04, -3.95, 0.5, 4.97, DARKW), box(6.1, 1.0, 0.04, 3.95, 0.5, 4.97, DARKW),
+    box(14, 0.05, 0.06, 0, 1.02, -4.95, BRASS), box(0.06, 0.05, 10, -6.95, 1.02, 0, BRASS), box(0.06, 0.05, 10, 6.95, 1.02, 0, BRASS),
+    box(14, 0.18, 0.05, 0, H - 0.12, -4.96, '#3a3a5a'), box(0.05, 0.18, 10, -6.96, H - 0.12, 0, '#3a3a5a'), box(0.05, 0.18, 10, 6.96, H - 0.12, 0, '#3a3a5a'));
+  rug(g, 4.4, 3.0, 0, 1.2, '#7a2a30', '#9a3a3a', '#d8a84a', 'diamonds');
+
+  // ---- the stage: a low wooden riser along the back-left, a velvet curtain behind, footlights on the edge
+  const SX = -4.0, SZ = -3.65, SW = 5.6, SD = 2.6, SY = 0.34;
+  g.push(box(SW, SY, SD, SX, SY / 2, SZ, WOOD), box(SW + 0.04, 0.04, SD + 0.04, SX, SY, SZ, '#8a5232'), box(SW, 0.06, 0.05, SX, SY - 0.03, SZ + SD / 2 + 0.01, BRASS));
+  for (let x = SX - SW / 2 + 0.3; x < SX + SW / 2; x += 0.55) g.push(box(0.012, 0.012, SD - 0.1, x, SY + 0.006, SZ, '#4a2616'));
+  B.add(SW, H - 0.5, SX, (H - 0.5) / 2 + SY * 0.5, -4.93, 0, (c, W, Hh) => {
+    P.grad(c, W, Hh, '#101848', '#2a3a8a');
+    for (let x = 0; x < W; x += W / 22) { const gr = c.createLinearGradient(x, 0, x + W / 22, 0); gr.addColorStop(0, 'rgba(0,0,0,.35)'); gr.addColorStop(0.5, 'rgba(120,150,255,.18)'); gr.addColorStop(1, 'rgba(0,0,0,.35)'); c.fillStyle = gr; c.fillRect(x, 0, W / 22, Hh); }
+    c.fillStyle = '#fff3c4'; c.beginPath(); c.arc(W * 0.72, Hh * 0.28, Hh * 0.1, 0, 6.3); c.fill();
+    c.fillStyle = '#101848'; c.beginPath(); c.arc(W * 0.75, Hh * 0.26, Hh * 0.09, 0, 6.3); c.fill();
+    P.text(c, 'LIVE · NIGHTLY', W * 0.32, Hh * 0.2, Hh * 0.07, '#ffd166', { italic: true, glow: 8 });
+    c.fillStyle = '#d8a84a'; c.fillRect(0, 0, W, Hh * 0.05); for (let x = 0; x < W; x += W / 30) { c.beginPath(); c.arc(x + W / 60, Hh * 0.05, W / 60, 0, PI); c.fill(); }
+  }, 90);
+  // upright piano (stage left) with its bench, facing the room side-on
+  g.push(box(0.62, 1.32, 1.6, -6.45, SY + 0.66, -3.7, '#2a1812'), box(0.66, 0.05, 1.64, -6.45, SY + 1.34, -3.7, '#3a2418'), box(0.3, 0.06, 1.46, -6.0, SY + 0.76, -3.7, '#f6f1e7'));
+  for (let i = 0; i < 10; i++) g.push(box(0.16, 0.04, 0.05, -6.06, SY + 0.8, -4.33 + i * 0.145, '#1b1410'));
+  g.push(box(0.04, 0.5, 1.4, -6.12, SY + 1.1, -3.7, '#3a2418'), box(0.36, 0.3, 0.9, -5.55, SY + 0.32, -3.7, '#2a1812'), box(0.38, 0.06, 0.92, -5.55, SY + 0.49, -3.7, RED));
+  g.push(cyl(0.05, 0.05, 0.12, 8, -6.3, SY + 1.42, -3.2, BRASS), cyl(0.12, 0.08, 0.1, 8, -6.3, SY + 1.52, -3.2, '#e8d8a8'));
+  // upright bass on its stand
+  const bx = -4.9, bz = -4.25;
+  g.push(box(0.5, 0.62, 0.22, bx, SY + 0.55, bz, '#a0582a'), box(0.38, 0.4, 0.22, bx, SY + 1.02, bz, '#a0582a'), box(0.24, 0.1, 0.23, bx, SY + 0.8, bz, '#8a4a22'),
+    box(0.07, 0.95, 0.07, bx, SY + 1.62, bz + 0.04, '#1b1410'), box(0.1, 0.16, 0.1, bx, SY + 2.15, bz + 0.03, '#5a3016'), box(0.02, 1.3, 0.01, bx - 0.03, SY + 1.25, bz + 0.12, '#e8e0c8'), box(0.02, 1.3, 0.01, bx + 0.03, SY + 1.25, bz + 0.12, '#e8e0c8'),
+    cyl(0.015, 0.015, 0.3, 4, bx, SY + 0.1, bz, '#c9c0d8'));
+  // drum kit: kick, snare, two toms, floor tom, hi-hat and a ride, a throne
+  const dx = -2.6, dz = -4.15;
+  g.push(cyl(0.32, 0.32, 0.36, 14, dx, SY + 0.33, dz + 0.2, '#f6f1e7', PI / 2), cyl(0.3, 0.3, 0.37, 14, dx, SY + 0.33, dz + 0.2, '#2a5aa8', PI / 2));
+  B.add(0.42, 0.42, dx, SY + 0.33, dz + 0.39, 0, (c, W, Hh) => { c.clearRect(0, 0, W, Hh); c.fillStyle = '#f6f1e7'; c.beginPath(); c.arc(W / 2, Hh / 2, W * 0.48, 0, 6.3); c.fill(); P.text(c, 'LOW', W / 2, Hh * 0.38, Hh * 0.2, '#2a5aa8', { italic: true }); P.text(c, 'TIDES', W / 2, Hh * 0.62, Hh * 0.2, '#c0303a', { italic: true }); });
+  for (const [x, y, z, r, h] of [[dx - 0.45, 0.62, dz + 0.45, 0.17, 0.14], [dx - 0.17, 0.78, dz + 0.05, 0.14, 0.16], [dx + 0.17, 0.78, dz + 0.05, 0.15, 0.17], [dx + 0.5, 0.5, dz + 0.4, 0.2, 0.36]]) {
+    g.push(cyl(r, r, h, 12, x, SY + y, z, '#2a5aa8'), cyl(r * 0.98, r * 0.98, 0.012, 12, x, SY + y + h / 2 + 0.006, z, '#f6f1e7'));
+    if (y > 0.55) g.push(cyl(0.01, 0.01, y, 4, x, SY + y / 2, z - 0.05, '#c9c0d8'));
+  }
+  for (const [x, z, y, r] of [[dx - 0.75, dz + 0.3, 0.95, 0.18], [dx + 0.75, dz - 0.05, 1.25, 0.26], [dx - 0.35, dz - 0.3, 1.3, 0.22]]) g.push(cyl(0.012, 0.012, y, 4, x, SY + y / 2, z, '#c9c0d8'), cyl(r, r * 0.9, 0.015, 14, x, SY + y, z, BRASS));
+  g.push(cyl(0.18, 0.15, 0.08, 10, dx, SY + 0.5, dz - 0.45, RED), cyl(0.03, 0.05, 0.45, 6, dx, SY + 0.24, dz - 0.45, '#c9c0d8'));
+  // a sunburst guitar on a stand, the mic at the front, a little valve amp, set lists taped to the floor
+  const gx = -3.95, gz = -3.05;
+  g.push(box(0.38, 0.46, 0.09, gx, SY + 0.42, gz, '#e09a3a'), box(0.3, 0.3, 0.095, gx, SY + 0.76, gz, '#e09a3a'), box(0.2, 0.2, 0.1, gx, SY + 0.48, gz, '#7a2a10'),
+    cyl(0.06, 0.06, 0.1, 10, gx, SY + 0.58, gz + 0.01, '#1b1410', PI / 2), box(0.06, 0.62, 0.05, gx, SY + 1.22, gz, '#5a3016'), box(0.1, 0.16, 0.05, gx, SY + 1.6, gz, '#3a2016'),
+    box(0.3, 0.05, 0.25, gx, SY + 0.04, gz - 0.05, '#2a2a34'), box(0.03, 0.4, 0.03, gx, SY + 0.22, gz - 0.12, '#2a2a34'));
+  g.push(cyl(0.012, 0.012, 1.45, 4, -4.3, SY + 0.72, -2.65, '#c9c0d8'), cyl(0.14, 0.16, 0.03, 10, -4.3, SY + 0.02, -2.65, '#2a2a34'), box(0.012, 0.012, 0.3, -4.3, SY + 1.45, -2.52, '#c9c0d8', -0.5),
+    cyl(0.035, 0.03, 0.12, 8, -4.3, SY + 1.5, -2.38, '#d8d8e0', PI / 2 - 0.5));
+  g.push(box(0.55, 0.42, 0.3, -1.75, SY + 0.21, -4.55, '#c8945e'), box(0.47, 0.26, 0.02, -1.75, SY + 0.24, -4.39, '#3a2a1a'), box(0.04, 0.04, 0.01, -1.6, SY + 0.39, -4.39, '#ff3f5a'));
+  for (const [x, z] of [[-4.0, -2.75], [-2.4, -3.0]]) g.push(box(0.21, 0.004, 0.3, x, SY + 0.008, z, '#f6f1e7', 0, 0.2));
+  // stage truss with four warm cans, and the footlights (their glow is the pulser below)
+  g.push(box(SW, 0.12, 0.12, SX, H - 0.5, SZ + 0.9, '#2a2a34'), box(SW, 0.12, 0.12, SX, H - 0.5, SZ - 0.4, '#2a2a34'));
+  for (const x of [-6.0, -4.6, -3.2, -1.8]) g.push(cyl(0.12, 0.16, 0.34, 8, x, H - 0.78, SZ + 0.9, '#1b1830', 0.5), cyl(0.12, 0.12, 0.02, 8, x, H - 0.94, SZ + 1.0, '#fff0c0', 0.5));
+  const neon = [];
+  for (let x = SX - SW / 2 + 0.4; x < SX + SW / 2 - 0.2; x += 0.5) neon.push(box(0.16, 0.06, 0.06, x, SY + 0.04, SZ + SD / 2 + 0.03, '#ffcf7a'));
+  // the blue neon pelican and the name over the bar's back wall
+  const NP = (x0, y0, x1, y1, z = -4.94) => neon.push(box(Math.abs(x1 - x0) + 0.06, Math.abs(y1 - y0) + 0.06, 0.05, (x0 + x1) / 2, (y0 + y1) / 2, z, '#4fa8ff'));
+  const px = 4.5, py = 2.95;
+  NP(px - 0.6, py, px + 0.2, py); NP(px - 0.6, py - 0.3, px + 0.1, py - 0.3); NP(px - 0.6, py - 0.3, px - 0.6, py); NP(px + 0.2, py, px + 0.2, py + 0.45);
+  NP(px + 0.2, py + 0.45, px + 0.55, py + 0.45); NP(px + 0.55, py + 0.3, px + 0.9, py + 0.3); NP(px + 0.4, py + 0.37, px + 0.85, py + 0.25); NP(px - 0.2, py - 0.3, px - 0.2, py - 0.6); NP(px - 0.4, py - 0.3, px - 0.4, py - 0.6);
+  const glowM = pulser(neon, 'pulse', 13);
+  room.extras.push(glowM);
+  B.add(3.4, 0.55, 4.5, 2.25, -4.93, 0, (c, W, Hh) => { c.clearRect(0, 0, W, Hh); P.text(c, 'THE BLUE PELICAN', W / 2, Hh * 0.5, Hh * 0.62, '#9fd0ff', { italic: true, glow: 14, max: W * 0.96 }); });
+
+  // ---- Birdie's bar: a dark wood counter with a brass foot rail, the back bar with bottles and a mirror
+  g.push(box(4.4, 1.05, 0.8, 4.55, 0.525, -2.55, WOOD), box(4.6, 0.07, 1.0, 4.55, 1.08, -2.55, '#c8945e'), box(4.6, 0.04, 1.02, 4.55, 1.045, -2.55, BRASS),
+    box(4.4, 0.05, 0.05, 4.55, 0.22, -2.06, BRASS), box(0.8, 1.05, 2.4, 6.6, 0.525, -3.55, WOOD));
+  for (let x = 2.6; x < 6.6; x += 0.55) g.push(box(0.04, 0.9, 0.03, x, 0.5, -2.14, '#4a2616'));
+  g.push(box(5.0, 0.95, 0.6, 4.4, 0.475, -4.65, DARKW), box(5.1, 0.05, 0.65, 4.4, 0.97, -4.65, '#c8945e'), box(5.0, 0.05, 0.32, 4.4, 1.55, -4.8, '#c8945e'), box(5.0, 0.05, 0.32, 4.4, 1.95, -4.8, '#c8945e'));
+  const BOT = ['#c87a2a', '#3a7a3a', '#e8d8a8', '#7a2a30', '#4f8dff', '#d8a84a', '#9a5a2a', '#f6f1e7'], rb = rng(91);
+  for (const y of [1.0, 1.58, 1.98]) for (let x = 2.15; x < 6.7; x += 0.22) { const h = 0.2 + rb() * 0.14, c = BOT[Math.floor(rb() * BOT.length)]; g.push(box(0.09, h, 0.09, x, y + h / 2, -4.78, c), box(0.035, 0.07, 0.035, x, y + h + 0.035, -4.78, c)); }
+  B.add(2.0, 0.6, 3.3, 2.45, -4.94, 0, (c, W, Hh) => { P.grad(c, W, Hh, '#8aa0c8', '#3a4a6a'); c.fillStyle = 'rgba(255,255,255,.25)'; c.fillRect(W * 0.1, 0, W * 0.06, Hh); c.fillRect(W * 0.24, 0, W * 0.02, Hh); P.frame(c, W, Hh, BRASS, 6); });
+  // taps, glasses, a tip jar and a little brass lamp on the counter
+  for (let i = 0; i < 3; i++) g.push(box(0.05, 0.3, 0.05, 5.2 + i * 0.18, 1.27, -2.75, BRASS), box(0.04, 0.12, 0.08, 5.2 + i * 0.18, 1.48, -2.7, ['#c0303a', '#4f8dff', '#ffd166'][i]));
+  for (let i = 0; i < 4; i++) g.push(cyl(0.04, 0.035, 0.14, 8, 3.1 + i * 0.16, 1.18, -2.45, '#cfe8ff'));
+  g.push(cyl(0.08, 0.08, 0.18, 10, 2.7, 1.2, -2.5, '#cfe8ff'), box(0.06, 0.04, 0.012, 2.7, 1.22, -2.42, '#8dff5a'), cyl(0.02, 0.02, 0.3, 4, 6.3, 1.26, -2.6, BRASS), cyl(0.1, 0.06, 0.12, 8, 6.3, 1.44, -2.6, '#2f6a3a'));
+  const STOOLS = [2.9, 3.7, 4.5, 5.3, 6.1];
+  for (const x of STOOLS) stool(g, x, -1.75, RED);
+  B.add(1.0, 1.25, 6.94, 1.9, -1.0, -PI / 2, (c, W, Hh) => {
+    P.fill(c, W, Hh, '#1b1a14'); P.frame(c, W, Hh, '#8a5232', 8);
+    P.text(c, "BIRDIE'S", W / 2, Hh * 0.1, Hh * 0.08, '#ffd166', { italic: true });
+    [['SWEET PORCH TEA', '3'], ['BLUE PELICAN FIZZ', '6'], ['HOT HONEY CIDER', '9'], ['PEANUTS', 'FREE']].forEach(([a, b], i) => { P.text(c, a, W * 0.08, Hh * (0.26 + i * 0.15), Hh * 0.052, '#f6f1e7', { align: 'left', weight: 700 }); P.text(c, b, W * 0.92, Hh * (0.26 + i * 0.15), Hh * 0.052, '#9fd0ff', { align: 'right', weight: 700 }); });
+    P.text(c, 'NO SKATES ON THE STAGE', W / 2, Hh * 0.9, Hh * 0.045, '#ff8fa0');
+  }, 150);
+
+  // ---- booths along the left wall: red leather benches either side of a table, a candle lamp on each
+  const seats = STOOLS.map((x) => ({ x, z: -1.75, y: 0.83, yaw: PI, kind: 'stool' })), blocks = [];
+  for (const cz of [-0.6, 2.2]) {
+    for (const sd of [-1, 1]) {
+      const z = cz + sd * 0.85;
+      g.push(box(1.5, 0.42, 0.55, -6.15, 0.21, z, '#6a1a24'), box(1.5, 0.1, 0.55, -6.15, 0.47, z, RED), box(1.5, 1.25, 0.2, -6.15, 0.62, cz + sd * 1.2, '#6a1a24'),
+        box(1.52, 0.14, 0.26, -6.15, 1.27, cz + sd * 1.2, RED));
+      for (let k = 0; k < 3; k++) g.push(box(0.012, 1.0, 0.012, -6.6 + k * 0.45, 0.78, cz + sd * 1.09, BRASS));
+      seats.push({ x: -6.0, z: cz + sd * 0.8, y: 0.5, yaw: sd < 0 ? 0 : PI, kind: 'booth' });
+    }
+    g.push(box(1.35, 0.06, 0.8, -6.25, 0.76, cz, DARKW), box(1.37, 0.03, 0.82, -6.25, 0.73, cz, BRASS), cyl(0.06, 0.1, 0.72, 8, -6.25, 0.36, cz, BRASS),
+      cyl(0.06, 0.06, 0.12, 8, -6.1, 0.85, cz, '#c0303a'), cyl(0.04, 0.04, 0.06, 8, -6.1, 0.94, cz, '#ffe6a0'), cyl(0.045, 0.04, 0.14, 8, -6.5, 0.86, cz + 0.2, '#cfe8ff'));
+    pools.push(disc(-6.1, 0.79, cz, 0.7, '#ffb060', 0.6));
+    blocks.push({ x0: -7, x1: -5.3, z0: cz - 1.32, z1: cz + 1.32 });
+    picture(g, B, -6.95, 2.3, cz, PI / 2, 1.0, 0.75, BRASS, cz < 0 ? posterA : posterB);
+  }
+  // café tables with two chairs each on the rug
+  for (const [tx, tz] of [[-1.4, 1.2], [1.4, 1.6], [0.0, -0.6]]) {
+    g.push(cyl(0.42, 0.42, 0.04, 14, tx, 0.74, tz, DARKW), cyl(0.43, 0.43, 0.02, 14, tx, 0.72, tz, BRASS), cyl(0.04, 0.05, 0.72, 6, tx, 0.36, tz, BRASS), cyl(0.25, 0.27, 0.03, 10, tx, 0.015, tz, BRASS),
+      cyl(0.05, 0.05, 0.1, 8, tx, 0.81, tz, '#c0303a'), cyl(0.035, 0.035, 0.05, 8, tx, 0.88, tz, '#ffe6a0'));
+    for (const sd of [-1, 1]) {
+      const cx = tx + sd * 0.72;
+      g.push(box(0.42, 0.06, 0.42, cx, 0.46, tz, RED), box(0.06, 0.5, 0.42, cx + sd * 0.2, 0.74, tz, DARKW));
+      for (const [ox, oz] of [[-0.17, -0.17], [0.17, -0.17], [-0.17, 0.17], [0.17, 0.17]]) g.push(box(0.04, 0.44, 0.04, cx + ox, 0.22, tz + oz, DARKW));
+      seats.push({ x: cx, z: tz, y: 0.49, yaw: sd < 0 ? PI / 2 : -PI / 2, kind: 'chair' });
+    }
+    pools.push(disc(tx, 0.77, tz, 0.6, '#ffb060', 0.55), disc(tx, 0.012, tz, 1.3, '#ffa050', 0.25));
+    blocks.push({ x0: tx - 0.45, x1: tx + 0.45, z0: tz - 0.45, z1: tz + 0.45 });
+  }
+
+  // ---- the jukebox between the stage and the bar: walnut, a glowing arch (part of the neon pulser)
+  const jx = 1.0, jz = -4.55;
+  g.push(box(1.0, 1.25, 0.65, jx, 0.625, jz, '#5a3016'), cyl(0.5, 0.5, 0.65, 16, jx, 1.25, jz, '#5a3016', PI / 2), box(0.8, 0.42, 0.02, jx, 0.95, jz + 0.33, '#2a1a10'),
+    box(0.62, 0.28, 0.03, jx, 1.38, jz + 0.33, '#fff3c4'), box(0.85, 0.04, 0.04, jx, 0.6, jz + 0.34, BRASS), box(0.85, 0.04, 0.04, jx, 0.3, jz + 0.34, BRASS));
+  for (const lx of [-0.42, 0.42]) neon.push(box(0.06, 1.15, 0.05, jx + lx, 0.72, jz + 0.34, '#ffb060'));
+  neon.push(box(0.84, 0.06, 0.05, jx, 1.72, jz + 0.34, '#ffb060'));
+  B.add(0.56, 0.24, jx, 1.38, jz + 0.355, 0, (c, W, Hh) => { P.grad(c, W, Hh, '#fff3c4', '#ffd8a0'); P.text(c, 'SELECT · SPIN', W / 2, Hh / 2, Hh * 0.32, '#5a3016', { max: W * 0.9 }); });
+  // a chalkboard by the door with tonight's line-up (all invented acts)
+  g.push(box(0.04, 1.3, 0.05, 5.9, 0.65, 3.7, DARKW), box(0.04, 1.3, 0.05, 5.9, 0.65, 4.4, DARKW));
+  B.add(0.9, 1.0, 5.86, 1.25, 4.05, -PI / 2, (c, W, Hh) => {
+    P.fill(c, W, Hh, '#1f2a24'); P.frame(c, W, Hh, '#8a5232', 8);
+    P.text(c, 'TONIGHT', W / 2, Hh * 0.12, Hh * 0.1, '#ffd166', { italic: true });
+    ['MAE CALLOWAY', '& THE LOW TIDES', '—', 'THE DRIFTWOOD TRIO', '—', 'OPEN MIC SUNDAY'].forEach((t, i) => P.text(c, t, W / 2, Hh * (0.3 + i * 0.11), Hh * 0.06, i % 2 ? '#cfe8ff' : '#f6f1e7', { weight: 700, max: W * 0.86 }));
+  }, 140);
+  plant(g, 6.4, 4.4, 1.0, '#8a5232', '#2f9f6a', 0); plant(g, -6.4, 4.4, 1.0, '#8a5232', '#3faf6a', 1);
+  const f = fan(g, 1.2, 1.0, H, '#2a2a34', '#8a5232');
+  room.extras.push(f);
+  // pendant lamps over the bar and the floor; warm pools on the stage and the counter
+  for (const x of [3.2, 4.6, 6.0]) {
+    g.push(cyl(0.01, 0.01, 0.9, 4, x, H - 0.45, -2.55, '#2a2a34'), cyl(0.06, 0.22, 0.22, 10, x, H - 1.0, -2.55, '#c0303a'), cyl(0.08, 0.08, 0.04, 8, x, H - 1.12, -2.55, '#fff0c0'));
+    pools.push(disc(x, 1.12, -2.55, 0.7, '#ffcf8a', 0.7)); hi.push(cone(x, H - 1.15, -2.55, 0.16, 0.7, 1.6, '#ffd9a0', 0.3));
+  }
+  pools.push(disc(-4.6, SY + 0.012, -3.4, 1.6, '#ffb070', 0.55), disc(-2.6, SY + 0.012, -3.7, 1.3, '#6aa0ff', 0.35), disc(-6.0, SY + 0.012, -3.7, 1.1, '#ffb070', 0.4),
+    disc(4.5, 2.9, -4.92, 1.6, '#4fa8ff', 0.35, 'z'), disc(jx, 0.012, jz + 0.9, 1.1, '#ffb060', 0.45), disc(0, 0.012, 1.2, 2.2, '#ffcf8a', 0.18));
+  for (const x of [-4.6, -2.6]) hi.push(cone(x, H - 0.95, SZ + 0.6, 0.12, 0.9, 2.4, x < -3 ? '#ffd9a0' : '#a8c8ff', 0.28));
+  Object.assign(room, {
+    hx: HX, hz: HZ, h: H, geo: g, clerk: 'BIRDIE', rim: '#3a3a6a', amb: 0.42, ambCol: '#ffd8b0',
+    lights: [{ x: -4.6, y: 2.8, z: -3.2, hex: '#ffb070', r: 4.5, k: 0.9 }, { x: -2.6, y: 2.8, z: -3.4, hex: '#7aa8ff', r: 3.5, k: 0.6 }, { x: 4.6, y: 2.6, z: -2.55, hex: '#ffcf8a', r: 5, k: 0.85 },
+      { x: -6.0, y: 1.6, z: 0.8, hex: '#ffb060', r: 4, k: 0.6 }, { x: 0, y: 3.0, z: 1.2, hex: '#ffcf8a', r: 6, k: 0.45 }, { x: 4.5, y: 2.9, z: -4.6, hex: '#4fa8ff', r: 3, k: 0.6 }, { x: jx, y: 1.2, z: jz + 0.6, hex: '#ffb060', r: 2.5, k: 0.6 }],
+    blocks: [{ x0: -7, x1: SX + SW / 2 + 0.05, z0: -5, z1: SZ + SD / 2 }, { x0: 2.3, x1: 7, z0: -5, z1: -2.1 }, { x0: jx - 0.55, x1: jx + 0.55, z0: -5, z1: jz + 0.35 }, ...blocks,
+      { x0: 5.8, x1: 6.0, z0: 3.6, z1: 4.5 }],
+    seats, me: [0.6, 0.6], cast: { BIRDIE: [4.5, -3.55, 0] },
+    uses: [{ x: 4.0, z: -1.35, r: 1.2, kind: 'lounge', hint: 'order a drink from Birdie', clerk: 'BIRDIE' }, { x: jx, z: -3.55, r: 1.1, kind: 'records', hint: 'next record on the jukebox' },
+      { x: -3.6, z: -1.75, r: 1.2, kind: 'records', hint: 'ask the stage for the next number' }],
+    wide: [5.6, 2.6, 4.2, -2.4, 1.2, -2.8],
+    idle(t, dt, still) {
+      const n = room.npc.BIRDIE, k = still ? 0.3 : 1;
+      // polishing a glass, nodding along
+      n.armR.rotation.set(-1.1, 0, -0.3 + Math.sin(t * 3.2) * 0.25 * k); n.armL.rotation.set(-1.0, 0, 0.35); n.head.rotation.set(Math.sin(t * 2.2) * 0.06 * k, Math.sin(t * 0.5) * 0.3 * k, 0);
+      f.rotation.y += dt * (still ? 0.4 : 1.4);
+      glowM.userData.tick(t, still);
+    },
+  });
+}
+const posterA = (c, W, H) => { P.grad(c, W, H, '#2a3a8a', '#101848'); c.fillStyle = '#ffd166'; c.beginPath(); c.arc(W * 0.5, H * 0.42, H * 0.22, 0, 6.3); c.fill(); c.fillStyle = '#101848'; c.fillRect(W * 0.46, H * 0.2, W * 0.08, H * 0.5); P.text(c, 'MAE CALLOWAY', W / 2, H * 0.8, H * 0.09, '#f6f1e7', { italic: true, max: W * 0.9 }); P.text(c, 'BLUE NOTES · BLUE SKIES', W / 2, H * 0.92, H * 0.05, '#9fd0ff', { max: W * 0.9 }); };
+const posterB = (c, W, H) => { P.grad(c, W, H, '#e8c890', '#c8945e'); c.fillStyle = '#5a3016'; c.beginPath(); c.moveTo(W * 0.3, H * 0.6); c.lineTo(W * 0.5, H * 0.15); c.lineTo(W * 0.7, H * 0.6); c.fill(); c.fillStyle = '#c0303a'; c.fillRect(W * 0.2, H * 0.58, W * 0.6, H * 0.04); P.text(c, 'THE DRIFTWOOD', W / 2, H * 0.75, H * 0.09, '#3a2016', { italic: true, max: W * 0.9 }); P.text(c, 'TRIO', W / 2, H * 0.88, H * 0.1, '#c0303a', { italic: true }); };
+
+export const VENUE_BUILD = { diner: buildDiner, arcade: buildArcade, motel: buildMotel, mall: buildMall, bait: buildBait, lounge: buildLounge };
