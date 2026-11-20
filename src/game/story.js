@@ -270,6 +270,7 @@ export const DINER_MENU = [
   { id: 'stack', name: 'SUNRISE STACK', note: 'Three pancakes, one sunny egg, all the syrup. +45 health', price: 10, heal: 45 },
   { id: 'burger', name: 'STRIP BURGER & FRIES', note: 'Grilled on the boulevard since 1971. +70 health', price: 16, heal: 70 },
   { id: 'plate', name: 'THE BLUE PLATE', note: "Meatloaf, mash, greens. Dot's mother's recipe. Full health", price: 24, heal: 100 },
+  { id: 'shake', name: 'MIDNIGHT MILKSHAKE', note: 'Strawberry, a mountain of cream, a cherry on top. +18 health', price: 5, heal: 18 },
 ];
 export const DINER_SIT = ['Dot slides a glass of ice water down the counter. It stops exactly in front of you.', 'The jukebox hums. The coffee pot gurgles. Nobody is in a hurry.'];
 export const JUKEBOX = ['SUNSET BOULEVARD SHUFFLE', 'NEON HEARTBREAK (EXTENDED)', 'CHROME BUMPER BLUES', 'PALM TREE PROMISE', 'MIDNIGHT MILKSHAKE', 'SKATE KEY SERENADE'];
@@ -340,4 +341,19 @@ export const LOUNGE_MENU = [
   { id: 'tea', name: 'SWEET PORCH TEA', note: 'Iced, lemony, sweet enough to stand a spoon in. +8 health', price: 3, heal: 8 },
   { id: 'fizz', name: 'BLUE PELICAN FIZZ', note: 'Blueberry soda over crushed ice, a paper umbrella. +14 health', price: 6, heal: 14 },
   { id: 'cider', name: 'HOT HONEY CIDER', note: 'Warm apple, a spoon of honey, a cinnamon stick. +20 health', price: 9, heal: 20 },
+  { id: 'lager', name: 'PORCH LIGHT LAGER', note: 'A cold draught in a tall glass with a collar of foam. +6 health', price: 4, heal: 6 },
+];
+// The Club Prism bar (E at the bar, Taps mixes it): the drinks on the painted board over the bar
+export const CLUB_MENU = [
+  { id: 'laser', name: 'LASER LEMONADE', note: 'Glows a little under the black lights. +8 health', price: 3, heal: 8 },
+  { id: 'filler', name: 'FLOOR FILLER', note: 'A cold draught, poured on the beat. +10 health', price: 4, heal: 10 },
+  { id: 'ultra', name: 'ULTRAVIOLET', note: 'Violet, fizzy, a paper umbrella. +12 health', price: 5, heal: 12 },
+  { id: 'mirror', name: 'MIRRORBALL', note: 'Sky blue with a silver rim and an umbrella. +14 health', price: 6, heal: 14 },
+  { id: 'kilowatt', name: 'THE KILOWATT', note: "DJ Kilowatt's own: cherry, lime, a jolt. +16 health", price: 7, heal: 16 },
+];
+// The Coconut Shack on Coral Beach (F at the counter, open 7:00 to 20:00)
+export const KIOSK_MENU = [
+  { id: 'smoothie', name: 'SUNSET SMOOTHIE', note: 'Mango, strawberry, a scoop of crushed ice. +20 health', price: 6, heal: 20 },
+  { id: 'softserve', name: 'SOFT SERVE CONE', note: 'Strawberry and vanilla, melting faster than you. +12 health', price: 4, heal: 12 },
+  { id: 'coconut', name: 'FRESH COCONUT', note: 'Cracked open, a straw and a tiny umbrella. +15 health', price: 5, heal: 15 },
 ];

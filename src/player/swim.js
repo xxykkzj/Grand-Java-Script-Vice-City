@@ -215,7 +215,7 @@ export function createSwim(game) {
         top = (wantSprint ? 5.2 : 3.4) * (1 - 0.55 * clamp(depth / WADE_MAX, 0, 1)); rate = 5;
       } else top = (wantSprint ? 5.0 : 2.9) * (S.submerged ? 0.92 : 1);
       top *= mag;
-      if (wantSprint && S.mode === 'swim') S.stamina = Math.max(0, S.stamina - dt * 0.22); else S.stamina = Math.min(1, S.stamina + dt * (len > 0 ? 0.12 : 0.28));
+      if (wantSprint && S.mode === 'swim') S.stamina = Math.max(0, S.stamina - dt * 0.22 * (game.eat && game.eat.refreshed ? 0.6 : 1)); else S.stamina = Math.min(1, S.stamina + dt * (len > 0 ? 0.12 : 0.28));
 
       // ---- the strong current beyond the safe radius: a drift towards the island, never a wall
       const d = islandDist(x, z);

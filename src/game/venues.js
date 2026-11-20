@@ -8,7 +8,7 @@
 //           (audio/music.js streams them), a now-playing card with title, artist and licence
 // Menus reuse the shop panel (game/places.js asks menu(kind) for a provider).
 import { clamp, rng, PI, reducedMotion, angleDelta } from '../core/util.js';
-import { CAST, BARKS, DINER_MENU, DINER_SIT, JUKEBOX, MOTEL_MENU, MOTEL_WAKE, PRETZELS, WISHES, BAIT_MENU, TRIVIA, TRIVIA_RIGHT, TRIVIA_WRONG, LOUNGE_MENU } from './story.js';
+import { CAST, BARKS, DINER_MENU, DINER_SIT, JUKEBOX, MOTEL_MENU, MOTEL_WAKE, PRETZELS, WISHES, BAIT_MENU, TRIVIA, TRIVIA_RIGHT, TRIVIA_WRONG, LOUNGE_MENU, CLUB_MENU, KIOSK_MENU } from './story.js';
 import { OY } from './interiors.js';
 
 const $ = (id) => document.getElementById(id);
@@ -19,11 +19,11 @@ export function createVenues(game) {
   const { player, hud, audio, save, env, camera } = game;
   let n = 0, jukeI = 0, wishN = 0, triviaN = 0, trivia = null, sitSeen = null;
   const stats = { meals: 0, songs: 0, wishes: 0, sleeps: 0, saves: 0, trivia: 0, right: 0, games: 0, lastScore: 0 };
-  const feed = (o, who) => {
-    if (game.health >= 100) { audio.blip(false); return `YOU'RE FULL. ${who}`; }
+  // buy it, then eat or drink it (game/eat.js): it heals, or at full health it refreshes you instead
+  const feed = (o) => {
     if (game.money < o.price) { audio.blip(false); return `NOT ENOUGH CASH: ${o.name} IS $${o.price}`; }
-    game.money -= o.price; game.health = Math.min(100, game.health + o.heal); audio.cash(); audio.pickup(); stats.meals++;
-    return `${o.name}: +${Math.min(o.heal, 100)} HEALTH`;
+    game.money -= o.price; audio.cash(); audio.pickup(); stats.meals++;
+    return game.eat.consume(o);
   };
 
   // ---- menus -------------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ export function createVenues(game) {
     diner: {
       title: 'SUNSET STRIP DINER', label: 'ORDER',
       items: () => DINER_MENU, greet: () => say('diner', n++),
-      pick: (o) => feed(o, 'DOT WRAPS IT UP FOR LATER. SHE WILL EAT IT.'),
+      pick: (o) => feed(o),
     },
     motel: {
       title: 'MOONLITE · ROOM 7', label: 'REST',
@@ -41,12 +41,22 @@ export function createVenues(game) {
     cart: {
       title: "KIKI'S KNOTS", label: 'BUY',
       items: () => PRETZELS.filter((o) => o.id !== 'wish'), greet: () => say('mall', n++),
-      pick: (o) => feed(o, 'KIKI SAYS SAVE ROOM FOR DESSERT. THIS IS DESSERT.'),
+      pick: (o) => feed(o),
     },
     lounge: {
       title: 'THE BLUE PELICAN · BAR', label: 'ORDER',
       items: () => LOUNGE_MENU, greet: () => say('lounge', n++),
-      pick: (o) => feed(o, 'BIRDIE PUTS IT ON ICE FOR LATER.'),
+      pick: (o) => feed(o),
+    },
+    clubbar: {
+      title: 'PRISM BAR', label: 'ORDER',
+      items: () => CLUB_MENU, greet: () => 'TAPS: “What can I pour you? On the beat, as always.”',
+      pick: (o) => feed(o),
+    },
+    kiosk: {
+      title: 'COCONUT SHACK', label: 'BUY',
+      items: () => KIOSK_MENU, greet: () => 'SMOOTHIES, SOFT SERVE AND COCONUTS. EVERYTHING COMES WITH SAND.',
+      pick: (o) => feed(o),
     },
     bait: {
       get title() { return trivia ? 'TACKLE TRIVIA' : 'STARBOARD BAIT & TACKLE'; },
@@ -74,7 +84,7 @@ export function createVenues(game) {
           game.money -= o.price; save.vest = 1; game.persist(); audio.cash(); audio.pickup();
           return 'BUOY-O VEST ON: YOU CAN HOLD YOUR BREATH 75% LONGER';
         }
-        return feed(o, 'RUDY POCKETS IT FOR THE PELICANS.');
+        return feed(o);
       },
     },
   };

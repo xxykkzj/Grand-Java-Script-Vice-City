@@ -222,18 +222,21 @@ function withAttr(geo, name, size, val) {
   geo.setAttribute(name, new THREE.BufferAttribute(a, size));
   return geo;
 }
-const GAP = [-0.5, 2.4];                               // doorway in the club's right wall (z range)
+// The lounge is open to the club: the right wall has a wide opening (z range) and the booths face the dance floor
+const GAP = [-6.6, 2.4];
 const LOUNGE = { x0: 11, x1: 21, z0: -8, z1: 2.6, h: 4.2 };
-// A semicircular upholstered booth around (cx, cz), open towards +z: seat cushions and a padded back
-// built from short segments along the arc, end arms, a low round table with drinks and a candle lamp.
-function booth(g, cx, cz, R, col, top) {
-  const N = 9;
+// An open lounge booth around (cx, cz), open towards -x (the dance floor): a low-backed curved sofa
+// (cushions and a low padded back in short segments along the arc), rolled ends, a low round table with
+// drinks and a candle lamp, a pendant light over it.
+const BOOTH_R = 1.15;
+function booth(g, cx, cz, col, top) {
+  const N = 9, R = BOOTH_R, a0 = -0.15, a1 = PI + 0.15;
   for (let i = 0; i < N; i++) {
-    const a = PI / 2 + ((i + 0.5) / N) * PI, ws = R * PI / N + 0.07, rb = R + 0.4, wb = rb * PI / N + 0.08;
+    const a = a0 + ((i + 0.5) / N) * (a1 - a0), ws = R * (a1 - a0) / N + 0.07, rb = R + 0.36, wb = rb * (a1 - a0) / N + 0.08;
     g.push(box(ws, 0.42, 0.62, cx + Math.sin(a) * R, 0.21, cz + Math.cos(a) * R, col, 0, a), box(ws - 0.02, 0.08, 0.58, cx + Math.sin(a) * R, 0.45, cz + Math.cos(a) * R, top, 0, a),
-      box(wb, 0.95, 0.22, cx + Math.sin(a) * rb, 0.6, cz + Math.cos(a) * rb, col, 0, a), box(wb, 0.12, 0.28, cx + Math.sin(a) * rb, 1.12, cz + Math.cos(a) * rb, top, 0, a));
+      box(wb, 0.6, 0.2, cx + Math.sin(a) * rb, 0.42, cz + Math.cos(a) * rb, col, 0, a), box(wb, 0.1, 0.26, cx + Math.sin(a) * rb, 0.76, cz + Math.cos(a) * rb, top, 0, a));
   }
-  for (const sx of [-1, 1]) g.push(box(0.18, 0.66, 0.68, cx + sx * (R + 0.04), 0.33, cz + 0.12, col), box(0.2, 0.08, 0.7, cx + sx * (R + 0.04), 0.68, cz + 0.12, top));
+  for (const a of [a0, a1]) g.push(box(0.66, 0.56, 0.18, cx + Math.sin(a) * (R + 0.04) - 0.08, 0.28, cz + Math.cos(a) * (R + 0.04), col, 0, a + PI / 2), box(0.68, 0.08, 0.2, cx + Math.sin(a) * (R + 0.04) - 0.08, 0.58, cz + Math.cos(a) * (R + 0.04), top, 0, a + PI / 2));
   g.push(cyl(0.55, 0.55, 0.05, 14, cx, 0.52, cz, '#d9c7ff'), cyl(0.07, 0.1, 0.5, 6, cx, 0.25, cz, '#c9c0d8'), cyl(0.3, 0.32, 0.04, 10, cx, 0.02, cz, '#c9c0d8'),
     cyl(0.06, 0.05, 0.16, 6, cx - 0.2, 0.62, cz + 0.12, '#ff2bd1'), cyl(0.06, 0.05, 0.16, 6, cx + 0.22, 0.62, cz - 0.1, '#18f0ff'), cyl(0.05, 0.05, 0.12, 6, cx + 0.05, 0.6, cz + 0.28, '#ffe14a'),
     cyl(0.07, 0.08, 0.16, 8, cx, 0.63, cz - 0.05, '#ff9a3d'), box(0.03, 0.06, 0.03, cx, 0.74, cz - 0.05, '#fff3c4'));
@@ -248,22 +251,22 @@ function lounge(g) {
   g.push(box(w + 0.2, H + 0.2, 0.2, cx, H / 2, L.z0 - 0.1, '#2a0f3a'), box(0.2, H + 0.2, d + 0.2, L.x1 + 0.1, H / 2, cz, '#260d34'), box(w + 0.2, H + 0.2, 0.2, cx, H / 2, L.z1 + 0.1, '#2a0f3a'),
     box(w + 0.4, 0.2, d + 0.4, cx, H + 0.1, cz, '#0c0616'));
   for (let i = 0; i < 5; i++) g.push(box(1.6, 2.2, 0.05, L.x0 + 1 + i * 2, 1.6, L.z0 + 0.03, '#4a1a58'));
-  // booths: the back row against the wall, the front row by the walkway (the far one is the talking booth)
-  const T = [[13.8, -6.0], [18.4, -6.0], [13.8, -1.3], [18.4, -1.3]], R = 1.15;
+  // four open booths in two columns, all facing the dance floor, with wide aisles between them (the far
+  // front one is where the conversations happen). Back row against the back wall, far column against the far wall.
+  const T = [[14.2, -6.35], [18.9, -6.35], [14.2, -0.7], [18.9, -0.7]], R = BOOTH_R;
   const COL = [['#8a1a52', '#d63a86'], ['#1a5a8a', '#3aa6d6'], ['#6a1a8a', '#b43ad6'], ['#8a3a1a', '#e07a3a']];
-  T.forEach(([x, z], i) => booth(g, x, z, R, COL[i][0], COL[i][1]));
-  // neon dividers between the booths
-  g.push(box(0.08, 1.5, 3.0, 16.1, 0.75, -6.4, '#3a1a5a'), box(0.1, 0.1, 3.0, 16.1, 1.52, -6.4, '#ff2bd1'), box(0.1, 1.5, 0.1, 16.1, 0.75, -4.9, '#ff2bd1'));
-  g.push(box(0.08, 1.3, 1.2, 16.1, 0.65, -2.9, '#3a1a5a'), box(0.1, 0.1, 1.2, 16.1, 1.32, -2.9, '#18f0ff'), box(0.1, 1.3, 0.1, 16.1, 0.65, -2.3, '#18f0ff'));
+  T.forEach(([x, z], i) => booth(g, x, z, COL[i][0], COL[i][1]));
   // a neon cocktail glass on the far wall, a wave along the back wall
   const zx = (z0, y0, z1, y1, hex) => g.push(box(0.09, 0.09, Math.hypot(z1 - z0, y1 - y0) + 0.09, L.x1 - 0.06, (y0 + y1) / 2, (z0 + z1) / 2, hex, Math.atan2(-(y1 - y0), z1 - z0)));
   zx(-4.6, 3.3, -3.6, 2.4, '#ffe14a'); zx(-2.6, 3.3, -3.6, 2.4, '#ffe14a'); zx(-4.6, 3.3, -2.6, 3.3, '#ffe14a'); zx(-3.6, 2.4, -3.6, 1.9, '#ffe14a'); zx(-4.0, 1.9, -3.2, 1.9, '#ffe14a'); zx(-2.9, 3.1, -2.5, 3.8, '#ff2bd1');
   for (let i = 0; i < 8; i++) g.push(box(1.3, 0.09, 0.09, L.x0 + 0.7 + i * 1.2, 3.3 + (i % 2 ? 0.15 : -0.15), L.z0 + 0.06, '#18f0ff', 0, 0, i % 2 ? -0.25 : 0.25));
-  // soft additive pools: table candles, pendant light on each table, the glow off the dividers
+  // a low neon strip along the carpet edge of the aisle, so the way through reads in the dark
+  g.push(box(0.05, 0.03, 7.2, 17.05, 0.02, -3.6, '#ff2bd1'), box(5.6, 0.03, 0.05, 16.1, 0.02, -3.55, '#18f0ff'));
+  // soft additive pools: table candles, pendant light on each table, the glow off the aisle strips
   const pools = [];
   const disc = (x, y, z, rad, hex, k) => { const q = new THREE.CircleGeometry(rad, 18).rotateX(-PI / 2).translate(x, y, z).toNonIndexed(); q.deleteAttribute('uv'); q.deleteAttribute('normal'); pools.push(withAttr(tint(q, hex), 'aK', 1, k)); };
   for (const [x, z] of T) { disc(x, 0.555, z, 0.5, '#ffb070', 0.9); disc(x, 0.01, z, 1.9, '#ff6ab0', 0.35); }
-  disc(16.1, 0.01, -6.4, 1.6, '#ff2bd1', 0.4); disc(16.1, 0.01, -2.9, 1.1, '#18f0ff', 0.4);
+  disc(17.05, 0.01, -3.5, 1.4, '#ff2bd1', 0.3);
   const gU = { uK: { value: 1 }, uT: { value: 0 } };
   const glow = new THREE.Mesh(merge(pools), new THREE.ShaderMaterial({
     uniforms: gU, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, vertexColors: true,
@@ -271,23 +274,23 @@ function lounge(g) {
     fragmentShader: 'uniform float uK, uT; varying vec3 vC; varying float vK; varying vec2 vP; void main(){ gl_FragColor = vec4(vC * vK * uK * (0.88 + 0.12 * sin(uT * 7.0 + vP.x * 3.0)) * 0.55, 1.0); }',
   }));
   glow.renderOrder = 3;
-  // seats: two ends facing each other across the table (turned a little towards the open side), and the back
+  // seats: the two rolled ends face each other across the table, and the middle of the back looks out
   const seats = [], crowdSeats = [];
   T.forEach(([x, z], i) => {
-    const e = 0.2, A = { x: x + R * Math.cos(e), z: z - R * Math.sin(e) }, Bq = { x: x - R * Math.cos(e), z: z - R * Math.sin(e) };
+    const e = 0.12, A = { x: x + R * Math.sin(e), z: z + R * Math.cos(e) }, Bq = { x: x + R * Math.sin(PI - e), z: z + R * Math.cos(PI - e) };
     const sA = { ...A, y: 0.45, yaw: Math.atan2(x - A.x, z - A.z), kind: 'booth', taken: false };
     const sB = { ...Bq, y: 0.45, yaw: Math.atan2(x - Bq.x, z - Bq.z), kind: 'booth', taken: false };
-    const sC = { x, z: z - R, y: 0.45, yaw: 0, kind: 'booth', taken: false };
+    const sC = { x: x + R, z, y: 0.45, yaw: -PI / 2, kind: 'booth', taken: false };
     seats.push(sA, sB, sC);
     if (i < 3) crowdSeats.push(sA, sC, sB);
   });
   const [tx, tz] = T[3], s = seats.slice(9);
-  const blocks = [];
-  for (const [x, z] of T) blocks.push({ x0: x - R - 0.55, x1: x + R + 0.55, z0: z - R - 0.55, z1: z - 0.7 }, { x0: x + R - 0.3, x1: x + R + 0.5, z0: z - 0.7, z1: z + 0.45 }, { x0: x - R - 0.5, x1: x - R + 0.3, z0: z - 0.7, z1: z + 0.45 }, { x0: x - 0.55, x1: x + 0.55, z0: z - 0.55, z1: z + 0.55 });
-  blocks.push({ x0: 16.0, x1: 16.2, z0: -7.9, z1: -4.85 }, { x0: 16.0, x1: 16.2, z0: -3.5, z1: -2.3 });
+  // collision: one box per booth (sofa and table together), no thin walls and no pockets; the back row's
+  // boxes run to the back wall and the far column's to the far wall, so nothing is left to squeeze into
+  const blocks = T.map(([x, z]) => ({ x0: x - 0.6, x1: x > 16 ? L.x1 + 0.2 : x + R + 0.42, z0: z < -3 ? L.z0 - 0.2 : z - R - 0.38, z1: z + R + 0.38, booth: true }));
   return {
-    seats, crowdSeats, blocks, glow,
-    talk: { me: s[1], npc: s[0], extra: s[2], zones: [{ x: tx, z: tz, r: 2.6 }, { x: tx, z: tz + 2.4, r: 1.7 }, { x: tx - 2.2, z: tz, r: 1.2 }], wide: [14.2, 2.4, 1.9, tx, 0.9, tz] },
+    seats, crowdSeats, blocks, glow, booths: T,
+    talk: { me: s[1], npc: s[0], extra: s[2], zones: [{ x: tx, z: tz, r: 2.6 }, { x: tx - 2.4, z: tz, r: 1.7 }, { x: tx, z: tz + 2.2, r: 1.2 }], wide: [14.4, 2.3, 1.9, tx, 0.9, tz] },
     tick(t) { gU.uT.value = t; },
   };
 }
@@ -332,8 +335,9 @@ function buildClub(room) {
   g.push(box(0.1, 0.1, GAP[1] - GAP[0] + 0.2, HX - 0.02, 2.85, (GAP[0] + GAP[1]) / 2, '#ff2bd1'), box(0.1, 2.8, 0.1, HX - 0.02, 1.4, GAP[0] - 0.05, '#ff2bd1'), box(0.1, 2.8, 0.1, HX - 0.02, 1.4, GAP[1] + 0.05, '#ff2bd1'));
   segX(-3.2, 3.4, -1.0, 3.4, HX - 0.08, '#ffe14a'); segX(-1.0, 3.4, -0.7, 3.1, HX - 0.08, '#ffe14a'); segX(-1.0, 3.4, -0.7, 3.7, HX - 0.08, '#ffe14a');
   // neon palm and waves on the right wall either side of the doorway
-  segX(-3.4, 2.2, -3.2, 4.6, 10.92, '#ffb000'); segX(-3.2, 4.6, -4.8, 3.9, 10.92, '#8dff5a'); segX(-3.2, 4.6, -1.8, 4.0, 10.92, '#8dff5a'); segX(-3.2, 4.6, -4.2, 5.2, 10.92, '#8dff5a'); segX(-3.2, 4.6, -2.2, 5.3, 10.92, '#8dff5a');
-  for (let i = 0; i < 4; i++) { segX(-7.6 + i * 1.1, 1.75 + (i % 2) * 0.3, -6.5 + i * 1.1, 1.75 + ((i + 1) % 2) * 0.3, 10.92, '#18f0ff'); segX(3 + i * 1.1, 1.75 + (i % 2) * 0.3, 4.1 + i * 1.1, 1.75 + ((i + 1) % 2) * 0.3, 10.92, '#18f0ff'); }
+  // (the lounge opening takes most of the right wall now: the neon palm sits over the waves behind the VIP corner)
+  segX(3.6, 2.4, 3.8, 4.8, 10.92, '#ffb000'); segX(3.8, 4.8, 2.6, 4.1, 10.92, '#8dff5a'); segX(3.8, 4.8, 5.2, 4.2, 10.92, '#8dff5a'); segX(3.8, 4.8, 3.0, 5.4, 10.92, '#8dff5a'); segX(3.8, 4.8, 4.8, 5.5, 10.92, '#8dff5a');
+  for (let i = 0; i < 4; i++) segX(3 + i * 1.1, 1.75 + (i % 2) * 0.3, 4.1 + i * 1.1, 1.75 + ((i + 1) % 2) * 0.3, 10.92, '#18f0ff');
   const LS = lounge(g);
 
   // --- the VIP corner behind a velvet rope
@@ -564,6 +568,8 @@ function buildClub(room) {
       ...LS.blocks,
       { x0: 6.35, x1: 6.65, z0: 4.05, z1: 8 }, { x0: 6.35, x1: 11, z0: 4.05, z1: 4.35 }, { x0: -7.62, x1: -6.78, z0: 4.85, z1: 8 }, { x0: -11, x1: -9.9, z0: 4.6, z1: 8 }],
     seats,
+    // E at the bar: Taps pours you a drink (venues.js MENUS.clubbar)
+    uses: [{ x: -7.05, z: -2.25, r: 1.1, kind: 'clubbar', hint: 'order a drink from Taps', clerk: 'TAPS', cam: [1.9, 2.0, 1.6] }],
     me: [9.4, 1.0], cast: { KILO: [0, -6.5, 0, 0.7], GLITZ: [4.3, -3.1, -1.2], TAPS: [-10.05, -2.6, PI / 2] }, wide: [-6.8, 3.8, 6.6, 1, 1.3, -3.2],
     // conversations happen seated in the far booth of the lounge: Skye and the speaker face each other
     // across the table, a second speaker takes the back of the booth. Dancers keep out of the zones.

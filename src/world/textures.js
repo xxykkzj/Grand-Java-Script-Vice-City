@@ -88,10 +88,10 @@ export function paintGround(L) {
   }
   dashX(71.6, -HX, HX, 2, 2, '#27c9bf', 0.3);                               // skate lane along the promenade
   g.strokeStyle = '#fffaf0'; g.lineWidth = 2; g.strokeRect(X(-49), Z(98), 18 * S, 9 * S);   // volleyball court
-  for (let i = 0; i < 60; i++) {                                              // beach towels
-    const x = -285 + r() * 570, z = 88 + r() * 44, c = ['#ff5fa8', '#27d8cf', '#ffd447', '#ff8a4c', '#9b7bff', '#ffffff'][i % 6];
-    g.save(); g.translate(X(x), Z(z)); g.rotate(r() * 3); g.fillStyle = c; g.fillRect(-3, -1.6, 6, 3.2); g.fillStyle = 'rgba(255,255,255,.7)'; g.fillRect(-1, -1.6, 2, 3.2); g.restore();
-  }
+  // (the 60 painted towels are gone: real towels, loungers and rental clusters stand on the sand now, world/beach.js)
+  // a raked, darker patch of sand inside the court, soft shade under the boardwalks
+  g.fillStyle = 'rgba(190,150,100,0.18)'; g.fillRect(X(-49), Z(98), 18 * S, 9 * S);
+  if (L && L.beach) for (const w of L.beach.walks) rect(w.x - 1.4, w.z0, w.x + 1.4, w.z1, 'rgba(150,115,80,0.25)');
 
   // soft vignette of darker sand at the island rim
   g.strokeStyle = 'rgba(160,125,95,0.5)'; g.lineWidth = 10; g.strokeRect(0, 0, W, H);

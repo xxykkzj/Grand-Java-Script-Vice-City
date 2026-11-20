@@ -11,6 +11,7 @@ import { addDetails, buildLife } from './details.js';
 import { createGlow } from './glow.js';
 import { rampParts } from './rampGeo.js';
 import { neonPools } from './neonpools.js';
+import { createBeachFx } from './beach.js';
 import { quality } from '../core/quality.js';
 
 function roundedShape(w, d, r) {
@@ -57,6 +58,8 @@ function createLampMap(L) {
       ctx.fillStyle = g; ctx.fillRect(sx - sw / 2 - 0.5, z, sw + 1, 4.5);
     }
     for (const k in L.places) { const p = L.places[k]; pool(p.x + HX, p.z - 3 + HZ, 5, 0.35, '255,150,220'); }
+    // the beach fire pit (only lit at night, like the lamps)
+    if (L.beach) pool(L.beach.fire.x + HX, L.beach.fire.z + HZ, 6.5, 0.75, '255,150,80');
     // the big neon signs throw a pool of their own colour (High quality)
     if (quality.high && L.neonPools) for (const n of L.neonPools) pool(n.x + HX, n.z + HZ, n.r, n.a, n.rgb);
     data = ctx.getImageData(0, 0, W, H).data;
@@ -400,6 +403,7 @@ export function buildCity(scene0, L) {
   L.lampMap.repaint();
 
   const life = buildLife(scene, bodyMat);
+  const beachFx = createBeachFx(scene, L.beach);
   // knocked-down lamps and (tank-)felled palms: tip the instance over about its base towards `dir`
   const tip = (mesh, i, x, z, yaw, s3, ang, dir) => {
     const qa = new THREE.Quaternion().setFromAxisAngle(v.set(Math.cos(dir), 0, -Math.sin(dir)), ang);
@@ -408,7 +412,7 @@ export function buildCity(scene0, L) {
   };
 
   return {
-    group: scene, windowCount: winM.length, bodyMat, tick: life.tick, blinkers,
+    group: scene, windowCount: winM.length, bodyMat, tick: life.tick, blinkers, beachFx,
     tipLamp(i, ang, dir) { const l = L.lamps[i]; tip(lamps, i, l.x, l.z, l.yaw, [1, 1, 1], ang, dir); },
     tipPalm(i, ang, dir) { const p = L.palms[i]; tip(palms, i, p.x, p.z, p.yaw, p.sc, ang, dir); },
     // a lamp's light: its glow sprite and its pool on the ground

@@ -623,7 +623,7 @@ export function createCombat(game, scene) {
     // after the courier has been posed: the blaster in hand, the arm raised to aim, a stagger wobble
     pose() {
       const w = inv.cur ? BYID[inv.cur] : null;
-      const show = !!w && !player.hidden && !game.inside && game.started && game.busy !== 'cut' && game.busy !== 'down' && game.busy !== 'walkout' && !game.act.mode && (game.mode === 'foot' || game.mode === 'bike');
+      const show = !!w && !player.hidden && !game.inside && game.started && game.busy !== 'cut' && game.busy !== 'down' && game.busy !== 'walkout' && !game.act.mode && !(game.eat && game.eat.active) && (game.mode === 'foot' || game.mode === 'bike');
       holder.visible = show;
       if (!show) return;
       const m = player.model;

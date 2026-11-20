@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { timeU, pointScaleU, pushOut, pause, reducedMotion, createGrid, beatU, beatNow, BEAT_LEN, nightU } from './core/util.js';
 import { createInput } from './core/input.js';
 import { makeLayout, clampToWorld, onLand, propsOnRoad, zoneName } from './world/layout.js';
+import { checkBeach, BEACH_ZONES } from './world/beach.js';
+import { createEat } from './game/eat.js';
 import { buildKey } from './world/keyCity.js';
 import { buildAds } from './world/ads.js';
 import { createDistricts } from './world/districts.js';
@@ -146,13 +148,13 @@ async function boot() {
   const signals = buildSignals(scene, R, city.bodyMat, L.props);
   L.props.build();
   // dev builds: nothing may stand on a carriageway
-  if (typeof __DEV__ !== 'undefined' && __DEV__) { const bad = propsOnRoad(L); if (bad.length) console.error('PROPS ON THE ROAD', bad); else console.info('prop placement OK: nothing on the carriageways'); }
+  if (typeof __DEV__ !== 'undefined' && __DEV__) { const bad = propsOnRoad(L); if (bad.length) console.error('PROPS ON THE ROAD', bad); else console.info('prop placement OK: nothing on the carriageways'); const bb = checkBeach(L); if (bb.length) console.error('PROPS IN A BEACH EXCLUSION ZONE', bb); else console.info('beach OK: the court, paths, ramp, lifeguard spots and wet sand are clear'); }
   const grid = createGrid(14);
 
   game = {
     mode: 'foot', paused: false, vehicle: null, started: false,
     input, hud, audio, music, env, vehicles, player, L, cam, camera, renderer, scene, fx, R, grid, wanted: 0, busy: null, districts, adaptive, bloom, motes, quality,
-    focus: () => (game.vehicle ? game.vehicle : player.pos),
+    city, focus: () => (game.vehicle ? game.vehicle : player.pos),
     heading: () => (game.vehicle ? game.vehicle.yaw : player.yaw),
   };
   await progress(0.84, 'FILLING THE STREETS…');
@@ -175,6 +177,7 @@ async function boot() {
   const venues = game.venues = createVenues(game);
   const story = game.story = createStory(game, scene);
   const act = game.act = createActivity(game);
+  const eat = game.eat = createEat(game);
   venues.restore();                           // a motel save brings back its cash and clock
   const combat = game.combat = createCombat(game, scene);
   const events = game.events = createEvents(game, scene);
@@ -240,6 +243,15 @@ async function boot() {
     sittingPeds: () => peds.peds.filter((p) => !p.off && p.hang && p.hang.kind === 'seat').length,
     // ---- checks for the new systems
     propsOnRoad: () => propsOnRoad(L),
+    // ---- the beach: what stands in the exclusion zones (should be []), palms on the sand, the beach crowd
+    beachCheck: () => checkBeach(L),
+    eat: () => eat.state(),
+    shot: (a) => { game.shotCam = a || null; return !!game.shotCam; },
+    beachZones: () => BEACH_ZONES.map((z) => ({ ...z })),
+    beachPalms: () => L.palms.filter((p) => p.z > 78 && Math.abs(p.x) < 300).length,
+    beach: () => peds.beach.state(),
+    beachSettle: () => peds.beach.settle(),
+    beachPeople: () => peds.beach.list.filter((p) => !p.off).map((p) => ({ type: p.slot ? p.slot.type : null, mode: p.mode, x: +p.x.toFixed(1), z: +p.z.toFixed(1), gy: +(p.gy || 0).toFixed(2), state: p.state })),
     club: () => {
       const r = game.inside && game.inside.key === 'club' ? game.inside.room : L.places.club.room;
       if (!r) return null;
@@ -484,16 +496,18 @@ async function boot() {
     peds.update(dt, timeU.value, frameN, vehicles.cars);
     animals.update(dt);
     if (game.started) { rules.update(dt); pursuit.update(dt); parking.update(raw); heatHint.update(raw); story.update(dt); story.tickStar(dt); places.update(dt, ctl); venues.tick(dt); events.update(dt); marine.blips(rules.blips); roofs.update(dt); }
-    city.tick(timeU.value);
+    city.tick(timeU.value); city.beachFx.tick(env.rainAmt);
     fx.update(dt);
     player.tickFace(dt);
     combat.pose();
+    if (game.started) eat.update(dt, ctl);
 
     const v = game.vehicle;
     const speed = v ? (v.kind === 'tank' ? v.speed : Math.hypot(v.vx, v.vz)) : player.speed;
     if (!game.started && !reducedMotion) cam.yaw += dt * 0.04;
     if (game.deathCam) rules.deathCam(camera, Math.min(raw, 0.05));
     else if (cut.active) cut.update(dt);
+    else if (game.shotCam) { const s = game.shotCam; camera.position.set(s[0], s[1], s[2]); camera.lookAt(s[3], s[4], s[5]); }   // debug.shot(): a fixed camera for checks
     else if (game.inside) { /* places.update owns the camera indoors */ }
     else if (stunts.cam) stunts.camUpdate(dt);
     else if (cine.active) cine.update(dt);

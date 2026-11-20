@@ -3,6 +3,7 @@
 import { rng, clamp } from '../core/util.js';
 import { createProps } from './props.js';
 import { createSurfaces, registerRamps } from './surfaces.js';
+import { planBeach } from './beach.js';
 import { KEY, MPIER, makeKey, KEY_ROAD_RECTS, KEY_JUNCTIONS, inKey, onMarinaPier, keyZone } from './key.js';
 export { KEY, MPIER };
 
@@ -111,7 +112,9 @@ export function makeLayout() {
   const palm = (x, z) => { const s = 0.85 + r() * 0.45, yaw = r() * 6.283, at = offRoad(x, z, 0.3 * s); if (at && !inJunction(at[0], at[1], 0.6)) palms.push({ x: at[0], z: at[1], s, yaw }); };
   for (let x = -292; x <= 292; x += 12) palm(x + (r() - 0.5) * 2, 70 + (r() - 0.5) * 3);
   for (let x = -270; x <= 285; x += 30) if (!nearSide(x, 10)) palm(x, 40.2);
-  for (let i = 0; i < 34; i++) palm(-290 + r() * 580, 84 + r() * 40);
+  // (the sand used to get 34 palms scattered at random; they now stand in a few groves, see world/beach.js.
+  // The random draws stay so everything placed after them keeps its spot.)
+  for (let i = 0; i < 34; i++) { r(); r(); r(); r(); }
   for (let x = -290; x <= 290; x += 18) palm(x + (r() - 0.5) * 6, -143 + r() * 5);
   // side-street palms, skipping the stretches where the back avenues cross (they used to grow in the road)
   const onAvenue = (z) => [ROADS.back1, ROADS.back2].some((rd) => Math.abs(z - rd.z) < rd.w / 2 + 2.5);
@@ -138,8 +141,7 @@ export function makeLayout() {
   }
 
   // Beach furniture
-  const UMB = ['#ff5fa8', '#27d8cf', '#ffd447', '#ffffff', '#ff8a4c', '#9b7bff'];
-  for (let i = 0; i < 34; i++) umbrellas.push({ x: -285 + r() * 570, z: 90 + r() * 38, color: pick(UMB), yaw: r() * 6.283 });
+  // umbrellas and loungers now come in grouped rental clusters (world/beach.js, added with the props below)
   // keep the stunt runs on the beach clear (see A_RAMPS)
   const inRun = (x, z, m) => A_RAMPS.some((k) => x > k.clear.x0 - m && x < k.clear.x1 + m && z > k.clear.z0 - m && z < k.clear.z1 + m);
   for (let i = umbrellas.length - 1; i >= 0; i--) if (inRun(umbrellas[i].x, umbrellas[i].z, 2.5)) umbrellas.splice(i, 1);
@@ -148,6 +150,10 @@ export function makeLayout() {
 
   // Small solid props (spatial grid, see props.js) and the seats around town.
   const props = createProps();
+  // the beach (world/beach.js): palm groves, rental clusters, towels, the kiosk, showers, the fire pit...
+  const beach = planBeach(props);
+  for (const p of beach.palms) palms.push(p);
+  for (const u of beach.umbrellas) umbrellas.push(u);
   palms.forEach((p, i) => { p.col = props.circle(p.x, p.z, 0.3 * p.s, 8); p.col.tag = 'palm'; p.col.i = i; });
   lamps.forEach((l, i) => { l.col = props.circle(l.x, l.z, 0.2, 6.4); l.col.tag = 'lamp'; l.col.i = i; });
   const rot = (u, lx, lz) => [u.x + lx * Math.cos(u.yaw) + lz * Math.sin(u.yaw), u.z - lx * Math.sin(u.yaw) + lz * Math.cos(u.yaw)];
@@ -233,7 +239,7 @@ export function makeLayout() {
     const fx = nx ? (nx > 0 ? b.x1 : b.x0) : b.cx + d.along, fz = nz ? (nz > 0 ? b.z1 : b.z0) : b.cz + d.along;
     venues[k] = { key: k, ...d, b, x: fx + nx * d.out, z: fz + nz * d.out, nx, nz, venue: true };
   }
-  return { buildings, lamps, palms, parking, umbrellas, huts, solids, bar, station, clinic, places, venues, bikes, booths, props, cafe, loose: [], planters: [], key, ramps, surf };
+  return { buildings, lamps, palms, parking, umbrellas, huts, beach, solids, bar, station, clinic, places, venues, bikes, booths, props, cafe, loose: [], planters: [], key, ramps, surf };
 }
 
 // The two stunt ramps in the old town (the key's are in world/key.js): off the promenade across the

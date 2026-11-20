@@ -7,14 +7,15 @@ import { kit, blockyMaterial, instExtras, crowdAtlas, mergeParts, CROWD_FACE_N }
 import { SIDE_X, KEY } from '../world/layout.js';
 import { KH, KV, KEY_JUNCTIONS } from '../world/key.js';
 import { H_ROADS, walkOK } from '../world/roads.js';
+import { createBeachgoers, BEACH_N } from './beachgoers.js';
 
-const N = 52, DRIVERS = 90;
+const N = 52, DRIVERS = 90, BN = BEACH_N;      // BN: the beach crowd (actors/beachgoers.js) shares the meshes
 const WALK_Z = [65, 41.4, 4, -12, -60, -76], DX = 8.8;
 const SHIRT = ['#ff5fa8', '#27d8cf', '#ffd447', '#f6f1e7', '#ff8a4c', '#9b7bff', '#7fe0ff', '#ff3f6a', '#8dff9a', '#f7b3c6', '#2a2140', '#ffb000'];
 const LEGS = ['#f6f1e7', '#3b5a9a', '#c9b38a', '#22203a', '#ff8fb0', '#5a7ac8', '#e8e0d0', '#2f8f86'];
 const SKIN = ['#f1c9a5', '#e0a878', '#c98d62', '#a56b43', '#7a4a2e', '#5a3620'];
 const HAT = ['#fff6ec', '#ff3fb4', '#27e8ff', '#ffd166', '#22203a'];
-const WALK = 0, WAIT = 1, DOWN = 2, FIST = 3, LIE = 4, SIT = 5, FLINCH = 6;
+const WALK = 0, WAIT = 1, DOWN = 2, FIST = 3, LIE = 4, SIT = 5, FLINCH = 6, ACT = 7;   // ACT: a beach activity pose (actors/beachgoers.js)
 // Share of the crowd out and about by hour: rush hours busiest, nightlife on the boulevard, empty small hours.
 export const CROWD_CURVE = [[0, 0.62], [1, 0.3], [2, 0.12], [5, 0.1], [6.5, 0.45], [7.4, 1], [9, 1], [10.2, 0.72], [16, 0.75], [17, 1], [19, 1], [20.2, 0.85], [23, 0.75], [24, 0.62]];
 
@@ -76,20 +77,20 @@ export function createPeds(scene, R, grid, game) {
   const torso = mk(mergeParts([K.B(0.4, 0.12, 0.24, 0, 0.06, 0, W, 'denim', { alt: 1, b: 0 }), K.B(0.41, 0.03, 0.25, 0, 0.12, 0, '#3a3440', 'leather', { alt: 3, b: 0 }),
     K.B(0.42, 0.2, 0.25, 0, 0.235, 0, W, 'weave'), K.B(0.45, 0.22, 0.265, 0, 0.44, 0, W, 'weave'),
     K.B(0.11, 0.08, 0.25, 0.2, 0.55, 0, W, 'seam', P0), K.B(0.11, 0.08, 0.25, -0.2, 0.55, 0, W, 'seam', P0),
-    K.B(0.22, 0.04, 0.19, 0, 0.58, 0, W, 'rib', { alt: 2, b: 0 }), K.B(0.455, 0.045, 0.27, 0, 0.42, 0, W, 'plain', { alt: 2, b: 0 })]), N + DRIVERS);
+    K.B(0.22, 0.04, 0.19, 0, 0.58, 0, W, 'rib', { alt: 2, b: 0 }), K.B(0.455, 0.045, 0.27, 0, 0.42, 0, W, 'plain', { alt: 2, b: 0 })]), N + BN + DRIVERS);
   const head = mk(mergeParts([K.B(0.1, 0.08, 0.1, 0, -0.02, 0, W, 'plain', P0), K.B(0.26, 0.26, 0.24, 0, 0.13, 0, W, 'plain', { b: 0.016 }), K.face(0.228, 0.228, 0, 0.13, 0.1205, W),
     K.B(0.03, 0.034, 0.02, 0, 0.1, 0.127, '#e2e2e2', 'plain', P0), K.B(0.024, 0.055, 0.045, 0.135, 0.12, 0, '#dcdcdc', 'plain', P0), K.B(0.024, 0.055, 0.045, -0.135, 0.12, 0, '#dcdcdc', 'plain', P0),
     K.B(0.275, 0.065, 0.255, 0, 0.25, -0.005, W, 'hair', { alt: 1, b: 0 }), K.B(0.275, 0.19, 0.065, 0, 0.15, -0.1, W, 'hair', { alt: 1, b: 0 }),
     K.B(0.026, 0.11, 0.15, 0.137, 0.19, -0.04, W, 'hair', { alt: 1, b: 0 }), K.B(0.026, 0.11, 0.15, -0.137, 0.19, -0.04, W, 'hair', { alt: 1, b: 0 }),
-    K.B(0.19, 0.035, 0.03, 0.025, 0.24, 0.122, W, 'hair', { alt: 1, b: 0, rz: -0.12 })]), N + DRIVERS, headMat);
+    K.B(0.19, 0.035, 0.03, 0.025, 0.24, 0.122, W, 'hair', { alt: 1, b: 0, rz: -0.12 })]), N + BN + DRIVERS, headMat);
   const limb = mk(mergeParts([K.B(0.13, 0.24, 0.14, 0, -0.12, 0, W, 'weave'), K.B(0.115, 0.04, 0.125, 0, -0.26, 0, W, 'plain', { alt: 1, b: 0 }),
     K.B(0.125, 0.22, 0.135, 0, -0.39, 0, W, 'weave', { alt: 1 }), K.B(0.13, 0.09, 0.16, 0, -0.545, 0.015, W, 'leather', { alt: 2, b: 0 }),
-    K.B(0.135, 0.025, 0.165, 0, -0.6, 0.015, W, 'tread', { alt: 2, b: 0 })]), N * 4);
+    K.B(0.135, 0.025, 0.165, 0, -0.6, 0.015, W, 'tread', { alt: 2, b: 0 })]), (N + BN) * 4);
   const hat = mk(mergeParts([K.B(0.26, 0.1, 0.25, 0, 0.32, 0, W, 'weave', { b: 0.012 }), K.B(0.265, 0.03, 0.255, 0, 0.285, 0, W, 'rib', { alt: 1, b: 0 }),
-    K.B(0.38, 0.022, 0.36, 0, 0.275, 0, W, 'weave', P0)]), N);
+    K.B(0.38, 0.022, 0.36, 0, 0.275, 0, W, 'weave', P0)]), N + BN);
   const xT = instExtras(torso), xH = instExtras(head, true), xL = instExtras(limb), xHat = instExtras(hat);
   const shadow = new THREE.InstancedMesh(new THREE.CircleGeometry(0.42, 10).rotateX(-PI / 2), new THREE.MeshBasicMaterial({
-    color: 0, transparent: true, opacity: 0.26, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), N);
+    color: 0, transparent: true, opacity: 0.26, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), N + BN);
   shadow.frustumCulled = false; shadow.renderOrder = 1; scene.add(shadow);
 
   const col = new THREE.Color(), pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -105,6 +106,24 @@ export function createPeds(scene, R, grid, game) {
     for (const k of [2, 3]) { limb.setColorAt(i * 4 + k, col.set(shirt)); xL.b(i * 4 + k, long ? shirt : skin); xL.c(i * 4 + k, skin); }
     hat.setColorAt(i, col.set(pick(HAT))); xHat.b(i, pick(SHIRT));
     p.hat = Math.random() < 0.4; p.h = 0.9 + Math.random() * 0.2; p.w = 0.88 + Math.random() * 0.3; p.voice = 0.75 + Math.random() * 0.6;
+    for (const m of [torso, head, limb, hat]) m.instanceColor.needsUpdate = true;
+  }
+  // beach clothes: swimwear and bare feet, or a vest and shorts for sport (actors/beachgoers.js)
+  function dressBeach(p, mode) {
+    dress(p);
+    if (mode === 'casual') return;
+    const i = p.i, skin = head.instanceColor ? col.fromBufferAttribute(head.instanceColor, i).getHex() : 0xc98d62, sk = '#' + skin.toString(16).padStart(6, '0');
+    const suit = pick(SHIRT), one = Math.random() < 0.45;
+    if (mode === 'swim') {
+      torso.setColorAt(i, col.set(one ? suit : sk)); xT.b(i, suit); xT.c(i, one ? suit : sk);
+      for (const k of [0, 1]) { limb.setColorAt(i * 4 + k, col.set(one ? sk : suit)); xL.b(i * 4 + k, sk); xL.c(i * 4 + k, sk); }
+      for (const k of [2, 3]) { limb.setColorAt(i * 4 + k, col.set(sk)); xL.b(i * 4 + k, sk); xL.c(i * 4 + k, sk); }
+      p.hat = Math.random() < 0.25;
+    } else {
+      torso.setColorAt(i, col.set(suit)); xT.b(i, pick(['#22203a', '#3b5a9a', '#f6f1e7', '#2f8f86'])); xT.c(i, suit);
+      for (const k of [0, 1]) { limb.setColorAt(i * 4 + k, col.set(pick(['#22203a', '#3b5a9a', '#ff5fa8']))); xL.b(i * 4 + k, sk); xL.c(i * 4 + k, pick(SHOE)); }
+      for (const k of [2, 3]) { limb.setColorAt(i * 4 + k, col.set(sk)); xL.b(i * 4 + k, sk); xL.c(i * 4 + k, sk); }
+    }
     for (const m of [torso, head, limb, hat]) m.instanceColor.needsUpdate = true;
   }
   function put(p, a) {
@@ -123,7 +142,7 @@ export function createPeds(scene, R, grid, game) {
     peds.push(p);
   }
   for (let i = 0; i < DRIVERS; i++) {
-    const k = N + i, sk = pick(SKIN);
+    const k = N + BN + i, sk = pick(SKIN);
     torso.setColorAt(k, col.set(pick(SHIRT))); xT.b(k, pick(LEGS)); xT.c(k, pick(SHIRT));
     head.setColorAt(k, col.set(sk)); xH.b(k, pick(HAIR)); xH.face(k, Math.floor(Math.random() * CROWD_FACE_N));
   }
@@ -150,18 +169,20 @@ export function createPeds(scene, R, grid, game) {
       shadow.setMatrixAt(i, M.makeTranslation(p.x, 0.03, p.z));
       return;
     }
-    B.compose(v.set(p.x, 0, p.z), q.setFromEuler(eu.set(p.tilt, p.yaw, 0)), sc.set(p.h, p.h, p.h));
+    if (p.state === ACT) { beach.drawAct(p); return; }
+    const gy = p.gy || 0;
+    B.compose(v.set(p.x, gy, p.z), q.setFromEuler(eu.set(p.tilt, p.yaw, 0)), sc.set(p.h, p.h, p.h));
     if (p.state === FLINCH) {
       // a shot whizzed past: duck, arms over the head (never hurt, just startled)
       part(torso, i, 0, 0.74, 0, 0.38, 0, p.w, 1); part(head, i, 0, 1.34, 0.2, 0.45, 0, 1, 1);
       part(limb, i * 4, 0.1 * p.w, 0.8, 0, -0.35, 0, 1, 1.3); part(limb, i * 4 + 1, -0.1 * p.w, 0.8, 0, 0.1, 0, 1, 1.3);
       part(limb, i * 4 + 2, 0.24 * p.w, 1.28, 0.2, -2.7, 0.5, 0.85, 1); part(limb, i * 4 + 3, -0.24 * p.w, 1.28, 0.2, -2.7, -0.5, 0.85, 1);
       if (p.hat) part(hat, i, 0, 1.34, 0.2, 0.45, 0, 1, 1); else hat.setMatrixAt(i, ZERO);
-      shadow.setMatrixAt(i, M.makeTranslation(p.x, 0.03, p.z));
+      shadow.setMatrixAt(i, M.makeTranslation(p.x, gy + 0.03, p.z));
       return;
     }
     const g = p.evt && p.state !== DOWN ? p.evt.gesture : null;
-    const fist = p.state === FIST || g === 'fist' ? -2.4 + Math.sin((p.t || p.phase) * 16) * 0.35 : g === 'wave' ? -2.7 + Math.sin(p.phase * 4) * 0.35 : g === 'point' ? -1.5 : g === 'bag' ? -0.5 : 0;
+    const fist = p.state === FIST || g === 'fist' ? -2.4 + Math.sin((p.t || p.phase) * 16) * 0.35 : g === 'wave' ? -2.7 + Math.sin(p.phase * 4) * 0.35 : g === 'point' ? -1.5 : g === 'bag' ? -0.5 : p.leash && p.state === WALK ? -0.75 : 0;
     const flail = p.state === DOWN ? 2.6 : p.state === LIE ? 2.9 : 0;
     part(torso, i, 0, 0.84, 0, 0.06 * k, 0, p.w, 1);
     part(head, i, 0, 1.5, 0, 0, 0, 1, 1);
@@ -170,7 +191,7 @@ export function createPeds(scene, R, grid, game) {
     part(limb, i * 4 + 2, 0.27 * p.w, 1.38, 0, fist || -s - flail, g === 'wave' ? 0.4 : 0.08, 0.85, 1);
     part(limb, i * 4 + 3, -0.27 * p.w, 1.38, 0, s - flail, -0.08, 0.85, 1);
     if (p.hat && p.state !== LIE) part(hat, i, 0, 1.5, 0, 0, 0, 1, 1); else hat.setMatrixAt(i, ZERO);
-    shadow.setMatrixAt(i, M.makeTranslation(p.x, 0.03, p.z));
+    if (p.state === LIE || gy < -0.3) shadow.setMatrixAt(i, ZERO); else shadow.setMatrixAt(i, M.makeTranslation(p.x, gy + 0.03, p.z));
   }
 
   function standUp(p) { if (p.hang && p.hang.seat && p.hang.seat.taken === p) p.hang.seat.taken = null; }
@@ -321,7 +342,7 @@ export function createPeds(scene, R, grid, game) {
     s.list.push({ x: s.cx + side * (2.8 + Math.random() * 6.5), z: 38 + Math.random() * 4.6, cx: s.cx, cz: 40.5 });
   }
   // seats people use: benches and café chairs any time, loungers and towels while the sun is up
-  const SEATS = game.L.props.seats.filter((s) => s.kind === 'bench' || s.kind === 'chair' || s.kind === 'lounger' || s.kind === 'towel');
+  const SEATS = game.L.props.seats.filter((s) => s.kind === 'bench' || s.kind === 'chair');
   UMB.forEach((u) => spots.beach.list.push({ x: u.x + 1.6, z: u.z + 1.2, cx: u.x, cz: u.z }, { x: u.x - 1.2, z: u.z + 1.8, cx: u.x, cz: u.z }));
   // a few people start out sitting on the boulevard and promenade benches and at the café
   {
@@ -344,7 +365,8 @@ export function createPeds(scene, R, grid, game) {
   }
   function spawn(p) {
     const { night, day } = mood(), r = Math.random(), K = inKeyF();
-    const kind = K ? null : night && r < 0.5 ? (r < 0.3 ? 'club' : 'bar') : day && r < 0.38 ? 'beach' : null;
+    // (the beach has its own crowd now, on a timetable: actors/beachgoers.js)
+    const kind = K ? null : night && r < 0.5 ? (r < 0.3 ? 'club' : 'bar') : null;
     // take a seat: a fair share by day, a few on the boulevard benches in the evening
     if (!kind && Math.random() < (day ? 0.4 : mood().h < 1 || mood().h > 6 ? 0.18 : 0.05)) {
       for (let i = 0; i < 10; i++) {
@@ -418,11 +440,15 @@ export function createPeds(scene, R, grid, game) {
     }
   }
 
+  // the beach crowd: its own pool of people in the same meshes (indices N .. N + BN - 1)
+  const beach = createBeachgoers({ game, base: N, count: BN, torso, head, limb, hat, shadow, part, B, M, v, q, eu, sc, ZERO, dress, dressBeach, knock, shout, hitCheck, standUp: () => {},
+    S: { WALK, DOWN, LIE, SIT, FLINCH, ACT } });
+  const all = () => (beach.on ? [...peds, ...beach.list] : peds);
   const api = {
-    peds, count: N,
+    peds, count: N, beach,
     // scare everyone within r of (x, z); the closest ones go flying
     alarm(x, z, r, blast = 0) {
-      for (const p of peds) {
+      for (const p of all()) {
         if (p.off) continue;
         const dx = p.x - x, dz = p.z - z, d = Math.hypot(dx, dz);
         if (d > r) continue;
@@ -436,7 +462,7 @@ export function createPeds(scene, R, grid, game) {
     // shout "hey!" and run away from it; further out they just leave
     scare(x, z, r, fr = 3) {
       let n = 0;
-      for (const p of peds) {
+      for (const p of all()) {
         if (p.off) continue;
         const d = Math.hypot(p.x - x, p.z - z);
         if (d > r) continue;
@@ -509,7 +535,7 @@ export function createPeds(scene, R, grid, game) {
     // bumping into someone on skates
     bump(player) {
       if (player.speed < 5) return;
-      for (const p of peds) {
+      for (const p of all()) {
         if (p.off || p.state === DOWN || Math.abs(p.x - player.pos.x) > 0.75 || Math.abs(p.z - player.pos.z) > 0.75) continue;
         if (knock(p, player.vel.x * 0.5, player.vel.z * 0.5, 1.3)) { shout(p); player.vel.x *= 0.4; player.vel.z *= 0.4; }
       }
@@ -527,9 +553,10 @@ export function createPeds(scene, R, grid, game) {
         if (far) { if ((frame + p.i) % 4) continue; update(p, dt * 4, t); } else update(p, dt, t);
         draw(p);
       }
+      beach.update(dt, t, frame, draw);
       // drivers sit on the left: a torso and a head per occupied car
       for (const c of cars) {
-        const i = N + c.idx;
+        const i = N + BN + c.idx;
         if (c.off || !c.hasDriver || !(c.ai || c.jacking)) { torso.setMatrixAt(i, ZERO); head.setMatrixAt(i, ZERO); continue; }
         B.compose(v.set(c.x, c.y, c.z), q.setFromEuler(eu.set(c.tx, c.yaw, c.tz)), sc.set(1, 1, 1));
         if (c.kind === 'bike') { part(torso, i, 0, 0.92, -0.42, 0.5, 0, 0.9, 0.9); part(head, i, 0, 1.42, -0.1, 0.1, 0, 1, 1); continue; }

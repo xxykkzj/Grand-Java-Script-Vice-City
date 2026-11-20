@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { box, cyl, tint, merge, rng, PI, timeU } from '../core/util.js';
 import { PIER, ADS, SIDE_X, offRoad, inJunction } from './layout.js';
 import { KEY_ADS } from './key.js';
+import { beachGeometry } from './beach.js';
 
 const INK = '#1d1630', CREAM = '#fbf7f0', STEEL = '#b9bcc8';
 const NEON = ['#ff2bd1', '#18f0ff', '#ffe14a', '#8dff5a', '#ff6a3d', '#b388ff'];
@@ -164,6 +165,8 @@ export function addDetails(L, S, N, glows, addWin, signs) {
   for (const l of L.lamps) mark(l.x, l.z, 0.3);
   for (const p of L.palms) mark(p.x, p.z, 0.45);
   for (const b of L.booths) mark(b.x, b.z, 0.85);
+  for (const it of L.beach.items) mark(it.x, it.z, it.r);
+  for (const u of L.umbrellas) mark(u.x, u.z, 1.4);
   for (const k in L.places) mark(L.places[k].x, L.places[k].z, 2.4);
   const runs = L.ramps.filter((k) => k.clear).map((k) => k.clear);
   const spot = (x, z, rr) => { const a = offRoad(x, z, rr); if (!a || inJunction(a[0], a[1], rr) || !free(a[0], a[1], rr) || runs.some((c) => a[0] > c.x0 - rr && a[0] < c.x1 + rr && a[1] > c.z0 - rr && a[1] < c.z1 + rr)) return null; mark(a[0], a[1], rr); return a; };
@@ -260,31 +263,27 @@ export function addDetails(L, S, N, glows, addWin, signs) {
   if (diner) loose('board', diner.cx - 9, 39.6, -0.4, 0.35, { color: '#ff5fa8' });
   if (L.places.mart) loose('board', L.places.mart.x - 3.4, 38.4, 0.3, 0.35, { color: '#5dff9a' });
 
-  // --- cones round the volleyball court and the west lifeguard hut, beach balls by the umbrellas
-  for (const [x, z] of [[-45.5, 97], [-34.5, 97], [-45.5, 108], [-34.5, 108], [-124, 95], [-116, 95]]) loose('cone', x, z, 0, 0.24);
-  for (const u of L.umbrellas.filter((u, i) => i % 8 === 3)) loose('ball', u.x + 2.6, u.z - 1.4, 0, 0.3, { color: ['#ff4fa3', '#27d8cf', '#ffd447'][Math.floor(u.x) & 1] });
+  // --- beach balls by a few of the umbrellas (the court and its run-off stay clear: world/beach.js)
+  for (const u of L.umbrellas.filter((u, i) => i % 6 === 2)) loose('ball', u.x + 2.6, u.z - 2.2, 0, 0.3, { color: ['#ff4fa3', '#27d8cf', '#ffd447'][Math.floor(u.x) & 1] });
 
   // --- beach: volleyball net, surfboards, a tall lifeguard chair
-  P.circle(-40, 97.6, 0.15, 2.6); P.circle(-40, 107.4, 0.15, 2.6);
-  // bleacher steps by the volleyball court
+  P.circle(-40, 97.6, 0.15, 2.6).own = 'court'; P.circle(-40, 107.4, 0.15, 2.6).own = 'court';
+  // bleacher steps beside the volleyball court, back past its run-off
   for (let i = 0; i < 3; i++) {
-    const x = -50.6 - i * 0.75, y = 0.42 * (i + 1);
+    const x = -53.6 - i * 0.75, y = 0.42 * (i + 1);
     S.push(box(0.75, y, 8, x, y / 2, 102.5, i % 2 ? '#27c9bf' : CREAM), box(0.77, 0.06, 8.02, x, y, 102.5, '#ff4fa3'));
     P.line(x + 0.1, 99, x + 0.1, 106, PI / 2, y, 'steps');
   }
-  P.box(-51.35, 102.5, 2.25, 8, 1.3);
+  P.box(-54.35, 102.5, 2.25, 8, 1.3);
   S.push(box(0.14, 2.6, 0.14, -40, 1.3, 97.6, CREAM), box(0.14, 2.6, 0.14, -40, 1.3, 107.4, CREAM), box(0.05, 0.9, 9.8, -40, 2.1, 102.5, '#ffffff'), box(0.07, 0.08, 9.8, -40, 2.56, 102.5, '#ff4fa3'));
-  const inRun = (x, z) => L.ramps.some((k) => k.clear && x > k.clear.x0 - 1 && x < k.clear.x1 + 1 && z > k.clear.z0 - 1 && z < k.clear.z1 + 1);
-  for (let i = 0; i < 12; i++) {
-    const x = -270 + r() * 540, z = 88 + r() * 30, c = NEON[i % 6];
-    if (inRun(x, z)) continue;
-    S.push(box(0.55, 2.3, 0.08, x, 1.05, z, c, 0.22 * (r() - 0.5), r() * 3, 0.1), box(0.1, 2.3, 0.09, x, 1.05, z, CREAM, 0, 0, 0.1));
-    P.circle(x, z, 0.3, 2.3);
-  }
+  // the rest of the beach (kiosk, rental stand, boardwalks, showers, bins, fire pit, sandcastles, kayaks,
+  // towels, dune grass, shells, surfboards): world/beach.js
+  beachGeometry(L.beach, S);
+  glows.push([L.beach.fire.x, 0.9, L.beach.fire.z, '#ff9a3d', 7, 0]);
   for (const x of [20, -200, 230]) {
     for (const [ox, oz] of [[-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]]) S.push(box(0.1, 2.6, 0.1, x + ox, 1.3, 124 + oz, CREAM));
     S.push(box(1.5, 0.12, 1.5, x, 2.6, 124, CREAM), box(1.5, 0.9, 0.1, x, 3.1, 123.3, '#ff4f6a'), box(0.9, 0.08, 0.5, x, 1.3, 124.9, CREAM, -0.5));
-    P.box(x, 124, 1.45, 1.45, 3.6);
+    P.box(x, 124, 1.45, 1.45, 3.6).own = 'chair';
   }
   // --- pier: crates, benches, life rings
   const px = (PIER.x0 + PIER.x1) / 2;
@@ -323,6 +322,10 @@ export function buildLife(scene, bodyMat) {
     } else g.push(box(1.5, 1, 2.2, x - sx * 0.8, 1.1, z - cz * 0.8, '#fbf7f0', 0, yaw), box(1.6, 0.14, 2.4, x - sx * 0.8, 1.65, z - cz * 0.8, trim, 0, yaw), box(1.52, 0.4, 0.1, x + sx * 0.3, 1.25, z + cz * 0.3, '#2c5f7a', 0, yaw));
   });
   for (const [x, z] of [[70, 170], [8, 205], [76, 250], [-70, 185]]) g.push(cyl(0.45, 0.6, 0.8, 8, x, 0.1, z, '#ff4f6a'), cyl(0.08, 0.08, 1.2, 5, x, 1, z, '#fbf7f0'));
+  // the swimming area off Coral Beach: a line of red and white floats on a rope, a big buoy at each end
+  for (let x = -140; x <= -20; x += 4) g.push(cyl(0.2, 0.2, 0.22, 7, x, -0.12, 180, (x / 4) % 2 ? '#fbf7f0' : '#ff4f6a'));
+  g.push(box(120, 0.04, 0.04, -80, -0.14, 180, '#fbf7f0'));
+  for (const x of [-142, -18]) g.push(cyl(0.4, 0.5, 0.7, 8, x, 0.05, 180, '#ffd447'), cyl(0.06, 0.06, 1.0, 5, x, 0.85, 180, '#fbf7f0'), box(0.5, 0.32, 0.03, x + 0.25, 1.2, 180, '#ff4f6a'));
   const boats = new THREE.Mesh(merge(g), bodyMat);
   boats.position.y = -0.35;
   scene.add(boats);

@@ -101,17 +101,17 @@ function club(room) {
   });
   g.push(box(1.6, 2.1, 0.03, -4.6, 2.4, 7.96, '#a98bff'));
   B.add(1.0, 0.5, 4.2, 2.2, 7.95, PI, (c, W, H) => { P.fill(c, W, H, '#c9a64a'); P.frame(c, W, H, '#7a5a1a', 4); P.text(c, 'CLUB PRISM', W / 2, H * 0.36, H * 0.24, '#3a2a0a', { italic: true }); P.text(c, 'EST. 1983 · LUMINA BLVD', W / 2, H * 0.72, H * 0.14, '#3a2a0a'); });
-  // the lounge: paintings over the back booths, a smoky mirror on the far wall, plants in the front corners
-  for (const x of [13.8, 18.4]) {
+  // the lounge: paintings over the back booths, a smoky mirror on the far wall, plants in two corners
+  for (const x of [14.2, 18.9]) {
     g.push(box(1.5, 1.0, 0.03, x, 1.95, -7.97, GOLD));
     B.add(1.38, 0.88, x, 1.95, -7.95, 0, (c, W, H) => { const q = rng(x * 10); P.grad(c, W, H, x < 16 ? '#2a0f4a' : '#0f2a4a', x < 16 ? '#ff6a8a' : '#18f0ff'); for (let i = 0; i < 7; i++) { c.fillStyle = NEON[Math.floor(q() * 6)]; c.globalAlpha = 0.6; c.beginPath(); c.arc(q() * W, q() * H, 6 + q() * 20, 0, 6.3); c.fill(); } c.globalAlpha = 1; });
   }
   B.add(2.4, 1.6, 20.97, 1.8, 0.3, -PI / 2, (c, W, H) => P.mirror(c, W, H, ['#2a1440', '#140a24'], [['#ff2bd1', 8], ['#18f0ff', 6], ['#ffb070', 6]], 9));
-  g.push(box(0.03, 1.72, 2.52, 20.98, 1.8, 0.3, GOLD));
-  plant(g, 11.6, -7.4, 1.2, '#3a1a5a', '#2f9f6a', 0); plant(g, 20.4, 2.0, 1.2, '#3a1a5a', '#2f9f6a', 0);
-  room.blocks.push({ x0: 11.25, x1: 11.95, z0: -7.75, z1: -7.05 }, { x0: 20.05, x1: 20.75, z0: 1.65, z1: 2.35 });
-  for (const z of [-6.0, -1.7]) g.push(box(0.12, 0.3, 0.12, 20.92, 2.5, z, GOLD), cyl(0.12, 0.08, 0.2, 8, 20.85, 2.7, z, '#ffd9a0'));
-  pools.push(disc(20.95, 2.5, -6.0, 0.9, '#ffb070', 0.45, '-x'), disc(20.95, 2.5, -1.7, 0.9, '#ffb070', 0.45, '-x'));
+  g.push(box(0.02, 1.72, 2.52, 20.995, 1.8, 0.3, GOLD));   // the frame sits behind the mirror board (it used to cover it)
+  plant(g, 11.6, -7.4, 1.2, '#3a1a5a', '#2f9f6a', 0); plant(g, 12.0, 2.15, 1.2, '#3a1a5a', '#2f9f6a', 0);
+  room.blocks.push({ x0: 11.25, x1: 11.95, z0: -7.75, z1: -7.05 }, { x0: 11.65, x1: 12.35, z0: 1.8, z1: 2.5 });
+  for (const z of [-6.35, -0.7]) g.push(box(0.12, 0.3, 0.12, 20.92, 2.5, z, GOLD), cyl(0.12, 0.08, 0.2, 8, 20.85, 2.7, z, '#ffd9a0'));
+  pools.push(disc(20.95, 2.5, -6.35, 0.9, '#ffb070', 0.45, '-x'), disc(20.95, 2.5, -0.7, 0.9, '#ffb070', 0.45, '-x'));
   // a rug at the coat check, pipes and ducts up in the dark ceiling
   rug(g, 2.4, 3.4, -8.6, 6.4, '#2a1050', '#3a1a6a', '#a98bff', 'zigzag', PI / 2);
   pipe(g, -10.6, -7.6, -10.6, 7.6, 5.75, 0.09, '#2a2540'); pipe(g, -10.3, -7.6, -10.3, 7.6, 5.75, 0.06, '#3a3550'); pipe(g, -10.8, 7.6, 10.8, 7.6, 5.75, 0.12, '#2a2540');

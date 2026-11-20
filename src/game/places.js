@@ -195,11 +195,11 @@ export function createPlaces(game, scene, camera) {
       if (ok) { audio.cash(); audio.pickup(); } else audio.blip(false);
     } else {
       const o = items()[sel];
-      if (game.health >= 100) { msg = shop === 'vend' ? "YOU'RE FULL. THE MACHINE SULKS." : "YOU'RE FULL. GUS LOOKS RELIEVED."; audio.blip(false); return render(); }
       if (game.money < o.price) { msg = 'NOT ENOUGH CASH'; audio.blip(false); return render(); }
-      game.money -= o.price; game.health = Math.min(100, game.health + o.heal);
+      game.money -= o.price;
       if (shop === 'vend') { game.loose.drop(vend); audio.cash(); } else audio.pickup();
-      msg = `${o.name}: +${o.heal} HEALTH`;
+      // eat or drink it (game/eat.js): health up to 100, or REFRESHED at full health
+      msg = game.eat.consume(o);
     }
     render();
   }
@@ -296,7 +296,7 @@ export function createPlaces(game, scene, camera) {
       // walking around indoors: camera sits above the door looking in, so W is "further in"
       if (!game.busy) {
         let dx = ctl.strafe, dz = -ctl.move;
-        const len = Math.hypot(dx, dz), top = ctl.sprint ? 7 : 4.6;
+        const len = Math.hypot(dx, dz), top = (ctl.sprint ? 7 : 4.6) * (player.boost || 1);
         if (len > 0) { const k = top * Math.min(1, len) / len; dx *= k; dz *= k; }
         player.vel.x = damp(player.vel.x, dx, len > 0 ? 7 : 4, dt); player.vel.z = damp(player.vel.z, dz, len > 0 ? 7 : 4, dt);
         local.x = player.pos.x - r.ox + player.vel.x * dt; local.z = player.pos.z - r.oz + player.vel.z * dt;
