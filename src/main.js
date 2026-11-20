@@ -6,6 +6,7 @@ import { makeLayout, clampToWorld, onLand, propsOnRoad, zoneName, FOOTPRINTS, fo
 import { checkBeach, BEACH_ZONES } from './world/beach.js';
 import { createEat } from './game/eat.js';
 import { buildKey } from './world/keyCity.js';
+import { lampU } from './world/lamplight.js';
 import { buildAds } from './world/ads.js';
 import { createDistricts } from './world/districts.js';
 import { createLoose, LAMP_BREAK } from './world/loose.js';
@@ -535,6 +536,7 @@ async function boot() {
     const hideBody = cam.first && !cut.active && !game.inside && game.mode === 'foot';
     if (player.model.root.visible === hideBody && !player.hidden) player.model.root.visible = !hideBody;
     pointScaleU.value = renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360));
+    lampU.uLampOn.value = game.inside ? 0 : 1;
     env.update(dt);
     horizon.update(env);
     sea.update(dt);

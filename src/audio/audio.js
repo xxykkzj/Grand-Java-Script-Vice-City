@@ -12,26 +12,28 @@ const STEP = 60 / BPM / 4;
 const CHORDS = [{ root: 45, third: 3 }, { root: 41, third: 4 }, { root: 48, third: 4 }, { root: 43, third: 4 }];
 const MUSIC_KEY = 'neon-coast-music';
 const AUTO_OFF = 150;                 // seconds of street music after the start before it fades out
-// Engine characters, one per vehicle type (vehicles/types.js `sound`). Two oscillators (t1, and t2 at r2 times
-// the pitch) through a low-pass that opens from `cut` by `cutRev` with the revs; the pitch climbs from `base`
-// by `span` within each of `gears` gears (and `step` per gear); `lope` is an amplitude wobble at lopeR times
-// the pitch (a V8's burble, a scooter's putter, a diesel's knock); `clat` mixes in a band of noise (diesel
-// clatter); `gain` is the loudness. Whatever the profile, the level rule is the same: loud while the revs
-// change, settling to a soft hum at a steady cruise, ducked under the music.
+// Engine characters, one per vehicle type (vehicles/types.js `sound`). Deliberately soft and smooth: two
+// oscillators (t1, and t2 at r2 times the pitch) through a low-pass that opens from `cut` by `cutRev` with the
+// revs; the pitch glides continuously from `base` up by `span` with the (smoothed) revs: no gear steps, no
+// amplitude pulsing (an earlier design stepped through gears and wobbled the level at a fraction of the
+// pitch, which chopped and stuttered when you lifted off). Character is only base pitch, timbre (`q`, the
+// filter's resonance, and `grit`, a little band of noise mixed under it for the diesels) and loudness (`gain`).
+// The sense of speed comes from a quiet tyre-and-wind noise layer that rises with speed. The level rule is the
+// same for all: louder while the revs change, settling to a soft hum at a steady cruise, ducked under the music.
 export const ENGINES = {
-  sedan: { t1: 'sawtooth', t2: 'square', r2: 0.5, base: 50, span: 95, step: 10, gears: 4, cut: 220, cutRev: 900, lope: 0, lopeR: 0.5, clat: 0, gain: 1 },
-  taxi: { t1: 'sawtooth', t2: 'square', r2: 0.5, base: 46, span: 86, step: 9, gears: 4, cut: 240, cutRev: 780, lope: 0.06, lopeR: 0.5, clat: 0.04, gain: 0.95 },
-  hatch: { t1: 'sawtooth', t2: 'square', r2: 1, base: 74, span: 150, step: 14, gears: 5, cut: 420, cutRev: 1500, lope: 0.14, lopeR: 1, clat: 0, gain: 0.8 },
-  sports: { t1: 'sawtooth', t2: 'sawtooth', r2: 2, base: 66, span: 240, step: 22, gears: 5, cut: 520, cutRev: 2700, lope: 0, lopeR: 1, clat: 0, gain: 0.85 },
-  v8: { t1: 'sawtooth', t2: 'square', r2: 0.5, base: 29, span: 58, step: 6, gears: 3, cut: 170, cutRev: 560, lope: 0.55, lopeR: 0.25, clat: 0, gain: 1.35 },
-  pickup: { t1: 'sawtooth', t2: 'square', r2: 0.5, base: 35, span: 64, step: 7, gears: 4, cut: 200, cutRev: 640, lope: 0.32, lopeR: 0.25, clat: 0.08, gain: 1.15 },
-  suv: { t1: 'sawtooth', t2: 'square', r2: 0.5, base: 40, span: 74, step: 8, gears: 4, cut: 210, cutRev: 700, lope: 0.14, lopeR: 0.5, clat: 0.06, gain: 1.05 },
-  van: { t1: 'square', t2: 'sawtooth', r2: 0.5, base: 40, span: 68, step: 7, gears: 4, cut: 240, cutRev: 700, lope: 0.12, lopeR: 1, clat: 0.2, gain: 1 },
-  diesel: { t1: 'square', t2: 'sawtooth', r2: 0.5, base: 28, span: 46, step: 5, gears: 4, cut: 260, cutRev: 700, lope: 0.28, lopeR: 1, clat: 0.6, gain: 1.05 },
-  bus: { t1: 'square', t2: 'sawtooth', r2: 0.5, base: 22, span: 32, step: 4, gears: 3, cut: 200, cutRev: 520, lope: 0.32, lopeR: 1, clat: 0.85, gain: 1.2 },
-  scooter: { t1: 'square', t2: 'triangle', r2: 2, base: 92, span: 150, step: 0, gears: 1, cut: 900, cutRev: 1800, lope: 0.6, lopeR: 0.5, clat: 0, gain: 0.7 },
-  comet: { t1: 'sawtooth', t2: 'square', r2: 0.5, base: 58, span: 130, step: 12, gears: 5, cut: 260, cutRev: 1300, lope: 0.05, lopeR: 1, clat: 0, gain: 1 },
-  tank: { t1: 'sawtooth', t2: 'square', r2: 0.5, base: 34, span: 40, step: 6, gears: 2, cut: 220, cutRev: 900, lope: 0, lopeR: 0.5, clat: 0, gain: 1 },
+  sedan: { t1: 'sawtooth', t2: 'triangle', r2: 0.5, base: 48, span: 92, cut: 210, cutRev: 700, q: 0.8, grit: 0, gain: 1 },
+  taxi: { t1: 'sawtooth', t2: 'triangle', r2: 0.5, base: 46, span: 84, cut: 220, cutRev: 640, q: 0.9, grit: 0, gain: 0.95 },
+  hatch: { t1: 'sawtooth', t2: 'triangle', r2: 1, base: 64, span: 120, cut: 320, cutRev: 1000, q: 0.9, grit: 0, gain: 0.8 },
+  sports: { t1: 'sawtooth', t2: 'sawtooth', r2: 2, base: 58, span: 170, cut: 360, cutRev: 1500, q: 1.2, grit: 0, gain: 0.8 },
+  v8: { t1: 'sawtooth', t2: 'triangle', r2: 0.5, base: 34, span: 62, cut: 170, cutRev: 480, q: 1.6, grit: 0, gain: 1.15 },
+  pickup: { t1: 'sawtooth', t2: 'triangle', r2: 0.5, base: 38, span: 64, cut: 190, cutRev: 520, q: 1.1, grit: 0.03, gain: 1.05 },
+  suv: { t1: 'sawtooth', t2: 'triangle', r2: 0.5, base: 42, span: 72, cut: 200, cutRev: 560, q: 1, grit: 0.02, gain: 1 },
+  van: { t1: 'triangle', t2: 'sawtooth', r2: 0.5, base: 42, span: 66, cut: 230, cutRev: 560, q: 0.9, grit: 0.05, gain: 1 },
+  diesel: { t1: 'triangle', t2: 'sawtooth', r2: 0.5, base: 34, span: 50, cut: 240, cutRev: 520, q: 0.9, grit: 0.08, gain: 1 },
+  bus: { t1: 'triangle', t2: 'sawtooth', r2: 0.5, base: 30, span: 38, cut: 200, cutRev: 420, q: 0.8, grit: 0.1, gain: 1.05 },
+  scooter: { t1: 'triangle', t2: 'square', r2: 2, base: 88, span: 130, cut: 700, cutRev: 1100, q: 0.7, grit: 0, gain: 0.55 },
+  comet: { t1: 'sawtooth', t2: 'triangle', r2: 0.5, base: 56, span: 120, cut: 250, cutRev: 1000, q: 1, grit: 0, gain: 0.95 },
+  tank: { t1: 'sawtooth', t2: 'triangle', r2: 0.5, base: 32, span: 36, cut: 200, cutRev: 600, q: 0.9, grit: 0.05, gain: 1 },
 };
 
 export function createAudio() {
@@ -112,7 +114,7 @@ export function createAudio() {
       elfo.connect(lfoD); lfoD.connect(am.gain); elfo.start();
       const clat = loop('bandpass', 1700, 1.3); clat.g.disconnect(); clat.g.connect(am);
       o1.connect(ef); o2.connect(ef); ef.connect(am); am.connect(eg); eg.connect(sfx); o1.start(); o2.start();
-      eng = { o1, o2, f: ef, g: eg, am, lfo: elfo, lfoD, clat, prof: null, pid: null };
+      eng = { o1, o2, f: ef, g: eg, am, lfo: elfo, lfoD, clat, prof: null, pid: null, road: loop('lowpass', 300, 0.5), log: null };
 
       // patrol siren: a square wave wailing between two pitches
       const so = ctx.createOscillator(); so.type = 'square'; so.frequency.value = 760;
@@ -156,8 +158,10 @@ export function createAudio() {
     // automated checks: fire the auto-off after `sec` seconds of play; read the state
     skateGain() { return skate ? +skate.g.gain.value.toFixed(3) : 0; },
     engineGain() { return eng ? +eng.g.gain.value.toFixed(3) : 0; },
+    // automated checks: log [time, pitch, gain, pitch target, gain target, revs] on every update
+    engineLog(on) { if (!eng) return null; const l = eng.log; eng.log = on ? [] : null; return l; },
     // which engine is running and how it is set up right now (automated checks)
-    engineState() { return eng ? { profile: eng.pid, t1: eng.o1.type, t2: eng.o2.type, freq: +eng.o1.frequency.value.toFixed(1), cut: Math.round(eng.f.frequency.value), lope: +eng.lfoD.gain.value.toFixed(2), clat: +eng.clat.g.gain.value.toFixed(2), gain: +eng.g.gain.value.toFixed(3) } : null; },
+    engineState() { return eng ? { profile: eng.pid, t1: eng.o1.type, t2: eng.o2.type, freq: +eng.o1.frequency.value.toFixed(1), cut: Math.round(eng.f.frequency.value), lope: +eng.lfoD.gain.value.toFixed(2), clat: +eng.clat.g.gain.value.toFixed(2), road: +eng.road.g.gain.value.toFixed(3), gain: +eng.g.gain.value.toFixed(3) } : null; },
     musicAuto(sec) { mus.until = (ctx ? ctx.currentTime : 0) + sec; mus.fired = false; },
     musicState() {
       const cur = players.find((p) => !p.out);
@@ -171,29 +175,34 @@ export function createAudio() {
     update(s) {
       if (!ctx) return;
       const t = ctx.currentTime;
-      // engine: loud only while the revs are changing (pulling away, braking, shifting); at a steady cruise the
-      // ear tunes it out, so it settles to a soft hum after a few seconds and sits under the music. Pitch climbs
-      // through four gears instead of one endless drone.
+      // engine: louder only while the revs are changing (pulling away, braking); at a steady cruise the ear
+      // tunes it out, so it settles to a soft hum after a few seconds and sits under the music. Everything glides:
+      // the revs follow the speed quickly going up and slowly (about a second) coming down, the pitch is a
+      // continuous function of them, and the level and filter move with long time constants, so lifting off the
+      // throttle is a smooth fall, never a step.
       const edt = Math.min(0.1, Math.max(0, t - (eng.lastT || t))); eng.lastT = t;
-      const rev = s.engineRev || 0, prevS = eng.sRev || 0;
-      eng.sRev = prevS + (rev - prevS) * Math.min(1, edt / 0.8);           // smoothed revs: ignore small wobbles
+      const rev = s.engine > 0 ? Math.min(1, s.engineRev || 0) : 0, prevS = eng.sRev || 0;
+      eng.sRev = prevS + (rev - prevS) * Math.min(1, edt / (rev > prevS ? 0.35 : 0.9));
       const dRev = edt > 0 ? Math.abs(eng.sRev - prevS) / edt : 0;
-      eng.calm = eng.calm == null ? 0 : dRev > 0.1 ? Math.max(0, eng.calm - edt * 3) : Math.min(1, eng.calm + edt / 4);
+      eng.calm = eng.calm == null ? 0 : dRev > 0.08 ? Math.max(0, eng.calm - edt * 0.8) : Math.min(1, eng.calm + edt / 5);
       const musicUp = mus.on && players.some((p) => !p.out) ? 1 : 0;
       // the engine of whatever is being driven (its profile only changes when you get into something else)
       const pid = s.engineProfile && ENGINES[s.engineProfile] ? s.engineProfile : s.heavy ? 'tank' : 'sedan', E = ENGINES[pid];
-      if (eng.pid !== pid) { eng.pid = pid; eng.prof = E; eng.o1.type = E.t1; eng.o2.type = E.t2; }
-      const eGain = s.engine > 0 ? (0.035 + rev * 0.06) * E.gain * (1 - 0.65 * eng.calm) * (1 - 0.35 * musicUp) : 0;
-      eng.g.gain.setTargetAtTime(eGain, t, 0.12);
-      const gears = E.gears, gx = Math.min(rev, 0.999) * gears, frac = gx - Math.floor(gx);
-      const wob = 1 + 0.012 * Math.sin(t * 2.3) + 0.008 * Math.sin(t * 5.1);
-      const f = (E.base + (0.35 + 0.65 * frac) * E.span + Math.floor(gx) * E.step) * wob;
-      eng.o1.frequency.setTargetAtTime(f, t, 0.07); eng.o2.frequency.setTargetAtTime(f * E.r2, t, 0.07);
-      eng.f.frequency.setTargetAtTime((E.cut + rev * E.cutRev) * (1 - 0.3 * eng.calm), t, 0.1);
-      eng.lfo.frequency.setTargetAtTime(Math.max(2, f * E.lopeR), t, 0.07);
-      eng.am.gain.setTargetAtTime(1 - E.lope * 0.5, t, 0.1); eng.lfoD.gain.setTargetAtTime(E.lope * 0.5 * (1 - 0.4 * rev), t, 0.1);
-      eng.clat.g.gain.setTargetAtTime(E.clat * (0.8 + rev * 0.9) * 1.6, t, 0.1);
-      eng.clat.f.frequency.setTargetAtTime(1200 + rev * 1400, t, 0.1);
+      if (eng.pid !== pid) { eng.pid = pid; eng.prof = E; eng.o1.type = E.t1; eng.o2.type = E.t2; eng.f.Q.value = E.q; }
+      const sr = eng.sRev, duck = 1 - 0.35 * musicUp;
+      const eGain = s.engine > 0 ? (0.03 + sr * 0.045) * E.gain * (1 - 0.55 * eng.calm) * duck : 0;
+      eng.g.gain.setTargetAtTime(eGain, t, 0.3);
+      const f = E.base + E.span * Math.pow(sr, 0.85);
+      eng.o1.frequency.setTargetAtTime(f, t, 0.18); eng.o2.frequency.setTargetAtTime(f * E.r2, t, 0.18);
+      eng.f.frequency.setTargetAtTime((E.cut + sr * E.cutRev) * (1 - 0.25 * eng.calm), t, 0.25);
+      eng.am.gain.setTargetAtTime(1, t, 0.2); eng.lfoD.gain.setTargetAtTime(0, t, 0.2);
+      eng.clat.g.gain.setTargetAtTime(s.engine > 0 ? E.grit * (0.6 + sr * 0.6) : 0, t, 0.3);
+      eng.clat.f.frequency.setTargetAtTime(900 + sr * 700, t, 0.3);
+      // tyres and wind: a soft band of noise that rises with speed (it carries the sense of motion)
+      const sp = s.engine > 0 ? Math.min(1, s.roadSpeed != null ? s.roadSpeed : rev) : 0;
+      eng.road.g.gain.setTargetAtTime(sp * sp * 0.05 * duck, t, 0.25);
+      eng.road.f.frequency.setTargetAtTime(260 + sp * 900, t, 0.3);
+      if (eng.log) eng.log.push([+t.toFixed(3), +eng.o1.frequency.value.toFixed(2), +eng.g.gain.value.toFixed(4), +f.toFixed(2), +eGain.toFixed(4), +rev.toFixed(3)]);
       // skates: a softer, lower wheel roll with a gentle push-and-glide rhythm instead of a steady hiss; like the
       // engine it eases down after a few seconds at a steady speed and sits under the music
       const sk = s.skate || 0, pS = skate.s || 0;
@@ -216,7 +225,7 @@ export function createAudio() {
       ufilt.frequency.setTargetAtTime(s.under ? 650 : 22000, t, s.under ? 0.08 : 0.15);
       uw.g.gain.setTargetAtTime(s.under ? 0.07 : 0, t, 0.2);
       // a sputtering engine coughs: the engine layer dips while the throttle is cut
-      if (s.cough) eng.g.gain.setTargetAtTime(0.02, t, 0.02);
+      if (s.cough) eng.g.gain.setTargetAtTime(0.02, t, 0.08);
       // room: 0 street, 1 a shop or the bar (radio in the corner), 2 Club Prism (loud)
       // Club Prism: s.club scales the system (quiet before the flyers go out, louder at the Dance-Off),
       // s.lounge is 1 in the booth lounge, where the music is softer and duller

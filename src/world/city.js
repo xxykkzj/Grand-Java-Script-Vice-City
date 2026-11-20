@@ -2,6 +2,7 @@
 // windows, signs, lamps, palms, pier and beach furniture. Everything is merged
 // or instanced, so the entire city is roughly a dozen draw calls.
 import * as THREE from 'three';
+import { setLampMap } from './lamplight.js';
 import { box, cyl, tint, merge, timeU, fogU, FOG_PARS, PI, rng, wetU, rainU, reflU, nightU, glareU } from '../core/util.js';
 import { HX, HZ, PIER, SIGN_NAMES, ADS, EDGE_SIGNS } from './layout.js';
 import { LADDERS, LADDER_GAP, shelfGeometry } from './sea.js';
@@ -132,6 +133,7 @@ export function groundMaterial(tex, lampTex, x0, z0, W, H, streaks) {
 export function buildGround(scene, L, renderer) {
   const canvas = paintGround(L);
   const lampMap = L.lampMap = createLampMap(L);
+  setLampMap('old', lampMap.tex, -HX, -HZ, HX * 2, HZ * 2);
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());

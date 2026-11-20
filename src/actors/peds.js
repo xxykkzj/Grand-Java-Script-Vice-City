@@ -130,7 +130,7 @@ export function createPeds(scene, R, grid, game) {
   }
   function put(p, a) {
     const e = a.adj[Math.floor(Math.random() * a.adj.length)];
-    Object.assign(p, { a, b: e.to, e, d: 0, state: WALK, t: 0, ox: 0, oz: 0, ovx: 0, ovz: 0, tilt: 0, flee: 0, tx: 0, tz: 0 });
+    Object.assign(p, { a, b: e.to, e, d: 0, state: WALK, t: 0, ox: 0, oz: 0, ovx: 0, ovz: 0, tilt: 0, flee: 0, tx: 0, tz: 0, sx: 0, sxv: 0, slow: 1, stuck: 0 });
   }
   for (let i = 0; i < N; i++) {
     const p = { i, isPed: true, x: 0, z: 0, yaw: 0, phase: Math.random() * 6, speed: 1.3 + Math.random() * 0.8, lane: (Math.random() - 0.5) * 2.2, off: false, hang: null };
@@ -268,9 +268,86 @@ export function createPeds(scene, R, grid, game) {
     }
     p.phase += dt * (2 + p.v * 3.2);
   }
+
+  // ---- vehicles as obstacles. Every vehicle's footprint is its type's own box (vehicles/types.js len x w,
+  // oriented by its yaw), padded by a person's radius. Walkers look a few metres ahead along their path and
+  // pick a sidestep (a lateral offset, sx) that clears any car standing on it, then drift back once past;
+  // anyone who still ends up inside a box (a car parked or spawned onto them, a tumble against a bumper) is
+  // pushed straight out. Moving cars (3 m/s and more) knock people over as before (hitCheck). Cheap: the
+  // per-frame neighbour grid (main.js) gives the few cars within reach.
+  const PR = 0.3, BOXK = { car: [2.2, 0.95], truck: [2.7, 1.05], bike: [1.1, 0.4], tank: [3.3, 2.0], heli: [2.6, 1.5] };
+  const VB = [];                                  // scratch: nearby vehicle boxes [cx, cz, fx, fz, hl, hw, slow]
+  for (let k = 0; k < 24; k++) VB.push([0, 0, 0, 0, 0, 0, 0]);
+  let nVB = 0;
+  const stats = { pushes: 0, sidesteps: 0, turned: 0, ms: 0, calls: 0 };
+  function nearCars(x, z, r) {
+    nVB = 0;
+    if (!api.collide) return 0;
+    grid.query(x, z, r, (o) => {
+      if (o.isPed || o.off || nVB >= VB.length || (o.y || 0) > 1.5 || (o.kind === 'heli' && !(o.y < 0.6))) return;
+      const T = o.spec, hl = T ? T.len / 2 : (BOXK[o.kind] || BOXK.car)[0], hw = T ? T.w / 2 : (BOXK[o.kind] || BOXK.car)[1];
+      const dx = x - o.x, dz = z - o.z;
+      if (dx * dx + dz * dz > (r + hl) * (r + hl)) return;
+      const b = VB[nVB++];
+      b[0] = o.x; b[1] = o.z; b[2] = Math.sin(o.yaw); b[3] = Math.cos(o.yaw); b[4] = hl; b[5] = hw;
+      b[6] = o.kind === 'tank' ? Math.abs(o.speed || 0) < 2 : Math.hypot(o.vx || 0, o.vz || 0) < 2;
+    });
+    return nVB;
+  }
+  // how far (cx, cz) must move to get the point (x, z) out of every nearby box (padded by PR); 0 if clear
+  const PUSH = [0, 0];
+  function carPush(x, z) {
+    let ox = 0, oz = 0;
+    for (let k = 0; k < nVB; k++) {
+      const b = VB[k], rx = x + ox - b[0], rz = z + oz - b[1];
+      const la = rx * b[2] + rz * b[3], lp = rx * b[3] - rz * b[2];
+      const ea = b[4] + PR - Math.abs(la), ep = b[5] + PR - Math.abs(lp);
+      if (ea <= 0 || ep <= 0) continue;
+      if (ep < ea) { const m = (lp < 0 ? -ep : ep) + (lp < 0 ? -0.01 : 0.01); ox += b[3] * m; oz -= b[2] * m; }
+      else { const m = (la < 0 ? -ea : ea) + (la < 0 ? -0.01 : 0.01); ox += b[2] * m; oz += b[3] * m; }
+    }
+    PUSH[0] = ox; PUSH[1] = oz;
+    return ox !== 0 || oz !== 0;
+  }
+  // anyone not walking the sidewalk graph (hanging about, an event's actor, the beach crowd): just pushed out
+  function shove(p) {
+    if (p.state === SIT || p.state === LIE || p.state === ACT || (p.gy || 0) < -0.3) return false;
+    if (!nearCars(p.x, p.z, 4)) return false;
+    if (!carPush(p.x, p.z)) return false;
+    stats.pushes++;
+    return true;
+  }
+  // a walker on edge (a -> b): the lateral offset that clears every stopped car ahead, from the box corners
+  // projected onto the path's frame (along u, across n). Returns [target lateral, along-distance to the
+  // nearest blocking car or Infinity].
+  const AV = [0, 0];
+  function avoid(p, ax, az, ux, uz, s, L, look) {
+    let Lt = p.lane, near = Infinity;
+    const M = PR + 0.2;
+    for (let pass = 0; pass < 4; pass++) {
+      let changed = false;
+      for (let k = 0; k < nVB; k++) {
+        const b = VB[k];
+        if (!b[6]) continue;
+        const bx = b[0] - ax, bz = b[1] - az, ca = bx * ux + bz * uz, cl = -bx * uz + bz * ux;
+        // half extents of the oriented box along u and n
+        const fu = b[2] * ux + b[3] * uz, fn = -b[2] * uz + b[3] * ux;
+        const ea = Math.abs(fu) * b[4] + Math.abs(fn) * b[5] + M, el = Math.abs(fn) * b[4] + Math.abs(fu) * b[5] + M;
+        if (ca + ea < s - 0.2 || ca - ea > s + look) continue;
+        if (Lt <= cl - el || Lt >= cl + el) continue;
+        const lo = cl - el - 0.05, hi = cl + el + 0.05;
+        Lt = Math.abs(L - lo) <= Math.abs(L - hi) ? lo : hi;
+        near = Math.min(near, Math.max(0, ca - ea - s));
+        changed = true;
+      }
+      if (!changed) break;
+    }
+    AV[0] = Lt; AV[1] = near;
+    return AV;
+  }
   function update(p, dt, t) {
-    if (p.evt) { evtStep(p, dt); hitCheck(p); return; }
-    if (p.hang) { hangOut(p, dt); hitCheck(p); return; }
+    if (p.evt) { evtStep(p, dt); if (shove(p)) { p.x += PUSH[0]; p.z += PUSH[1]; } hitCheck(p); return; }
+    if (p.hang) { hangOut(p, dt); if (shove(p)) { p.ox += PUSH[0]; p.oz += PUSH[1]; p.x += PUSH[0]; p.z += PUSH[1]; } hitCheck(p); return; }
     const e = p.e;
     p.v = 0;
     if (p.state === FLINCH) { p.t -= dt; if (p.t <= 0) { p.state = WALK; p.flee = Math.max(p.flee, 4); } return; }
@@ -301,6 +378,7 @@ export function createPeds(scene, R, grid, game) {
         else if (p.t > 24) { p.b = p.a; p.d = e.len; p.state = WALK; }     // give up and wander on
       } else {
         p.v = run ? p.runSpeed || 5.2 : e.cross ? Math.max(p.speed, 3.1) : p.speed;
+        p.v *= p.slow;
         p.d += p.v * dt;
         if (p.d >= e.len) {
           const from = p.a, at = p.b;
@@ -309,14 +387,53 @@ export function createPeds(scene, R, grid, game) {
           let nx = opts[Math.floor(Math.random() * opts.length)];
           // when fleeing, take whichever way leads away from the trouble
           if (run) { let bd = -1; for (const o of at.adj) { const d = Math.hypot(o.to.x - p.tx, o.to.z - p.tz); if (d > bd) { bd = d; nx = o; } } }
-          p.a = at; p.b = nx.to; p.e = nx; p.d = 0;
+          // carry the sidestep over the corner: same spot in the world, expressed in the new edge's frame
+          const il0 = 1 / (e.len || 1), wx = -(at.z - from.z) * il0 * p.sx, wz = (at.x - from.x) * il0 * p.sx;
+          const il1 = 1 / (nx.len || 1), ux = (nx.to.x - at.x) * il1, uz = (nx.to.z - at.z) * il1;
+          p.a = at; p.b = nx.to; p.e = nx; p.d = Math.max(-2, Math.min(nx.len, (p.d - e.len) + wx * ux + wz * uz)); p.sx = -wx * uz + wz * ux;
           if (nx.cross && !run) { p.state = WAIT; p.t = 0; }
         }
       }
     }
-    const a = p.a, b = p.b, k = p.e.len ? clamp(p.d / p.e.len, 0, 1) : 0, dx = b.x - a.x, dz = b.z - a.z, il = 1 / (Math.hypot(dx, dz) || 1);
-    p.x = a.x + dx * k - dz * il * p.lane + p.ox; p.z = a.z + dz * k + dx * il * p.lane + p.oz;
-    if (p.state === WALK && p.v && Math.hypot(p.ox, p.oz) <= 0.25) p.yaw += angleDelta(p.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-8 * dt));
+    const a = p.a, b = p.b, dx = b.x - a.x, dz = b.z - a.z, il = 1 / (Math.hypot(dx, dz) || 1), ux = dx * il, uz = dz * il;
+    // cars on the way: pick a sidestep that clears them (walking or waiting at a crossing), then the push-out
+    p.slow = 1;
+    const tc = performance.now();
+    if (nearCars(p.x, p.z, 7)) {
+      const free = p.state === WALK && Math.hypot(p.ox, p.oz) <= 0.25;
+      if (free || p.state === WAIT) {
+        const L = p.lane + p.sx, av = avoid(p, a.x, a.z, ux, uz, p.d, L, 2.2 + p.speed * 0.6);
+        const want = av[0] - p.lane, gap = Math.abs(want - p.sx);
+        if (want !== 0 && gap > 0.02) stats.sidesteps++;
+        // close to a car with the sidestep not done yet: mostly step sideways, barely forwards
+        if (av[1] < 1.4 && gap > 0.12) p.slow = 0.12 + 0.6 * clamp(av[1] / 1.4, 0, 1) * 0.3;
+        const st = clamp(want - p.sx, -1.9 * dt, 1.9 * dt); p.sx += st; p.sxv = dt > 0 ? st / dt : 0;
+        p.stuck = av[1] < 0.3 && gap > 0.12 && free ? (p.stuck || 0) + dt : 0;
+      }
+      else p.sxv = 0;
+    } else { const st = clamp(-p.sx, -1.2 * dt, 1.2 * dt); p.sx += st; p.sxv = dt > 0 ? st / dt : 0; p.stuck = 0; }
+    p.x = a.x + ux * p.d - uz * (p.lane + p.sx) + p.ox; p.z = a.z + uz * p.d + ux * (p.lane + p.sx) + p.oz;
+    if (nVB && carPush(p.x, p.z)) {
+      stats.pushes++;
+      const cx = PUSH[0], cz = PUSH[1];
+      if (p.state === WALK && Math.hypot(p.ox, p.oz) <= 0.25 || p.state === WAIT) { p.d += cx * ux + cz * uz; p.sx += -cx * uz + cz * ux; }
+      else {
+        // knocked or heading back to the path with a car in between: fold the offset into the path frame
+        p.ox += cx; p.oz += cz;
+        if (p.state === WALK) { const ox = p.ox, oz = p.oz; p.ox = p.oz = 0; p.d += ox * ux + oz * uz; p.sx += -ox * uz + oz * ux; }
+      }
+      p.d = Math.max(-2, Math.min(p.e.len + 0.5, p.d));
+      p.x += cx; p.z += cz;
+    }
+    // boxed in for a while (a car right across the way with no side to step to): turn round
+    if (p.stuck > 4) {
+      stats.turned++;
+      const A = p.a; p.a = p.b; p.b = A; p.d = p.e.len - p.d; p.lane = -p.lane; p.sx = -p.sx; p.stuck = 0;
+      p.e = p.a.adj.find((x) => x.to === p.b) || p.e;
+      if (p.state === WAIT) p.state = WALK;
+    }
+    stats.ms += performance.now() - tc; stats.calls++;
+    if (p.state === WALK && p.v && Math.hypot(p.ox, p.oz) <= 0.25) { const yx = ux * p.v * p.slow - uz * (p.sxv || 0), yz = uz * p.v * p.slow + ux * (p.sxv || 0); p.yaw += angleDelta(p.yaw, Math.atan2(yx, yz)) * (1 - Math.exp(-8 * dt)); }
     p.phase += dt * (2 + p.v * 3.2);
     hitCheck(p);
   }
@@ -443,11 +560,14 @@ export function createPeds(scene, R, grid, game) {
   }
 
   // the beach crowd: its own pool of people in the same meshes (indices N .. N + BN - 1)
-  const beach = createBeachgoers({ game, base: N, count: BN, torso, head, limb, hat, shadow, part, B, M, v, q, eu, sc, ZERO, dress, dressBeach, knock, shout, hitCheck, standUp: () => {},
+  const beach = createBeachgoers({ game, base: N, count: BN, torso, head, limb, hat, shadow, part, B, M, v, q, eu, sc, ZERO, dress, dressBeach, knock, shout, standUp: () => {},
+    hitCheck: (p) => { if (shove(p)) { p.x += PUSH[0]; p.z += PUSH[1]; } hitCheck(p); },
     S: { WALK, DOWN, LIE, SIT, FLINCH, ACT } });
   const all = () => (beach.on ? [...peds, ...beach.list] : peds);
   const api = {
-    peds, count: N, beach,
+    peds, count: N, beach, carStats: stats, collide: true,
+    // the footprint box test the checks use: is (x, z) inside any nearby vehicle (unpadded)?
+    inCar(x, z) { nearCars(x, z, 4); for (let k = 0; k < nVB; k++) { const b = VB[k], rx = x - b[0], rz = z - b[1]; if (Math.abs(rx * b[2] + rz * b[3]) < b[4] && Math.abs(rx * b[3] - rz * b[2]) < b[5]) return true; } return false; },
     // scare everyone within r of (x, z); the closest ones go flying
     alarm(x, z, r, blast = 0) {
       for (const p of all()) {

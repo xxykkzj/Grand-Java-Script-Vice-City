@@ -330,6 +330,10 @@ export function offRoad(x, z, r = 0, m = 0.3) {
 // checked against the carriageways (lanes, parking lanes, crossings, the causeway deck) like the props.
 export const FOOTPRINTS = [];
 export const footprint = (what, x, z, r = 0.15) => { FOOTPRINTS.push({ what, x, z, r }); };
+// Ground-level boxes (x0..x1, z0..z1) of building bodies and their street-side parts (walkways, stairs,
+// canopies, sign poles, fins) in Solano Key (keyCity.js): none may overlap a carriageway.
+export const FOOTBOXES = [];
+export const footBox = (what, x0, x1, z0, z1) => { FOOTBOXES.push({ what, x0, x1, z0, z1 }); };
 // nothing on wheels gets within ~3 m of the old town's seawall (vehicles keep their noses off it), so the
 // dead-end boards at the very ends of the avenues stand beyond the lanes
 const pastLanes = (x) => Math.abs(x) > HX - 2.6 && Math.abs(x) < HX + 1;
@@ -341,6 +345,10 @@ export function footprintsOnRoad() {
     const b = f.x < -HX && f.x > KEY.x1 ? (f.z + f.r > CAUSEWAY.z0 + 0.5 && f.z - f.r < CAUSEWAY.z1 - 0.5 ? { name: 'Halcyon Causeway deck' } : null) : onRoad(f.x, f.z, f.r);
     if (b) bad.push({ what: f.what, x: +f.x.toFixed(2), z: +f.z.toFixed(2), road: b.name });
     else if (inJunction(f.x, f.z, 0) && !/mast|signal/.test(f.what)) bad.push({ what: f.what, x: +f.x.toFixed(2), z: +f.z.toFixed(2), road: 'junction' });
+  }
+  for (const f of FOOTBOXES) {
+    const b = ROAD_RECTS.find((q) => f.x0 < q.x1 - 0.05 && f.x1 > q.x0 + 0.05 && f.z0 < q.z1 - 0.05 && f.z1 > q.z0 + 0.05);
+    if (b) bad.push({ what: f.what, x: +((f.x0 + f.x1) / 2).toFixed(2), z: +((f.z0 + f.z1) / 2).toFixed(2), box: [f.x0, f.x1, f.z0, f.z1].map((v) => +v.toFixed(2)), road: b.name });
   }
   return bad;
 }

@@ -10,12 +10,16 @@ import { box, cyl, tint, merge, rng, PI, nightU, reflU } from '../core/util.js';
 import { KEY, KH, KV, KV_W, KEY_JUNCTIONS, MPIER, KEY_ADS } from './key.js';
 import { kitGeometry } from './kits.js';
 import { groundMaterial, palmMesh } from './city.js';
+import { setLampMap } from './lamplight.js';
+import { addKeyscape, KEY_SHOPS } from './keyscape.js';
+import { streetAtlasMesh } from './streetscape.js';
+import { createStreetTrees } from './streettrees.js';
 import { createGlow } from './glow.js';
 import { rampParts } from './rampGeo.js';
 import { neonPools } from './neonpools.js';
 import { quality } from '../core/quality.js';
 import { LADDERS, LADDER_GAP } from './sea.js';
-import { footprint } from './layout.js';
+import { footprint, footBox } from './layout.js';
 
 const W = KEY.x1 - KEY.x0, H = KEY.z1 - KEY.z0;
 const INK = '#1d1630', CREAM = '#fbf7f0', STEEL = '#b9bcc8', ASPH = '#3b3548', WALL_C = '#e9d8c4', COPING = '#27c9bf';
@@ -201,6 +205,7 @@ export function buildKey(scene, L, renderer, adSigns) {
   const sideOf = (b) => { const o = front(b); return o.yaw === 0 ? [0, 1] : o.yaw === PI ? [0, -1] : o.yaw > 0 ? [1, 0] : [-1, 0]; };
 
   for (const b of K.buildings) {
+    const s0 = S.length, n0 = N.length;
     const { cx, cz, w, d, h } = b, [fx, fz] = sideOf(b);
     const faceX = fx ? (fx > 0 ? b.x1 : b.x0) : cx, faceZ = fz ? (fz > 0 ? b.z1 : b.z0) : cz, along = fx ? d : w, yawF = Math.atan2(fx, fz);
     const onFace = (o, y, out, ww, hh, dd, hex, win = 0) => bx(fx ? dd : ww, hh, fx ? ww : dd, faceX + fx * out + (fx ? 0 : o), y, faceZ + fz * out + (fz ? 0 : o), hex, win);
@@ -255,20 +260,24 @@ export function buildKey(scene, L, renderer, adSigns) {
       roofClutter(b, 2);
       billboard(nextAd(), cx + (fx ? 0 : w * 0.2), b.roofY, cz + (fz ? 0 : d * 0.2), yawF, Math.min(along * 0.5, 12));
     } else if (b.style === 'motel') {
-      S.push(bx(w, h, d, cx, h / 2, cz, b.color, 1), bx(w + 1.2, 0.5, d + 3.2, cx, h + 0.1, cz + fz * 1, b.accent));
+      // (everything runs along the street face: `along` is its length, whichever way the motel faces; the
+      // walkway, stairs and doors used to run the building's x width, so the east-facing motels' 50 m
+      // walkway poked out past the lot into Stadium Way)
+      S.push(bx(w, h, d, cx, h / 2, cz, b.color, 1), bx(w + (fx ? 3.2 : 1.2), 0.5, d + (fz ? 3.2 : 1.2), cx + fx * 1, h + 0.1, cz + fz * 1, b.accent));
       // the open walkway along the upper floor, with a railing and a stair at each end
-      S.push(onFace(0, 3.3, 1.2, w - 2, 0.25, 2.4, CREAM), onFace(0, 4.25, 2.35, w - 2, 0.9, 0.08, b.accent));
-      for (const o of [-w / 2 + 1.4, w / 2 - 1.4]) S.push(onFace(o, 1.7, 1.2, 1.4, 3.4, 2.2, '#c8b8c4'));
-      for (let i = -w / 2 + 3; i < w / 2 - 2; i += 4.2) { S.push(onFace(i, 1.1, 0.05, 1.1, 2.2, 0.12, '#2b2440'), onFace(i, 4.5, 0.05, 1.1, 2.2, 0.12, '#2b2440')); }
+      S.push(onFace(0, 3.3, 1.2, along - 2, 0.25, 2.4, CREAM), onFace(0, 4.25, 2.35, along - 2, 0.9, 0.08, b.accent));
+      for (const o of [-along / 2 + 1.4, along / 2 - 1.4]) S.push(onFace(o, 1.7, 1.2, 1.4, 3.4, 2.2, '#c8b8c4'));
+      for (let i = -along / 2 + 3; i < along / 2 - 2; i += 4.2) { S.push(onFace(i, 1.1, 0.05, 1.1, 2.2, 0.12, '#2b2440'), onFace(i, 4.5, 0.05, 1.1, 2.2, 0.12, '#2b2440')); }
       slabRoof(b, '#f0e6dc'); roofClutter(b, 2);
       if (b.name) {
-        // the roadside sign on a pole: name, and VACANCY in red neon underneath
-        const px = cx + w / 2 - 4, pz = faceZ + fz * 7;
+        // the roadside sign on a pole out front, at the street-side end of the face: name, and VACANCY in red neon
+        const o = along / 2 - 4, px = fx ? faceX + fx * 5 : cx + o, pz = fz ? faceZ + fz * 5 : cz - o;
         S.push(cy(0.25, 0.3, 12, 8, px, 6, pz, '#3b3350'));
         sign(b.name, px, 11.5, pz, yawF, 9);
         sign('VACANCY', px, 8.6, pz, yawF, 5);
-        glows.push([px, 11.5, pz + fz, b.neon, 10, 0.05], [px, 8.6, pz + fz, '#ff2a3a', 6, 0.1]);
+        glows.push([px + fx, 11.5, pz + fz, b.neon, 10, 0.05], [px + fx, 8.6, pz + fz, '#ff2a3a', 6, 0.1]);
         P.circle(px, pz, 0.3, 12);
+        footprint('motel sign pole: ' + b.name, px, pz, 0.3);
       }
     } else if (b.style === 'warehouse') {
       S.push(bx(w, h, d, cx, h / 2, cz, b.color));
@@ -293,6 +302,11 @@ export function buildKey(scene, L, renderer, adSigns) {
       billboard(nextAd(), cx - w * 0.3, b.roofY, cz, yawF, 14); billboard(nextAd(), cx + w * 0.3, b.roofY, cz, yawF, 14);
     }
     hut(b);
+    // every part of the lot that stands at street level (below 5 m) goes on the footprint check (layout.js)
+    for (const g of [...S.slice(s0), ...N.slice(n0)]) {
+      g.computeBoundingBox(); const bb = g.boundingBox;
+      if (bb.min.y < 5) footBox(`${b.style}: ${b.name || b.cx + ',' + b.cz}`, bb.min.x, bb.max.x, bb.min.z, bb.max.z);
+    }
   }
 
   // ---------------------------------------------------------------- the Sunbowl
@@ -466,6 +480,17 @@ export function buildKey(scene, L, renderer, adSigns) {
   // ---------------------------------------------------------------- stunt ramps (game/stunts.js)
   for (const rp of K.ramps) rampParts(rp, S, N, (g) => withWin(g));
 
+  // ---------------------------------------------------------------- the downtown street level (world/keyscape.js)
+  // lobbies, shops, metro entrances, kiosks, carts, steam, scaffolding, water towers, street furniture, trees
+  const keyQuads = [], ks0 = S.length, kn0 = N.length;
+  const ks = addKeyscape({ L, K, S, N, glows, quads: keyQuads, P, bx, ww: withWin, sign, kit });
+  ks.stats.tris = Math.round([...S.slice(ks0), ...N.slice(kn0), ...keyQuads].reduce((n, g) => n + (g.index ? g.index.count : g.attributes.position.count) / 3, 0));
+  const keyShops = streetAtlasMesh(keyQuads, KEY_SHOPS);
+  if (keyShops) group.add(keyShops);
+  if (ks.steam) group.add(ks.steam);
+  // the street trees of both districts, one instanced mesh per species (world/streettrees.js)
+  L.streetTreeMeshes = createStreetTrees(scene, L.treeInstances || []);
+
   // ---------------------------------------------------------------- the solid mesh: one material, windows from the shader
   const litU = { value: 0 }, glassU = { value: new THREE.Color('#2c5f7a') };
   const bodyMat = new THREE.MeshLambertMaterial({ vertexColors: true });
@@ -506,6 +531,7 @@ export function buildKey(scene, L, renderer, adSigns) {
   gtex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   const gg = new THREE.PlaneGeometry(W, H); gg.rotateX(-PI / 2); gg.translate(KEY.x0 + W / 2, 0, KEY.z0 + H / 2);
   const ground = new THREE.Mesh(gg, groundMaterial(gtex, (K.lampMap = keyLampMap(K)).tex, KEY.x0, KEY.z0, W, H, false));
+  setLampMap('key', K.lampMap.tex, KEY.x0, KEY.z0, W, H);
   group.add(ground);
   const skirt = new THREE.Mesh(new THREE.BoxGeometry(W, 3, H), new THREE.MeshLambertMaterial({ color: '#c9a878' }));
   skirt.position.set(KEY.x0 + W / 2, -1.52, KEY.z0 + H / 2);
@@ -555,8 +581,8 @@ export function buildKey(scene, L, renderer, adSigns) {
 
   return {
     group, groundCanvas: gc, bodyMat,
-    update(cam) { if (group.visible) lampLod(cam); },
-    setLights(neonK, lit, glassC) { neonMat.color.setScalar(0.5 + neonK * 0.9); litU.value = lit; glassU.value.copy(glassC); },
+    update(cam) { if (group.visible) lampLod(cam); if (L.streetTreeMeshes) L.streetTreeMeshes.lod(cam); },
+    setLights(neonK, lit, glassC) { neonMat.color.setScalar(0.5 + neonK * 0.9); litU.value = lit; glassU.value.copy(glassC); if (keyShops) keyShops.userData.neonK.value = neonK * 0.9; },
   };
 }
 // the key's own billboards start from the far end of the ad list (the old town's wall ads start at the front)

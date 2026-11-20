@@ -7,6 +7,7 @@ import { kitGeometry, kitPaint } from '../world/kits.js';
 import { createGlow } from '../world/glow.js';
 import { VTYPES, BATCHED, shapeOf, pickWeighted, PARKED_WEIGHTS, proxyGeometry } from './types.js';
 import { quality } from '../core/quality.js';
+import { lampPatch } from '../world/lamplight.js';
 
 export const CAP = 110;
 const POLICE = 6, BIKES = 16, HELIS = 2;
@@ -69,6 +70,7 @@ export function createVehicles(scene, L, fx, audio) {
       transformed.x += aDmg * lowB * step(2.1, abs(position.z)) * 0.08;`);
     sh.fragmentShader = 'uniform float uGlow;\n' + sh.fragmentShader.replace(
       '#include <color_fragment>', '#include <color_fragment>\n  totalEmissiveRadiance += diffuseColor.rgb * uGlow;');
+    lampPatch(sh);
   };
   const carGeo = carGeometry(), dentCar = new THREE.InstancedBufferAttribute(new Float32Array(CAP), 1);
   carGeo.setAttribute('aDmg', dentCar);
@@ -108,6 +110,7 @@ export function createVehicles(scene, L, fx, audio) {
         vec4 bc = getBatchingColor( getIndirectIndex( gl_DrawID ) );
         vColor.rgb = mix(color.rgb, bc.rgb, step(0.5, mod(aFlag, 2.0))) * bc.a;
       #endif`);
+    lampPatch(sh);
   };
   const kitMesh = new THREE.BatchedMesh(CAP + BIKES, kv + 16, 0, kitMat);
   const kitGid = {};

@@ -13,6 +13,11 @@ import * as THREE from 'three';
 import { box, cyl, tint, merge, rng, PI } from '../core/util.js';
 import { onRoad, inJunction, footprint } from './layout.js';
 import { kitGeometry } from './kits.js';
+import { pickSpecies } from './streettrees.js';
+
+// the old town's street-tree mixes: Back Avenue 1 under coconut palms, Back Avenue 2 under fig trees
+const MIX_BACK1 = [['coconut', 0.45], ['jacaranda', 0.2], ['kit', 0.2], ['fan', 0.15]];
+const MIX_BACK2 = [['ficus', 0.42], ['kit', 0.2], ['cypress', 0.14], ['seagrape', 0.12], ['royal', 0.12]];
 
 const CREAM = '#fbf7f0', INK = '#1d1630', STEEL = '#b9bcc8', DARK = '#3b3350';
 const NEON = ['#ff2bd1', '#18f0ff', '#ffe14a', '#8dff5a', '#ff6a3d', '#b388ff'];
@@ -25,20 +30,20 @@ export const SHOPS = [
   { n: 'Coral Copy Center' }, { n: 'Hibiscus Hair' }, { n: 'Driftwood Deli', c: 1 }, { n: 'Moonbeam Video' },
   { n: 'Calypso Coffee', c: 1 }, { n: 'Sunrise Hardware' }, { n: 'Pastel Pets' }, { n: 'Dolphin Dry Cleaning' },
 ];
-const SHOP_C = ['#ff4fa3', '#18f0ff', '#ffe14a', '#8dff5a', '#ff8a3d', '#b388ff', '#ff6a8a', '#7fffd0'];
+export const SHOP_C = ['#ff4fa3', '#18f0ff', '#ffe14a', '#8dff5a', '#ff8a3d', '#b388ff', '#ff6a8a', '#7fffd0'];
 const MURALS = 6;
 
 // ---------------------------------------------------------------- the atlas: shop fascias and murals
 // 1024 x 1024: 24 fascias (4 columns x 6 rows of 256 x 42) on top, then 6 murals (2 x 3 of 512 x 256).
 const AT = 1024, SW = 256, SH = 42, MW = 512, MH = 256, MY = 256;
-export function paintStreetAtlas() {
+export function paintStreetAtlas(shops = SHOPS) {
   const cv = document.createElement('canvas');
   cv.width = AT; cv.height = AT;
   const g = cv.getContext('2d');
   g.fillStyle = '#1d1630'; g.fillRect(0, 0, AT, AT);
   g.textAlign = 'center'; g.textBaseline = 'middle';
   const FONT = ['italic 800 %px "Trebuchet MS", Verdana, sans-serif', '800 %px "Arial Narrow", Impact, sans-serif', 'italic 700 %px Georgia, serif'];
-  SHOPS.forEach((s, i) => {
+  shops.forEach((s, i) => {
     const ox = (i % 4) * SW, oy = Math.floor(i / 4) * SH, c = SHOP_C[i % SHOP_C.length];
     g.save(); g.beginPath(); g.rect(ox, oy, SW, SH); g.clip();
     g.fillStyle = i % 3 === 0 ? '#2a1840' : i % 3 === 1 ? '#13283a' : '#2b1a24'; g.fillRect(ox, oy, SW, SH);
@@ -148,7 +153,7 @@ const MURAL_PAINT = [
   },
 ];
 // a quad facing yaw (+z at yaw 0), textured from an atlas cell, with a glow factor (fascias light up at night)
-function quad(list, cell, x, y, z, yaw, w, h, glow) {
+export function quad(list, cell, x, y, z, yaw, w, h, glow) {
   const g = new THREE.PlaneGeometry(w, h).toNonIndexed();
   const uv = g.attributes.uv;
   for (let k = 0; k < uv.count; k++) uv.setXY(k, cell[0] + uv.getX(k) * (cell[2] - cell[0]), cell[3] + uv.getY(k) * (cell[1] - cell[3]));
@@ -156,13 +161,13 @@ function quad(list, cell, x, y, z, yaw, w, h, glow) {
   g.setAttribute('aGlow', new THREE.BufferAttribute(new Float32Array(uv.count).fill(glow), 1));
   list.push(g);
 }
-const shopCell = (i) => { const ox = (i % 4) * SW, oy = Math.floor(i / 4) * SH; return [ox / AT, 1 - oy / AT, (ox + SW) / AT, 1 - (oy + SH) / AT]; };
-const muralCell = (m) => { const ox = (m % 2) * MW, oy = MY + Math.floor(m / 2) * MH; return [(ox + 2) / AT, 1 - (oy + 2) / AT, (ox + MW - 2) / AT, 1 - (oy + MH - 2) / AT]; };
+export const shopCell = (i) => { const ox = (i % 4) * SW, oy = Math.floor(i / 4) * SH; return [ox / AT, 1 - oy / AT, (ox + SW) / AT, 1 - (oy + SH) / AT]; };
+export const muralCell = (m) => { const ox = (m % 2) * MW, oy = MY + Math.floor(m / 2) * MH; return [(ox + 2) / AT, 1 - (oy + 2) / AT, (ox + MW - 2) / AT, 1 - (oy + MH - 2) / AT]; };
 
 // The atlas mesh: Lambert-lit (murals are paint on a wall), fascias add their own glow as the neon comes on.
-export function streetAtlasMesh(quads) {
+export function streetAtlasMesh(quads, shops = SHOPS) {
   if (!quads.length) return null;
-  const tex = new THREE.CanvasTexture(paintStreetAtlas());
+  const tex = new THREE.CanvasTexture(paintStreetAtlas(shops));
   tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
   const neonK = { value: 0.5 };
   const mat = new THREE.MeshLambertMaterial({ map: tex });
@@ -316,8 +321,14 @@ export function addStreetscape(L, S, N, glows, quads) {
     && !L.solids.some((s) => x > s.x0 - rs && x < s.x1 + rs && z > s.z0 - rs && z < s.z1 + rs);
 
   // --- street trees in pits (layout.js picked the spots): Kenney suburban trees, a soil pit and a grate
+  // each avenue has a dominant species and some variety (world/streettrees.js); the Kenney tree is one of the
+  // mix and stays merged into the town mesh, the others are drawn instanced (one draw call per species)
+  const tr = rng(4545);
+  L.treeInstances = L.treeInstances || [];
   for (const t of L.streetTrees) {
-    S.push(kitGeometry(t.kind ? 'treeS' : 'treeL', { scale: (t.kind ? 5.5 : 4.6) * t.s, yaw: t.yaw, x: t.x, z: t.z, recolor: (rr, gg, bb) => (gg > 200 && rr < 170 ? (t.kind ? '#3fae6a' : '#4fbf78') : null) }));
+    t.sp = pickSpecies(t.z > 0 ? MIX_BACK1 : MIX_BACK2, tr);
+    if (t.sp === 'kit') S.push(kitGeometry(t.kind ? 'treeS' : 'treeL', { scale: (t.kind ? 5.5 : 4.6) * t.s, yaw: t.yaw, x: t.x, z: t.z, recolor: (rr, gg, bb) => (gg > 200 && rr < 170 ? (t.kind ? '#3fae6a' : '#4fbf78') : null) }));
+    else L.treeInstances.push({ x: t.x, z: t.z, sp: t.sp, s: t.s, yaw: t.yaw });
     S.push(box(1.3, 0.05, 1.3, t.x, 0.025, t.z, '#4a3626'));
     for (const [ox, oz, ww, dd] of [[0, -0.62, 1.32, 0.08], [0, 0.62, 1.32, 0.08], [-0.62, 0, 0.08, 1.32], [0.62, 0, 0.08, 1.32]]) S.push(box(ww, 0.07, dd, t.x + ox, 0.035, t.z + oz, '#5a5468'));
     footprint('street tree', t.x, t.z, 0.65);

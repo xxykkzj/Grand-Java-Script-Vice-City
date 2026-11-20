@@ -12,6 +12,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { timeU } from '../core/util.js';
+import { lampPatch } from '../world/lamplight.js';
 
 export const CELL = 16, COLS = 8;
 export const PX = 0.02;                                   // world size of one fabric pixel
@@ -288,6 +289,7 @@ export function blockyMaterial({ atlas, basic = false, inst = false, face = fals
           vec4 tx = texture2D(uAtlas, (vCell.xy + f) / uGrid);
           diffuseColor.rgb = tx.a > 0.75 ? diffuseColor.rgb * tx.rgb : tx.rgb;
         }`);
+    if (!basic) lampPatch(sh);
     if (rim) sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_maps>',
       '#include <normal_fragment_maps>\n  totalEmissiveRadiance += uRim * pow(1.0 - abs(dot(normal, normalize(vViewPosition))), 2.5);');
   };
