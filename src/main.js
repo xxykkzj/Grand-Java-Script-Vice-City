@@ -203,6 +203,7 @@ async function boot() {
   // debug helpers (devtools / automated checks): __neon.debug.warp('club'), .skip(), .bike()
   game.debug = {
     warp: (key) => places.warp(key),
+    camYaw: (y) => { cam.yaw = y; cam.pitch = 0.12; },
     skip: () => cut.skip(),
     bike: () => { const b = vehicles.cars.find((c) => c.kind === 'bike' && !c.ai); player.pos.set(b.x + 1.6, 0, b.z); return b; },
     to: (x, z) => { if (game.vehicle) { game.vehicle.x = x; game.vehicle.z = z; } else player.pos.set(x, player.floor, z); },
@@ -417,7 +418,7 @@ async function boot() {
     renderer.info.reset();
     renderer.render(scene, camera);
     // a room can tone the bloom down (Zigzag Threads' pale walls would glow otherwise)
-    if (bloom.on) bloom.render(nightU.value * (game.inside && game.inside.room && game.inside.room.bloomK != null ? game.inside.room.bloomK : 1));
+    if (bloom.on) bloom.render(nightU.value * (game.inside && game.inside.room && game.inside.room.bloomK != null ? game.inside.room.bloomK : 1), game.inside ? 0 : env.glare);
   }
   function frame(now) {
     raf = requestAnimationFrame(frame);

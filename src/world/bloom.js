@@ -64,12 +64,14 @@ export function createBloom(renderer) {
     on: false,
     stats: { passes: 0 },
     // call right after renderer.render(scene, camera); night: 0..1
-    render(night) {
+    render(night, glare = 0) {
       if (!api.on) return;
       ensure();
       const spread = Math.min(1.7, Math.max(0.8, H / 800)) * 1.5;
-      U.uThr.value = 0.9 - 0.28 * night;
-      U.uGain.value = 0.1 + 0.7 * night;
+      // at sunset the sky, sea and fog behind the shore are bright but it is not night yet: raise the threshold and
+      // drop the gain so the horizon does not bleed a halo over the beach-side models
+      U.uThr.value = 0.9 - 0.28 * night + 0.32 * glare;
+      U.uGain.value = (0.1 + 0.7 * night) * (1 - 0.7 * glare);
       const ac = renderer.autoClear;
       renderer.autoClear = false;
       renderer.copyFramebufferToTexture(src);

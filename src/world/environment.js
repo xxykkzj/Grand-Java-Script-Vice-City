@@ -93,7 +93,7 @@ export function createEnvironment(scene, sky, ocean, city, camera, audio) {
   const env = {
     hemi, rain,
     tod: 19, target: null, speed: 1, indoor: false, flash: 0, cur,
-    weather: 'clear', w: { cloud: 0.12, rain: 0, bolt: 0, fog: 0 }, wxTimer: 2.5, wet: 0,
+    glare: 0, weather: 'clear', w: { cloud: 0.12, rain: 0, bolt: 0, fog: 0 }, wxTimer: 2.5, wet: 0,
     nextBolt: 4, pendingThunder: -1, phase: 'DUSK',
     get rainAmt() { return env.indoor ? 0 : env.w.rain; },
     jump(mode) { env.target = STOPS.find((s) => s[0] === mode)[1]; },
@@ -154,7 +154,10 @@ export function createEnvironment(scene, sky, ocean, city, camera, audio) {
         cur.sunI *= 1 - w.cloud * 0.35 - w.rain * 0.3; cur.stars *= 1 - w.cloud; cur.glow.multiplyScalar(1 - cover * 0.8);
         cur.fogNear = lerp(cur.fogNear, 30, w.rain); cur.fogFar = lerp(cur.fogFar, 300, w.rain);
       }
-      scene.fog.color.copy(cur.hor).lerp(cur.mid, 0.25);
+      // low sun: how much the sunset is shining straight at the camera's side of the world (0 by night / overcast)
+      const sunLow = clamp((sunDir.y + 0.02) / 0.08, 0, 1) * (1 - clamp((sunDir.y - 0.5) / 0.25, 0, 1));
+      env.glare = sunLow * (1 - Math.max(w.fog, w.cloud * 0.85));
+      scene.fog.color.copy(cur.hor).lerp(cur.mid, 0.25 + 0.2 * env.glare).multiplyScalar(1 - 0.32 * env.glare);
       if (w.fog > 0.01) {
         tmp.copy(MIST).multiplyScalar(0.12 + 0.88 * dayK).lerp(scene.fog.color, 0.35);
         scene.fog.color.lerp(tmp, w.fog * 0.8);
@@ -188,6 +191,8 @@ export function createEnvironment(scene, sky, ocean, city, camera, audio) {
       ou.uSky.value.copy(cur.hor); ou.uSunCol.value.copy(cur.glow).multiplyScalar((sunUp ? 1 : 0.25) * (1 - veil));
       ou.uSunDir.value.copy(lightDir);
 
+      // low sun: push the haze back so the beach and the far shore stay crisp instead of washing out
+      cur.fogNear *= 1 + 0.9 * env.glare; cur.fogFar *= 1 + 0.35 * env.glare; cur.sunI *= 1 - 0.18 * env.glare;
       fogU.uFogColor.value.copy(scene.fog.color); fogU.uFogNear.value = cur.fogNear; fogU.uFogFar.value = cur.fogFar;
       scene.fog.near = cur.fogNear; scene.fog.far = cur.fogFar;
 
