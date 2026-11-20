@@ -1,8 +1,10 @@
-// "Skye", the roller-skating courier: teal-and-magenta bomber jacket, white shorts,
-// backwards cap, messenger bag. Built from boxes, six draw calls, animated by swinging pivots.
+// "Skye", the roller-skating courier: teal-and-magenta bomber jacket, white shorts, backwards cap,
+// messenger bag, high-top skates. Refined blocks (actors/blocky.js): one skinned draw call plus the skirt,
+// animated by swinging pivots; a pixel-art face that blinks, talks and pulls expressions.
 import * as THREE from 'three';
-import { box, cyl, merge, damp, clamp, angleDelta, pushOut, PI, reducedMotion } from '../core/util.js';
+import { damp, clamp, angleDelta, pushOut, PI, reducedMotion } from '../core/util.js';
 import { clampToWorld, PIER, HZ } from '../world/layout.js';
+import { kit, rig, blockyMaterial, faceDriver, castAtlas, CAST_ROW } from '../actors/blocky.js';
 import { pushFromSolids } from '../world/sea.js';
 
 const TEAL = '#12b5a6', MAG = '#e6258f', WHITE = '#f7f5ef', SKIN = '#c98d62', BAG = '#f2b63a', HAIR = '#2a2140', DARK = '#1b1830';
@@ -24,11 +26,12 @@ export function lookOf(o) {
 // The skirt: a ring of panels from the waist to the hem whose hem is swung by the legs every frame
 // (it follows the hips and thighs when skating, dancing and sitting). Non-indexed so pleats can alternate.
 function buildSkirt(mat) {
-  const N = 16, rows = [0, 0.5, 1], verts = [];
+  // two tiers: the lower one starts a little proud of the upper one, a darker seam band, a hem band
+  const N = 16, rows = [0, 0.47, 0.5, 0.95, 1], verts = [];
   const geo = new THREE.BufferGeometry();
-  for (let i = 0; i < N; i++) for (let r = 0; r < 2; r++) {
+  for (let i = 0; i < N; i++) for (let r = 0; r < rows.length - 1; r++) {
     const a0 = (i / N) * PI * 2, a1 = ((i + 1) / N) * PI * 2, t0 = rows[r], t1 = rows[r + 1];
-    for (const [a, t] of [[a0, t0], [a0, t1], [a1, t1], [a0, t0], [a1, t1], [a1, t0]]) verts.push([a, t, i]);
+    for (const [a, t] of [[a0, t0], [a0, t1], [a1, t1], [a0, t0], [a1, t1], [a1, t0]]) verts.push([a, t, i, r]);
   }
   const n = verts.length;
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
@@ -42,10 +45,11 @@ function buildSkirt(mat) {
     look = lk; m.visible = !!lk.skirt;
     if (!lk.skirt) return;
     const col = geo.attributes.color;
-    verts.forEach(([, t, i], k) => {
+    verts.forEach(([, t, i, r], k) => {
       c.set(lk.pleat && i % 2 ? lk.pleat : lk.skirt);
       if (lk.sequin) { const j = 0.75 + ((i * 7 + Math.round(t * 2) * 3) % 5) * 0.12; c.multiplyScalar(j); }
-      if (t > 0.99 && lk.trimHem) c.copy(c2.set(lk.trimHem));
+      if (r === 1) c.multiplyScalar(0.72);
+      if (r === 3) { if (lk.trimHem) c.copy(c2.set(lk.trimHem)); else c.multiplyScalar(0.82); }
       col.setXYZ(k, c.r, c.g, c.b);
     });
     col.needsUpdate = true;
@@ -54,14 +58,14 @@ function buildSkirt(mat) {
   m.drape = (aL, zL, aR, zR) => {
     if (!m.visible) return;
     const pos = geo.attributes.position, len = look.len, fl = look.flare;
-    verts.forEach(([a, t], k) => {
+    verts.forEach(([a, t, , r], k) => {
       const sx = Math.sin(a), cz = Math.cos(a), wL = Math.min(1, Math.max(0, sx * 1.1 + 0.5));
       let ax = aL * wL + aR * (1 - wL), az = zL * wL + zR * (1 - wL);
       if (cz < 0) ax *= ax < 0 ? 0.3 : 1;                  // the back panel stays behind when the knees come up
       ax *= 0.85; az *= 0.9;
       const dx = Math.cos(ax) * Math.sin(az), dy = -Math.cos(ax) * Math.cos(az), dz = -Math.sin(ax);
       const spread = 1 + Math.abs(aL - aR) * 0.25 * t;
-      const rx = (0.235 + fl * t * spread), rz = (0.165 + fl * 0.8 * t * spread);
+      const step = r >= 2 ? 0.022 : 0, rx = (0.235 + step + fl * t * spread), rz = (0.165 + step + fl * 0.8 * t * spread);
       pos.setXYZ(k, sx * rx + dx * len * t, dy * len * t, cz * rz + dz * len * t);
     });
     pos.needsUpdate = true;
@@ -70,83 +74,96 @@ function buildSkirt(mat) {
   return m;
 }
 
+// The courier as refined blocks: one skinned mesh (one draw call) whose vertices each follow one of the
+// pivots below, plus the skirt. Pivots, nesting and names are unchanged, so every animation still works.
 function buildModel() {
-  const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  const atlas = castAtlas();
+  const mat = blockyMaterial({ atlas, row: CAST_ROW.SKYE });
   const root = new THREE.Group(), body = new THREE.Group();
   root.add(body);
-  const role = (g, r) => { const n = g.attributes.position.count; g.setAttribute('aRole', new THREE.BufferAttribute(new Float32Array(n).fill(r === undefined ? -1 : RI[r]), 1)); return g; };
-  // B(w, h, d, x, y, z, colour or role, rx, ry, rz)
-  const B = (w, h, d, x, y, z, c, rx, ry, rz) => role(box(w, h, d, x, y, z, RI[c] !== undefined ? '#ffffff' : c, rx, ry, rz), c);
-  const C = (rt, rb, h, seg, x, y, z, c, rx, rz) => role(cyl(rt, rb, h, seg, x, y, z, RI[c] !== undefined ? '#ffffff' : c, rx, rz), c);
-  const part = (geos, x, y, z, parent = body) => {
-    const m = new THREE.Mesh(merge(geos), mat);
-    m.position.set(x, y, z); parent.add(m);
-    return m;
+  const K = kit(atlas, { roles: RI });
+  // B(w, h, d, x, y, z, colour or role, pattern, { rx, ry, rz })
+  const B = K.B, C = (rt, rb, h, seg, x, y, z, c, o) => K.C(rt, rb, h, seg, x, y, z, c, o);
+  const pivot = (x, y, z, parent = body) => { const o = new THREE.Group(); o.position.set(x, y, z); parent.add(o); return o; };
+  const SKIN2 = '#b97f56', STEEL = '#c9c0d8';
+  // torso: shorts and belt, a bomber jacket in blocks (hem ribbing, chest stripe, zip, flap pockets,
+  // stand-up collar, shoulder yokes), the messenger bag on its strap, a bolt badge and a star on the back
+  const torso = pivot(0, 0, 0);
+  const T = [
+    B(0.4, 0.18, 0.25, 0, 0.95, 0, 'shorts', 'denim'), B(0.41, 0.045, 0.258, 0, 1.035, 0, DARK, 'leather'), B(0.06, 0.04, 0.012, 0.0, 1.035, 0.132, STEEL),
+    B(0.43, 0.05, 0.27, 0, 1.075, 0, 'trim', 'rib'), B(0.42, 0.2, 0.26, 0, 1.19, 0, 'jacket', 'weave'),
+    B(0.46, 0.26, 0.28, 0, 1.4, 0, 'jacket', 'weave'),
+    B(0.465, 0.055, 0.285, 0, 1.4, 0, 'trim', 'knit'), B(0.465, 0.02, 0.285, 0, 1.362, 0, 'light'),
+    B(0.13, 0.1, 0.27, 0.205, 1.51, 0, 'jacket', 'seam'), B(0.13, 0.1, 0.27, -0.205, 1.51, 0, 'jacket', 'seam'),
+    B(0.024, 0.43, 0.012, 0, 1.3, 0.142, 'zip'), B(0.04, 0.035, 0.016, 0, 1.5, 0.146, 'zip'),
+    B(0.28, 0.09, 0.05, 0, 1.585, -0.105, 'collar', 'rib'), B(0.045, 0.085, 0.16, 0.125, 1.58, -0.01, 'collar', 'rib'), B(0.045, 0.085, 0.16, -0.125, 1.58, -0.01, 'collar', 'rib'),
+    B(0.11, 0.07, 0.014, 0.12, 1.2, 0.136, 'trim', 'seam'), B(0.11, 0.07, 0.014, -0.12, 1.2, 0.136, 'trim', 'seam'),
+    K.decal(0.07, 0.07, 0.115, 1.29, 0.142, 'jacket', 'bolt'), K.decal(0.2, 0.2, 0, 1.3, -0.142, 'jacket', 'star', { ry: PI }),
+    B(0.11, 0.08, 0.11, 0, 1.63, 0, SKIN),
+    B(0.055, 0.6, 0.014, -0.02, 1.27, 0.147, DARK, 'stripe', { rz: -0.7 }), B(0.055, 0.6, 0.014, -0.02, 1.27, -0.147, DARK, 'stripe', { rz: 0.7 }),
+    B(0.05, 0.05, 0.02, 0.06, 1.35, 0.153, STEEL),
+    B(0.13, 0.26, 0.34, -0.31, 0.98, -0.02, 'bag', 'leather'), B(0.136, 0.12, 0.35, -0.31, 1.06, -0.02, 'trim', 'seam'),
+    B(0.14, 0.04, 0.06, -0.31, 1.0, 0.13, STEEL), B(0.014, 0.1, 0.1, -0.378, 0.93, -0.02, 'light'),
+  ];
+  // head: a chunky block with a pixel face, nose, ears; hair masses (back, sides, sideburns, a fringe
+  // poking out of the cap's strap gap) under a backwards cap with a button, a band and the brim behind
+  const head = pivot(0, 1.66, 0);
+  const H = [
+    B(0.32, 0.32, 0.3, 0, 0.18, 0, SKIN, 'plain', { b: 0.022 }), K.face(0.276, 0.276, 0, 0.18, 0.1505, SKIN),
+    B(0.04, 0.045, 0.03, 0, 0.142, 0.162, SKIN2), B(0.035, 0.075, 0.065, 0.168, 0.165, 0, SKIN2), B(0.035, 0.075, 0.065, -0.168, 0.165, 0, SKIN2),
+    B(0.34, 0.24, 0.1, 0, 0.2, -0.12, HAIR, 'hair'), B(0.04, 0.17, 0.2, 0.166, 0.235, -0.035, HAIR, 'hair'), B(0.04, 0.17, 0.2, -0.166, 0.235, -0.035, HAIR, 'hair'),
+    B(0.03, 0.08, 0.035, 0.157, 0.13, 0.11, HAIR, 'hair'), B(0.03, 0.08, 0.035, -0.157, 0.13, 0.11, HAIR, 'hair'),
+    B(0.11, 0.05, 0.04, -0.08, 0.315, 0.15, HAIR, 'hair', { rz: 0.2 }), B(0.1, 0.05, 0.04, 0.03, 0.32, 0.155, HAIR, 'hair', { rz: -0.1 }), B(0.08, 0.045, 0.04, 0.11, 0.312, 0.148, HAIR, 'hair', { rz: -0.35 }),
+    B(0.25, 0.1, 0.08, 0, 0.06, -0.13, HAIR, 'hair'),
+    B(0.345, 0.11, 0.325, 0, 0.37, 0, 'trim', 'weave'), B(0.35, 0.045, 0.33, 0, 0.32, 0, 'jacket', 'rib'),
+    B(0.24, 0.03, 0.17, 0, 0.32, -0.235, 'trim', 'seam'), B(0.08, 0.04, 0.02, 0, 0.345, 0.166, HAIR, 'hair'),
+    C(0.028, 0.028, 0.025, 6, 0, 0.435, 0, 'jacket'),
+  ];
+  const eyes = pivot(0, 0.17, 0, head), mouth = pivot(0, 0.09, 0.006, head);
+  // arms: upper sleeve with a shoulder seam, an elbow, the forearm, a ribbed cuff, a fingerless glove
+  const arm = (sx) => {
+    const a = pivot(sx * 0.3, 1.5, 0);
+    a.geo = [
+      B(0.145, 0.27, 0.15, 0, -0.13, 0, 'sleeve', 'weave'), B(0.15, 0.03, 0.155, 0, -0.04, 0, 'cuff'),
+      B(0.128, 0.05, 0.135, 0, -0.29, 0, 'sleeve', 'seam'), B(0.135, 0.15, 0.142, 0, -0.39, 0, 'sleeve', 'weave'),
+      B(0.145, 0.05, 0.152, 0, -0.47, 0, 'cuff', 'rib'),
+      B(0.098, 0.08, 0.105, 0, -0.535, 0, DARK, 'leather'), B(0.088, 0.055, 0.09, 0, -0.6, 0.006, SKIN), B(0.036, 0.06, 0.036, -sx * 0.058, -0.535, 0.045, SKIN, 'plain', { rz: sx * 0.3 }),
+    ];
+    return a;
   };
-  // torso: tapered jacket with a stand-up collar, zip, chest stripe, pockets and ribbed hem; shorts;
-  // the messenger bag on its strap (across the chest and the back)
-  const torso = part([
-    B(0.4, 0.22, 0.25, 0, 0.94, 0, 'shorts'),
-    B(0.42, 0.2, 0.26, 0, 1.14, 0, 'jacket'), B(0.47, 0.3, 0.28, 0, 1.36, 0, 'jacket'), B(0.52, 0.08, 0.26, 0, 1.52, 0, 'jacket'),
-    B(0.44, 0.06, 0.275, 0, 1.05, 0, 'trim'),
-    B(0.475, 0.06, 0.285, 0, 1.4, 0, 'trim'), B(0.475, 0.025, 0.285, 0, 1.355, 0, 'light'),
-    B(0.03, 0.46, 0.012, 0, 1.3, 0.141, 'zip'), B(0.05, 0.035, 0.015, 0, 1.53, 0.143, 'zip'),
-    B(0.27, 0.1, 0.04, 0, 1.6, -0.1, 'collar'), B(0.04, 0.09, 0.15, 0.125, 1.595, -0.01, 'collar'), B(0.04, 0.09, 0.15, -0.125, 1.595, -0.01, 'collar'),
-    B(0.1, 0.07, 0.012, 0.12, 1.16, 0.136, 'trim'), B(0.1, 0.07, 0.012, -0.12, 1.16, 0.136, 'trim'),
-    B(0.11, 0.1, 0.11, 0, 1.63, 0, SKIN),
-    B(0.06, 0.62, 0.012, -0.02, 1.27, 0.146, DARK, 0, 0, -0.7), B(0.06, 0.62, 0.012, -0.02, 1.27, -0.146, DARK, 0, 0, 0.7),
-    B(0.05, 0.05, 0.018, 0.06, 1.35, 0.152, '#c9c0d8'),
-    B(0.13, 0.26, 0.34, -0.31, 0.98, -0.02, 'bag'), B(0.135, 0.12, 0.35, -0.31, 1.06, -0.02, 'trim'), B(0.14, 0.04, 0.06, -0.31, 1.0, 0.13, '#c9c0d8'),
-  ], 0, 0, 0);
-  // head: jaw, ears, nose, brows, hair with volume under a backwards cap; eyes and mouth are their own
-  // little meshes so they can blink and talk
-  const head = part([
-    B(0.26, 0.21, 0.25, 0, 0.17, 0, SKIN), B(0.22, 0.09, 0.21, 0, 0.045, 0.01, SKIN),
-    B(0.03, 0.07, 0.05, 0.135, 0.13, 0, '#b97f56'), B(0.03, 0.07, 0.05, -0.135, 0.13, 0, '#b97f56'),
-    B(0.035, 0.06, 0.04, 0, 0.115, 0.135, '#b97f56'), B(0.05, 0.02, 0.03, 0, 0.088, 0.14, '#a86e48'),
-    B(0.07, 0.018, 0.02, 0.065, 0.205, 0.128, HAIR, 0, 0, -0.12), B(0.07, 0.018, 0.02, -0.065, 0.205, 0.128, HAIR, 0, 0, 0.12),
-    B(0.29, 0.2, 0.09, 0, 0.14, -0.12, HAIR), B(0.24, 0.1, 0.06, 0, 0.03, -0.12, HAIR),
-    B(0.035, 0.15, 0.19, 0.142, 0.17, -0.025, HAIR), B(0.035, 0.15, 0.19, -0.142, 0.17, -0.025, HAIR),
-    B(0.1, 0.05, 0.05, -0.07, 0.235, 0.115, HAIR, 0.3, 0, 0.25), B(0.1, 0.05, 0.05, 0.03, 0.24, 0.12, HAIR, 0.35, 0, -0.1), B(0.08, 0.045, 0.05, 0.095, 0.232, 0.112, HAIR, 0.3, 0, -0.35),
-    B(0.29, 0.11, 0.29, 0, 0.3, 0, 'trim'), B(0.295, 0.05, 0.295, 0, 0.25, 0, 'jacket'), B(0.22, 0.03, 0.17, 0, 0.25, -0.215, 'trim'),
-    C(0.025, 0.025, 0.02, 6, 0, 0.36, 0, 'jacket'),
-  ], 0, 1.66, 0);
-  const eyes = part([B(0.056, 0.042, 0.01, 0.065, 0, 0.127, '#fbf7f0'), B(0.056, 0.042, 0.01, -0.065, 0, 0.127, '#fbf7f0'),
-    B(0.03, 0.036, 0.012, 0.06, -0.002, 0.131, DARK), B(0.03, 0.036, 0.012, -0.06, -0.002, 0.131, DARK)], 0, 0.158, 0, head);
-  const mouth = part([B(0.08, 0.016, 0.012, 0, 0, 0.127, '#7a2f3a'), B(0.06, 0.01, 0.013, 0, 0.006, 0.128, '#b25a5a')], 0, 0.06, 0.006, head);
-  const arm = (sx) => part([
-    B(0.145, 0.3, 0.15, 0, -0.15, 0, 'sleeve'), B(0.13, 0.18, 0.14, 0, -0.37, 0, 'sleeve'),
-    B(0.15, 0.03, 0.155, 0, -0.09, 0, 'cuff'), B(0.145, 0.05, 0.155, 0, -0.47, 0, 'cuff'),
-    B(0.09, 0.1, 0.1, 0, -0.545, 0, SKIN), B(0.07, 0.05, 0.08, 0, -0.615, 0.005, SKIN),
-    B(0.035, 0.065, 0.035, -sx * 0.045, -0.53, 0.05, SKIN, 0, 0, sx * 0.3),
-  ], sx * 0.3, 1.5, 0);
+  // legs: shorts with a rolled hem, thigh, a knee pad on the shin, striped socks, high-top skates
+  // (padded collar, tongue with laces, toe cap, plate, toe stop, four wheels with hubs)
   const leg = (sx) => {
-    const thigh = part([B(0.19, 0.25, 0.21, 0, -0.11, 0, 'shorts'), B(0.15, 0.22, 0.16, 0, -0.33, 0, 'thigh')], sx * 0.11, 0.96, 0);
-    const P = [B(0.135, 0.22, 0.145, 0, -0.1, 0, 'shin'), B(0.14, 0.07, 0.15, 0, -0.22, 0, WHITE), B(0.142, 0.025, 0.152, 0, -0.205, 0, 'trim'),
-      B(0.17, 0.17, 0.3, 0, -0.33, 0.04, 'boot'), B(0.175, 0.04, 0.31, 0, -0.29, 0.04, 'jacket'), B(0.1, 0.12, 0.03, 0, -0.29, 0.18, 'boot'),
-      B(0.12, 0.035, 0.32, 0, -0.43, 0.04, DARK), B(0.05, 0.05, 0.05, 0, -0.455, 0.2, DARK)];
-    for (let k = 0; k < 3; k++) P.push(B(0.1, 0.012, 0.012, 0, -0.27 - k * 0.035, 0.196 - k * 0.006, DARK));
-    for (const wz of [0.14, -0.08]) for (const wx of [0.07, -0.07]) P.push(C(0.055, 0.055, 0.045, 8, wx, -0.465, wz, 'trim', 0, PI / 2), C(0.025, 0.025, 0.05, 6, wx, -0.465, wz, '#c9c0d8', 0, PI / 2));
-    thigh.shin = part(P, 0, -0.44, 0, thigh);
+    const thigh = pivot(sx * 0.11, 0.96, 0);
+    thigh.geo = [B(0.19, 0.22, 0.21, 0, -0.1, 0, 'shorts', 'denim'), B(0.198, 0.04, 0.218, 0, -0.21, 0, 'shorts', 'rib'), B(0.15, 0.22, 0.16, 0, -0.33, 0, 'thigh')];
+    const shin = thigh.shin = pivot(0, -0.44, 0, thigh);
+    shin.geo = [B(0.14, 0.2, 0.15, 0, -0.1, 0, 'shin'), B(0.15, 0.1, 0.06, 0, -0.03, 0.07, 'trim', 'seam'),
+      B(0.143, 0.07, 0.152, 0, -0.215, 0, WHITE, 'rib'), B(0.145, 0.02, 0.155, 0, -0.2, 0, 'trim'),
+      B(0.17, 0.15, 0.22, 0, -0.32, 0, 'boot', 'leather'), B(0.175, 0.04, 0.225, 0, -0.245, 0, 'jacket', 'rib'),
+      B(0.16, 0.095, 0.13, 0, -0.35, 0.16, 'boot', 'leather'), B(0.1, 0.11, 0.03, 0, -0.29, 0.115, 'jacket', 'seam'),
+      B(0.13, 0.035, 0.34, 0, -0.415, 0.04, DARK, 'tread'), B(0.05, 0.05, 0.05, 0, -0.44, 0.21, DARK)];
+    for (let k = 0; k < 3; k++) shin.geo.push(B(0.09, 0.012, 0.012, 0, -0.26 - k * 0.032, 0.132, DARK));
+    for (const wz of [0.15, -0.08]) for (const wx of [0.068, -0.068]) shin.geo.push(C(0.052, 0.052, 0.042, 8, wx, -0.47, wz, 'trim', { rz: PI / 2 }), C(0.024, 0.024, 0.048, 6, wx, -0.47, wz, STEEL, { rz: PI / 2 }));
     return thigh;
   };
   const armL = arm(1), armR = arm(-1), legL = leg(1), legR = leg(-1);
+  const mesh = rig([[torso, T], [head, H], [armL, armL.geo], [armR, armR.geo], [legL, legL.geo], [legL.shin, legL.shin.geo], [legR, legR.geo], [legR.shin, legR.shin.geo]], mat);
+  for (const o of [armL, armR, legL, legR, legL.shin, legR.shin]) delete o.geo;
+  root.add(mesh);
   const skirt = buildSkirt(mat); skirt.position.set(0, 1.07, 0); body.add(skirt);
   // Outfits repaint the vertex colours by role
-  const meshes = [];
-  root.traverse((m) => { if (m.isMesh && m.geometry.attributes.aRole) meshes.push({ a: m.geometry.attributes.color, r: m.geometry.attributes.aRole }); });
+  const cA = mesh.geometry.attributes.color, rA = mesh.geometry.attributes.aRole;
   const c = new THREE.Color();
   let look = lookOf({});
   const setOutfit = (o) => {
     look = lookOf(o || {});
     const cols = ROLES.map((r) => new THREE.Color(look[r]));
-    for (const { a, r } of meshes) {
-      for (let i = 0; i < a.count; i++) { const k = r.getX(i); if (k >= 0) { c.copy(cols[k]); if (look.sequin && (k === 0 || k === 6)) c.multiplyScalar(0.8 + ((i * 13) % 7) * 0.07); a.setXYZ(i, c.r, c.g, c.b); } }
-      a.needsUpdate = true;
-    }
+    for (let i = 0; i < cA.count; i++) { const k = rA.getX(i); if (k >= 0) { c.copy(cols[k]); if (look.sequin && (k === 0 || k === 6)) c.multiplyScalar(0.8 + ((i * 13) % 7) * 0.07); cA.setXYZ(i, c.r, c.g, c.b); } }
+    cA.needsUpdate = true;
     skirt.paint(look);
   };
-  const api = { root, body, torso, head, eyes, mouth, armL, armR, legL, legR, skirt, setOutfit, get look() { return look; } };
+  const face = faceDriver(mat.userData.face, reducedMotion);
+  const api = { root, body, torso, head, eyes, mouth, armL, armR, legL, legR, skirt, mesh, setOutfit, face, get look() { return look; }, get faceState() { return mat.userData.face.x; } };
   setOutfit({});
   return api;
 }
@@ -161,7 +178,7 @@ export function createPlayer(scene, L) {
   scene.add(shadow);
 
   const CS = [];
-  let blinkT = 2, blink = 0, breathT = 0, talkT = 0;
+  let breathT = 0;
   const knees = (kl, kr) => { model.legL.shin.rotation.x = kl; model.legR.shin.rotation.x = kr; };
   const drape = () => { const m = model; m.skirt.drape(m.legL.rotation.x, m.legL.rotation.z, m.legR.rotation.x, m.legR.rotation.z); };
   const P = {
@@ -169,16 +186,12 @@ export function createPlayer(scene, L) {
     // blink, breathe, and move the mouth while talking in a scene (called every frame)
     tickFace(dt) {
       const m = model;
-      blinkT -= dt;
-      if (blinkT <= 0) { blink = 0.13; blinkT = 2.2 + Math.random() * 3.5; }
-      blink = Math.max(0, blink - dt);
-      m.eyes.scale.y = blink > 0 ? 0.12 : 1;
+      m.face(dt, P.talking, P.expr);
       breathT += dt;
       const br = Math.sin(breathT * 1.7);
       m.torso.scale.set(1 + br * 0.006, 1, 1 + br * 0.022);
-      talkT += dt;
-      m.mouth.scale.y = P.talking && !reducedMotion ? 1.3 + Math.abs(Math.sin(talkT * 17)) * 2.4 * (0.6 + 0.4 * Math.sin(talkT * 5.3)) : P.talking ? 1.8 : 1;
     },
+    expr: null,          // a cutscene gesture ('wave', 'think'…): the face shows it
     pos: new THREE.Vector3(-10, 0, 67), vel: new THREE.Vector3(), vy: 0, yaw: PI / 2,
     onGround: true, hidden: false, lowGravity: false, phase: 0, speed: 0, lean: 0, model, floor: 0, shadow,
     groundAt: null,      // optional (x, z) -> ground height: the sand shelf that slopes into the sea (player/swim.js)

@@ -2,7 +2,8 @@
 // (one merged unlit mesh plus a few animated extras), parked 90 units under its own building
 // and only visible while you are inside. Rooms are authored around (0, 0, 0); the door is on +z.
 import * as THREE from 'three';
-import { box, cyl, tint, merge, PI, rng, beatU, section, angleDelta } from '../core/util.js';
+import { box, cyl, tint, merge, PI, rng, beatU, section, angleDelta, reducedMotion } from '../core/util.js';
+import { kit, rig, blockyMaterial, faceDriver, instExtras, castAtlas, crowdAtlas, mergeParts, CAST_ROW, CROWD_FACE_N } from '../actors/blocky.js';
 import { newPose, dancePose, cheerPose, sitPose, blendPose } from '../actors/moves.js';
 import { CLUB_CROWD, clubTier } from './story.js';
 
@@ -10,33 +11,104 @@ export const OY = -90;
 const NEON = ['#ff2bd1', '#18f0ff', '#ffe14a', '#8dff5a', '#ff6a3d', '#b388ff'];
 
 // ---- people -------------------------------------------------------------------------------
+// The story cast as refined blocks (actors/blocky.js): one skinned draw call each, a pixel-art face
+// that blinks, talks and reacts, and the same pivots as before (g, head, armL, armR, thighs, shins).
+// Every character shares the base body; `wear` adds their own hair, layers and accessories.
+//   L: { skin, top, topPat, waist, legs, legPat, shoe, sole, belt, sleeve, fore, cuff, shoulder, shin }
+const BLK = '#22203a', GOLD = '#ffd166', CHROME = '#c9c0d8';
 const LOOKS = {
-  DEE: { skin: '#c98d62', top: '#ffe14a', legs: '#22203a', sleeve: '#ffe14a',
-    body: [[0.48, 0.5, 0.2, 0, 1.15, -0.04, '#22203a']],
-    head: [[0.3, 0.42, 0.3, 0, 0.45, -0.03, '#ff5fa8'], [0.27, 0.2, 0.1, 0, 0.19, -0.11, '#ff5fa8'], [0.06, 0.06, 0.03, 0.15, 0.1, 0.02, '#ffe14a']] },
-  GLITZ: { skin: '#e0a878', top: '#6a3fb8', legs: '#6a3fb8', sleeve: '#6a3fb8', shoe: '#fff6ec',
-    body: [[0.62, 0.12, 0.3, 0, 1.47, 0, '#6a3fb8'], [0.16, 0.5, 0.02, 0, 1.25, 0.135, '#fff6ec'], [0.07, 0.42, 0.02, 0, 1.22, 0.142, '#ffd166']],
-    head: [[0.27, 0.09, 0.27, 0, 0.27, -0.01, '#22203a'], [0.26, 0.07, 0.03, 0, 0.16, 0.125, '#27e8ff'], [0.27, 0.12, 0.06, 0, 0.2, -0.11, '#22203a']] },
-  // the night clerk: a deep maroon Pantry polo with a name badge and a shop cap, so he reads against the white store
-  GUS: { skin: '#f1c9a5', top: '#7a1838', legs: '#22203a', sleeve: '#7a1838',
-    body: [[0.3, 0.06, 0.28, 0, 1.47, 0, '#5dff9a'], [0.12, 0.06, 0.02, 0.11, 1.34, 0.135, '#ffe14a'], [0.08, 0.02, 0.022, 0.11, 1.34, 0.14, '#22203a'], [0.48, 0.06, 0.28, 0, 0.92, 0, '#3b2a1a']],
-    head: [[0.27, 0.1, 0.27, 0, 0.29, 0, '#7a1838'], [0.24, 0.025, 0.14, 0, 0.245, 0.19, '#5dff9a'], [0.1, 0.07, 0.02, -0.07, 0.15, 0.135, '#22203a'], [0.1, 0.07, 0.02, 0.07, 0.15, 0.135, '#22203a'], [0.27, 0.12, 0.08, 0, 0.17, -0.11, '#2a1a12'], [0.03, 0.1, 0.12, 0.13, 0.2, -0.04, '#2a1a12'], [0.03, 0.1, 0.12, -0.13, 0.2, -0.04, '#2a1a12']] },
-  KILO: { skin: '#7a4a2e', top: '#7a5cff', legs: '#22203a', sleeve: '#7a5cff',
-    body: [[0.47, 0.06, 0.27, 0, 1.3, 0, '#18f0ff']],
-    head: [[0.3, 0.1, 0.3, 0, 0.29, 0, '#ffe14a'], [0.24, 0.03, 0.16, 0, 0.25, 0.2, '#ffe14a'], [0.06, 0.16, 0.16, 0.155, 0.13, 0, '#ff2bd1'], [0.06, 0.16, 0.16, -0.155, 0.13, 0, '#ff2bd1'], [0.32, 0.04, 0.06, 0, 0.36, 0, '#22203a']] },
-  TAPS: { skin: '#e0a878', top: '#f6f1e7', legs: '#22203a', sleeve: '#f6f1e7',
-    body: [[0.47, 0.5, 0.27, 0, 1.2, 0, '#22203a'], [0.14, 0.5, 0.02, 0, 1.22, 0.14, '#f6f1e7'], [0.18, 0.07, 0.03, 0, 1.47, 0.15, '#ff2bd1']],
-    head: [[0.27, 0.08, 0.27, 0, 0.27, -0.01, '#1b1830'], [0.27, 0.16, 0.08, 0, 0.18, -0.11, '#1b1830'], [0.14, 0.03, 0.02, 0, 0.09, 0.127, '#1b1830']] },
-  // Zizi Sparks, Volt & Spark's pyrotechnician: tangerine overalls over a dark long-sleeve, yellow straps,
-  // teal hair under a goggle band, so she reads against the dark display wall and the violet counter
-  ZIZI: { skin: '#a56b43', top: '#ff7a2f', legs: '#ff7a2f', sleeve: '#2a2140', shoe: '#ffe14a',
-    body: [[0.3, 0.3, 0.02, 0, 1.17, 0.135, '#ffa04a'], [0.05, 0.3, 0.02, 0.12, 1.42, 0.135, '#ffe14a'], [0.05, 0.3, 0.02, -0.12, 1.42, 0.135, '#ffe14a'], [0.1, 0.07, 0.025, 0.07, 1.2, 0.15, '#18f0ff'], [0.47, 0.06, 0.27, 0, 0.95, 0, '#2a2140']],
-    head: [[0.3, 0.13, 0.3, 0, 0.28, -0.02, '#1fa89f'], [0.29, 0.22, 0.1, 0, 0.16, -0.11, '#1fa89f'], [0.282, 0.05, 0.282, 0, 0.27, 0, '#22203a'], [0.1, 0.075, 0.03, -0.065, 0.3, 0.13, '#ffe14a'], [0.1, 0.075, 0.03, 0.065, 0.3, 0.13, '#ffe14a']] },
-  MIMI: { skin: '#a56b43', top: '#ff8a3d', legs: '#ff8a3d', sleeve: '#a56b43',
-    body: [[0.5, 0.5, 0.3, 0, 0.72, 0, '#ff8a3d'], [0.05, 0.6, 0.28, 0.1, 1.25, 0, '#ffe14a'], [0.47, 0.06, 0.27, 0, 0.95, 0, '#22203a']],
-    head: [[0.34, 0.2, 0.3, 0, 0.3, -0.03, '#22203a'], [0.4, 0.3, 0.16, 0, 0.18, -0.12, '#22203a'], [0.16, 0.1, 0.06, 0.1, 0.4, 0.05, '#ff2bd1']] },
+  // Dee: yellow blouse with rolled sleeves, a dark bar apron, a pink up-do with a yellow band, hoops
+  DEE: { skin: '#c98d62', top: '#ffe14a', legs: '#22203a', fore: '#c98d62', shoe: '#ff5fa8', belt: null,
+    wear(K, P) {
+      const H = '#ff5fa8';
+      P.body.push(K.B(0.36, 0.46, 0.025, 0, 1.06, 0.136, BLK, 'seam'), K.B(0.425, 0.035, 0.256, 0, 1.2, 0, BLK), K.B(0.16, 0.07, 0.012, 0, 0.98, 0.152, H, 'seam'),
+        K.B(0.03, 0.12, 0.012, 0.1, 1.38, 0.14, BLK), K.B(0.03, 0.12, 0.012, -0.1, 1.38, 0.14, BLK), K.B(0.24, 0.05, 0.2, 0, 1.475, 0, '#ffe14a', 'rib'));
+      P.head.push(K.B(0.32, 0.09, 0.3, 0, 0.345, -0.005, H, 'hair'), K.B(0.32, 0.25, 0.08, 0, 0.2, -0.125, H, 'hair'),
+        K.B(0.035, 0.2, 0.2, 0.16, 0.24, -0.035, H, 'hair'), K.B(0.035, 0.2, 0.2, -0.16, 0.24, -0.035, H, 'hair'),
+        K.B(0.2, 0.06, 0.045, -0.04, 0.312, 0.148, H, 'hair', { rz: 0.25 }), K.B(0.1, 0.05, 0.045, 0.09, 0.3, 0.146, H, 'hair', { rz: -0.3 }),
+        K.B(0.2, 0.16, 0.2, 0, 0.46, -0.06, H, 'hair'), K.B(0.14, 0.06, 0.14, 0, 0.56, -0.06, H, 'hair'), K.B(0.205, 0.035, 0.205, 0, 0.39, -0.06, '#ffe14a', 'rib'),
+        K.B(0.018, 0.06, 0.05, 0.178, 0.085, 0.01, '#ffe14a'), K.B(0.018, 0.06, 0.05, -0.178, 0.085, 0.01, '#ffe14a'));
+      P.arms((sx) => [K.B(0.14, 0.05, 0.15, 0, -0.25, 0, '#ffe14a', 'rib')]);
+    } },
+  // Marty Glitz: a purple suit with padded shoulders, lapels, gold tie and pocket square, a quiff, cyan shades
+  GLITZ: { skin: '#e0a878', top: '#6a3fb8', legs: '#6a3fb8', legPat: 'weave', shoe: '#fff6ec', cuff: '#fff6ec', shoulder: null, belt: null,
+    wear(K, P) {
+      const S = '#6a3fb8', D = '#4a2a8a', HR = '#22203a';
+      P.body.push(K.B(0.17, 0.12, 0.3, 0.235, 1.46, 0, S, 'seam'), K.B(0.17, 0.12, 0.3, -0.235, 1.46, 0, S, 'seam'), K.B(0.44, 0.08, 0.27, 0, 0.98, 0, S, 'weave'),
+        K.B(0.14, 0.32, 0.02, 0, 1.3, 0.137, '#fff6ec'), K.B(0.07, 0.28, 0.02, 0.085, 1.32, 0.14, D, 'plain', { rz: -0.22 }), K.B(0.07, 0.28, 0.02, -0.085, 1.32, 0.14, D, 'plain', { rz: 0.22 }),
+        K.B(0.05, 0.24, 0.016, 0, 1.28, 0.149, GOLD, 'stripe'), K.B(0.06, 0.04, 0.02, 0, 1.415, 0.151, GOLD), K.B(0.06, 0.04, 0.012, 0.135, 1.37, 0.142, '#ff3fb4'),
+        K.B(0.025, 0.025, 0.012, 0.04, 1.12, 0.137, GOLD), K.B(0.025, 0.025, 0.012, 0.04, 1.05, 0.137, GOLD), K.B(0.22, 0.05, 0.2, 0, 1.48, 0, '#fff6ec'));
+      P.head.push(K.B(0.31, 0.07, 0.29, 0, 0.345, -0.01, HR, 'hair'), K.B(0.22, 0.07, 0.1, 0, 0.38, 0.09, HR, 'hair', { rx: -0.2 }), K.B(0.31, 0.22, 0.07, 0, 0.21, -0.125, HR, 'hair'),
+        K.B(0.03, 0.14, 0.16, 0.155, 0.24, -0.05, HR, 'hair'), K.B(0.03, 0.14, 0.16, -0.155, 0.24, -0.05, HR, 'hair'),
+        K.B(0.29, 0.062, 0.03, 0, 0.185, 0.158, '#27e8ff'), K.B(0.3, 0.016, 0.035, 0, 0.222, 0.158, HR), K.B(0.012, 0.02, 0.14, 0.152, 0.205, 0.08, HR), K.B(0.012, 0.02, 0.14, -0.152, 0.205, 0.08, HR));
+      P.arms((sx) => [K.B(0.03, 0.022, 0.03, sx * 0.03, -0.555, 0.045, GOLD)]);
+    } },
+  // Gus, the night clerk: a maroon Pantry polo (green collar and trims, name badge), green-billed shop cap, glasses
+  GUS: { skin: '#f1c9a5', top: '#7a1838', topPat: 'knit', legs: '#2a3550', fore: '#f1c9a5', shoe: '#1b1830', belt: '#3b2a1a',
+    wear(K, P) {
+      const G = '#5dff9a', M = '#7a1838', HR = '#2a1a12';
+      P.body.push(K.B(0.26, 0.05, 0.22, 0, 1.478, 0, G, 'rib'), K.B(0.06, 0.04, 0.02, 0.05, 1.455, 0.122, G), K.B(0.06, 0.04, 0.02, -0.05, 1.455, 0.122, G),
+        K.B(0.05, 0.12, 0.012, 0, 1.4, 0.138, '#5a1028'), K.B(0.02, 0.02, 0.01, 0, 1.43, 0.146, '#fff6ec'), K.B(0.02, 0.02, 0.01, 0, 1.38, 0.146, '#fff6ec'),
+        K.decal(0.12, 0.12, 0.11, 1.32, 0.137, M, 'badge'), K.B(0.46, 0.035, 0.27, 0, 1.0, 0, '#3b2a1a', 'leather'));
+      P.head.push(K.B(0.32, 0.1, 0.3, 0, 0.36, 0, M, 'weave'), K.B(0.325, 0.03, 0.305, 0, 0.315, 0, G, 'rib'), K.B(0.26, 0.025, 0.15, 0, 0.312, 0.21, G),
+        K.decal(0.08, 0.08, 0, 0.365, 0.1505, M, 'star'), K.C(0.022, 0.022, 0.02, 6, 0, 0.415, 0, M),
+        K.B(0.31, 0.2, 0.07, 0, 0.2, -0.125, HR, 'hair'), K.B(0.03, 0.12, 0.14, 0.155, 0.24, -0.06, HR, 'hair'), K.B(0.03, 0.12, 0.14, -0.155, 0.24, -0.06, HR, 'hair'));
+      P.arms((sx) => [K.B(0.136, 0.03, 0.146, 0, -0.235, 0, G, 'rib')]);
+    } },
+  // DJ Kilowatt: a violet hoodie with a cyan band and a bolt, yellow cap, magenta headphones, a short beard
+  KILO: { skin: '#7a4a2e', top: '#7a5cff', legs: '#22203a', cuff: '#18f0ff', shoe: '#fff6ec', sole: '#ff2bd1', belt: null,
+    wear(K, P) {
+      const V = '#7a5cff', Y = '#ffe14a';
+      P.body.push(K.B(0.465, 0.06, 0.275, 0, 1.28, 0, '#18f0ff', 'rib'), K.B(0.26, 0.1, 0.015, 0, 1.1, 0.133, '#6a4ce0', 'seam'), K.decal(0.09, 0.09, 0.12, 1.39, 0.137, V, 'bolt'),
+        K.B(0.014, 0.1, 0.012, 0.04, 1.42, 0.141, '#fff6ec'), K.B(0.014, 0.1, 0.012, -0.04, 1.42, 0.141, '#fff6ec'), K.B(0.3, 0.16, 0.07, 0, 1.5, -0.14, V, 'knit'),
+        K.B(0.43, 0.06, 0.26, 0, 0.995, 0, V, 'rib'));
+      P.head.push(K.B(0.32, 0.1, 0.3, 0, 0.36, 0, Y, 'weave'), K.B(0.26, 0.025, 0.16, 0, 0.312, 0.215, Y), K.C(0.022, 0.022, 0.02, 6, 0, 0.415, 0, Y),
+        K.B(0.06, 0.13, 0.13, 0.178, 0.17, 0, '#ff2bd1', 'leather'), K.B(0.06, 0.13, 0.13, -0.178, 0.17, 0, '#ff2bd1', 'leather'),
+        K.B(0.04, 0.2, 0.05, 0.18, 0.3, 0, BLK), K.B(0.04, 0.2, 0.05, -0.18, 0.3, 0, BLK), K.B(0.38, 0.035, 0.05, 0, 0.42, 0, BLK),
+        K.B(0.31, 0.16, 0.06, 0, 0.19, -0.13, '#1b1410', 'hair'));
+    } },
+  // Taps, the bartender: white shirt, a dark checked waistcoat, magenta bow tie and sleeve garters, slick side part
+  TAPS: { skin: '#e0a878', top: '#f6f1e7', legs: '#22203a', cuff: '#f6f1e7', shoe: '#1b1830', belt: null,
+    wear(K, P) {
+      const HR = '#1b1830';
+      P.body.push(K.B(0.16, 0.4, 0.022, 0.11, 1.2, 0.137, BLK, 'check'), K.B(0.16, 0.4, 0.022, -0.11, 1.2, 0.137, BLK, 'check'), K.B(0.46, 0.4, 0.022, 0, 1.2, -0.137, BLK, 'check'),
+        K.B(0.02, 0.4, 0.27, 0.232, 1.2, 0, BLK), K.B(0.02, 0.4, 0.27, -0.232, 1.2, 0, BLK),
+        K.B(0.02, 0.02, 0.01, 0.045, 1.25, 0.15, GOLD), K.B(0.02, 0.02, 0.01, 0.045, 1.17, 0.15, GOLD), K.B(0.02, 0.02, 0.01, 0.045, 1.09, 0.15, GOLD),
+        K.B(0.16, 0.06, 0.03, 0, 1.47, 0.14, '#ff2bd1'), K.B(0.04, 0.05, 0.036, 0, 1.47, 0.145, '#c01a8a'), K.B(0.24, 0.05, 0.2, 0, 1.48, 0, '#f6f1e7'));
+      P.head.push(K.B(0.31, 0.07, 0.29, 0, 0.345, -0.01, HR, 'hair'), K.B(0.2, 0.04, 0.29, 0.05, 0.385, -0.01, HR, 'hair'), K.B(0.31, 0.2, 0.07, 0, 0.21, -0.125, HR, 'hair'),
+        K.B(0.03, 0.13, 0.15, 0.155, 0.245, -0.05, HR, 'hair'), K.B(0.03, 0.13, 0.15, -0.155, 0.245, -0.05, HR, 'hair'));
+      P.arms((sx) => [K.B(0.142, 0.03, 0.152, 0, -0.12, 0, '#ff2bd1')]);
+    } },
+  // Zizi Sparks: tangerine overalls (bib, yellow straps, a cyan pocket) over a dark long-sleeve, a tool pouch,
+  // spiky teal hair under a goggle band, yellow boots
+  ZIZI: { skin: '#a56b43', top: '#2a2140', waist: '#ff7a2f', legs: '#ff7a2f', legPat: 'denim', cuff: '#ff7a2f', shoe: '#ffe14a', belt: '#3a2a1a',
+    wear(K, P) {
+      const O = '#ff7a2f', Y = '#ffe14a', T = '#1fa89f';
+      P.body.push(K.B(0.3, 0.26, 0.022, 0, 1.27, 0.137, O, 'denim'), K.B(0.3, 0.2, 0.022, 0, 1.24, -0.137, O, 'denim'),
+        K.B(0.05, 0.2, 0.02, 0.12, 1.43, 0.14, Y), K.B(0.05, 0.2, 0.02, -0.12, 1.43, 0.14, Y), K.B(0.05, 0.2, 0.02, 0.12, 1.43, -0.14, Y), K.B(0.05, 0.2, 0.02, -0.12, 1.43, -0.14, Y),
+        K.B(0.03, 0.03, 0.012, 0.12, 1.37, 0.151, CHROME), K.B(0.03, 0.03, 0.012, -0.12, 1.37, 0.151, CHROME),
+        K.B(0.11, 0.07, 0.014, 0.06, 1.22, 0.151, '#18f0ff', 'seam'), K.B(0.1, 0.1, 0.06, -0.2, 0.95, 0.07, Y, 'leather'));
+      P.head.push(K.B(0.32, 0.1, 0.3, 0, 0.34, -0.01, T, 'hair'), K.B(0.08, 0.07, 0.08, -0.08, 0.4, 0.03, T, 'hair', { rz: 0.4 }), K.B(0.08, 0.08, 0.08, 0.06, 0.405, -0.04, T, 'hair', { rz: -0.3 }),
+        K.B(0.07, 0.06, 0.07, 0, 0.41, 0.08, T, 'hair', { rx: 0.3 }), K.B(0.32, 0.22, 0.08, 0, 0.2, -0.12, T, 'hair'),
+        K.B(0.035, 0.18, 0.2, 0.16, 0.23, -0.03, T, 'hair'), K.B(0.035, 0.18, 0.2, -0.16, 0.23, -0.03, T, 'hair'),
+        K.B(0.335, 0.04, 0.315, 0, 0.3, 0, BLK), K.B(0.09, 0.07, 0.035, 0.065, 0.31, 0.163, Y), K.B(0.09, 0.07, 0.035, -0.065, 0.31, 0.163, Y),
+        K.B(0.03, 0.03, 0.03, 0, 0.31, 0.163, BLK));
+      P.shins.push(K.B(0.17, 0.05, 0.2, 0.095, -0.29, 0.01, Y, 'rib'), K.B(0.17, 0.05, 0.2, -0.095, -0.29, 0.01, Y, 'rib'));
+    } },
+  // Mimi: a tiered tangerine dress with a yellow sash, bare arms with bangles, big dark hair with a magenta flower
+  MIMI: { skin: '#a56b43', top: '#ff8a3d', legs: '#a56b43', sleeve: '#a56b43', cuff: '#ffe14a', shoulder: '#ff8a3d', shoe: '#ff2bd1', belt: null,
+    wear(K, P) {
+      const O = '#ff8a3d', HR = '#22203a';
+      P.body.push(K.B(0.06, 0.55, 0.014, 0, 1.22, 0.137, '#ffe14a', 'plain', { rz: 0.6 }), K.B(0.43, 0.06, 0.26, 0, 0.98, 0, BLK),
+        K.B(0.44, 0.16, 0.27, 0, 0.86, 0, O, 'weave'), K.B(0.5, 0.16, 0.31, 0, 0.71, 0, O, 'weave'), K.B(0.505, 0.03, 0.315, 0, 0.635, 0, '#ffe14a', 'rib'),
+        K.B(0.56, 0.15, 0.35, 0, 0.56, 0, O, 'weave'), K.B(0.565, 0.03, 0.355, 0, 0.49, 0, '#ff2bd1', 'rib'), K.B(0.22, 0.04, 0.19, 0, 1.475, 0, O));
+      P.head.push(K.B(0.36, 0.14, 0.32, 0, 0.36, -0.02, HR, 'hair'), K.B(0.42, 0.34, 0.16, 0, 0.19, -0.12, HR, 'hair'),
+        K.B(0.06, 0.3, 0.2, 0.18, 0.2, -0.02, HR, 'hair'), K.B(0.06, 0.3, 0.2, -0.18, 0.2, -0.02, HR, 'hair'),
+        K.B(0.1, 0.1, 0.1, 0.2, 0.05, -0.08, HR, 'hair'), K.B(0.1, 0.1, 0.1, -0.2, 0.05, -0.08, HR, 'hair'), K.B(0.26, 0.05, 0.045, 0, 0.312, 0.148, HR, 'hair'),
+        K.B(0.1, 0.1, 0.06, 0.12, 0.4, 0.07, '#ff2bd1'), K.B(0.04, 0.04, 0.02, 0.12, 0.4, 0.105, '#ffe14a'));
+    } },
 };
-const bx = (a) => box(a[0], a[1], a[2], a[3], a[4], a[5], a[6]);
+const shade = (hex, k) => '#' + new THREE.Color(hex).multiplyScalar(k).getHexString();
 
 // Characters indoors are lit (Lambert) with a soft rim light so they stand out from light walls too.
 export const rimU = { value: new THREE.Color('#000000') };
@@ -50,19 +122,40 @@ export function addRim(mat) {
   };
   return mat;
 }
-const npcMat = addRim(new THREE.MeshLambertMaterial({ vertexColors: true }));
 function makeNPC(key) {
-  const o = LOOKS[key], g = new THREE.Group(), mat = npcMat;
-  const add = (geos, x, y, z, parent = g) => { const m = new THREE.Mesh(merge(geos), mat); m.position.set(x, y, z); parent.add(m); return m; };
-  add([box(0.46, 0.6, 0.26, 0, 1.2, 0, o.top), box(0.38, 0.12, 0.25, 0, 0.88, 0, o.legs), box(0.12, 0.1, 0.12, 0, 1.53, 0, o.skin), ...o.body.map(bx)], 0, 0, 0);
-  // legs: both thighs pivot at the hips, both shins at the knees, so the cast can sit down in a booth
-  const thighs = add([box(0.17, 0.46, 0.23, 0.095, -0.23, 0, o.legs), box(0.17, 0.46, 0.23, -0.095, -0.23, 0, o.legs)], 0, 0.9, 0);
-  const shins = add([box(0.15, 0.42, 0.2, 0.095, -0.2, 0, o.legs), box(0.15, 0.42, 0.2, -0.095, -0.2, 0, o.legs),
-    box(0.17, 0.08, 0.29, 0.095, -0.42, 0.045, o.shoe || '#1b1830'), box(0.17, 0.08, 0.29, -0.095, -0.42, 0.045, o.shoe || '#1b1830')], 0, -0.46, 0, thighs);
-  const head = add([box(0.25, 0.26, 0.25, 0, 0.13, 0, o.skin), box(0.05, 0.05, 0.02, -0.07, 0.15, 0.127, '#1b1830'), box(0.05, 0.05, 0.02, 0.07, 0.15, 0.127, '#1b1830'),
-    box(0.1, 0.025, 0.02, 0, 0.06, 0.127, '#8a3a3a'), ...o.head.map(bx)], 0, 1.57, 0);
-  const arm = (sx) => add([box(0.13, 0.5, 0.14, 0, -0.22, 0, o.sleeve), box(0.1, 0.1, 0.1, 0, -0.5, 0, o.skin)], sx * 0.3, 1.46, 0);
-  const n = { key, g, head, armL: arm(1), armR: arm(-1), thighs, shins, x: 0, y: 0, z: 0, yaw: 0, home: 0, seated: false,
+  const o = LOOKS[key], g = new THREE.Group(), atlas = castAtlas(), K = kit(atlas);
+  const mat = blockyMaterial({ atlas, row: CAST_ROW[key], rim: rimU });
+  const pivot = (x, y, z, parent = g) => { const p = new THREE.Group(); p.position.set(x, y, z); parent.add(p); return p; };
+  const head = pivot(0, 1.57, 0), armL = pivot(0.3, 1.46, 0), armR = pivot(-0.3, 1.46, 0), thighs = pivot(0, 0.9, 0), shins = pivot(0, -0.46, 0, thighs);
+  const sk = o.skin, sk2 = shade(sk, 0.86), top = o.top, sleeve = o.sleeve || top, fore = o.fore || sleeve, legs = o.legs, tp = o.topPat || 'weave', lp = o.legPat || 'denim';
+  const P = { body: [], head: [], armL: [], armR: [], thighs: [], shins: [] };
+  // body: hips, belt, waist, chest, shoulder yokes, neck
+  P.body.push(K.B(0.4, 0.16, 0.25, 0, 0.92, 0, legs, lp), K.B(0.42, 0.2, 0.25, 0, 1.12, 0, o.waist || top, tp), K.B(0.46, 0.24, 0.27, 0, 1.33, 0, top, tp),
+    K.B(0.11, 0.08, 0.11, 0, 1.54, 0, sk));
+  if (o.shoulder !== null) P.body.push(K.B(0.12, 0.09, 0.26, 0.215, 1.455, 0, o.shoulder || top, 'seam'), K.B(0.12, 0.09, 0.26, -0.215, 1.455, 0, o.shoulder || top, 'seam'));
+  if (o.belt !== null) P.body.push(K.B(0.41, 0.04, 0.258, 0, 1.0, 0, o.belt || BLK, 'leather'), K.B(0.05, 0.035, 0.012, 0, 1.0, 0.133, CHROME));
+  // head: the block, the face plate, nose and ears
+  P.head.push(K.B(0.3, 0.31, 0.28, 0, 0.17, 0, sk, 'plain', { b: 0.02 }), K.face(0.262, 0.272, 0, 0.17, 0.1405, sk),
+    K.B(0.038, 0.042, 0.028, 0, 0.135, 0.152, sk2), K.B(0.032, 0.07, 0.06, 0.158, 0.155, 0, sk2), K.B(0.032, 0.07, 0.06, -0.158, 0.155, 0, sk2));
+  // arms: upper, elbow, forearm, cuff, hand with fingers and a thumb
+  P.arms = (fn) => { P.armL.push(...fn(1)); P.armR.push(...fn(-1)); };
+  P.arms((sx) => [K.B(0.13, 0.25, 0.14, 0, -0.12, 0, sleeve, sleeve === sk ? 'plain' : tp), K.B(0.115, 0.05, 0.125, 0, -0.265, 0, fore, fore === sk ? 'plain' : 'seam'),
+    K.B(0.122, 0.17, 0.132, 0, -0.37, 0, fore, fore === sk ? 'plain' : tp), ...(o.cuff ? [K.B(0.13, 0.04, 0.14, 0, -0.44, 0, o.cuff, 'rib')] : []),
+    K.B(0.09, 0.08, 0.095, 0, -0.5, 0, sk), K.B(0.08, 0.045, 0.08, 0, -0.56, 0.005, sk), K.B(0.032, 0.055, 0.032, -sx * 0.052, -0.495, 0.042, sk, 'plain', { rz: sx * 0.3 })]);
+  // legs: thigh and knee; shin, shoe with a toe cap and a treaded sole
+  for (const x of [0.095, -0.095]) {
+    P.thighs.push(K.B(0.16, 0.4, 0.2, x, -0.2, 0, legs, legs === sk ? 'plain' : lp), K.B(0.145, 0.06, 0.18, x, -0.43, 0, legs, legs === sk ? 'plain' : lp));
+    P.shins.push(K.B(0.15, 0.3, 0.18, x, -0.17, 0, o.shin || legs, legs === sk ? 'plain' : lp), K.B(0.16, 0.1, 0.22, x, -0.355, 0.02, o.shoe, 'leather'),
+      K.B(0.15, 0.07, 0.11, x, -0.37, 0.155, o.shoe, 'leather'), K.B(0.17, 0.035, 0.32, x, -0.425, 0.045, o.sole || '#1b1830', 'tread'));
+  }
+  o.wear(K, P);
+  const mesh = rig([[g, P.body], [head, P.head], [armL, P.armL], [armR, P.armR], [thighs, P.thighs], [shins, P.shins]], mat);
+  g.add(mesh);
+  const face = faceDriver(mat.userData.face, reducedMotion);
+  const n = { key, g, head, armL, armR, thighs, shins, mesh, x: 0, y: 0, z: 0, yaw: 0, home: 0, seated: false,
+    talking: false, expr: null,          // set by the cutscene director while this character speaks
+    tickFace(dt) { face(dt, n.talking, n.expr); },
+    get faceState() { return mat.userData.face.x; },
     // sit on a seat ({ x, z, y, yaw } in room coordinates): hips on the cushion, knees bent, feet on the floor
     sit(st) {
       Object.assign(n, { seated: true, x: st.x, z: st.z, y: -0.42, yaw: st.yaw });
@@ -423,17 +516,35 @@ function buildClub(room) {
   person('sit', 'vip', 8.3, 7.2, PI, { y: 0.5 }); person('sit', 'vip', 9.6, 7.2, PI, { y: 0.5 });
   person('coat', 'coat', -8.1, 6.3, PI / 2);
   const N = crowd.length;
-  const torso = new THREE.InstancedMesh(merge([box(0.44, 0.56, 0.25, 0, 1.22, 0, '#ffffff'), box(0.4, 0.2, 0.25, 0, 0.9, 0, '#c8c8c8'), box(0.45, 0.06, 0.26, 0, 0.98, 0, '#9a9a9a')]), room.mat, N);
-  const head = new THREE.InstancedMesh(merge([box(0.12, 0.1, 0.12, 0, 0.0, 0, '#e8e8e8'), box(0.24, 0.25, 0.24, 0, 0.17, 0, '#ffffff'), box(0.26, 0.11, 0.26, 0, 0.29, -0.01, '#3a3040'),
-    box(0.04, 0.04, 0.02, -0.06, 0.18, 0.122, '#202020'), box(0.04, 0.04, 0.02, 0.06, 0.18, 0.122, '#202020')]), room.mat, N);
-  const arms = new THREE.InstancedMesh(merge([box(0.12, 0.5, 0.13, 0, -0.22, 0, '#ffffff'), box(0.1, 0.1, 0.1, 0, -0.5, 0, '#c8a890')]), room.mat, N * 2);
-  const legs = new THREE.InstancedMesh(merge([box(0.15, 0.82, 0.17, 0, -0.41, 0, '#ffffff'), box(0.16, 0.1, 0.27, 0, -0.86, 0.04, '#3a3a3a')]), room.mat, N * 2);
+  // the same refined blocks as the cast, cheaper: unlit with the shading baked in, big blocks bevelled,
+  // per-person second / third colours (hair, trousers, shoes, hands) and a face from the shared atlas
+  const CA = crowdAtlas(), CK = kit(CA, { shade: true }), W = '#ffffff', P0 = { b: 0 };
+  const cMat = blockyMaterial({ atlas: CA, basic: true, inst: true }), cHead = blockyMaterial({ atlas: CA, basic: true, inst: true, face: true });
+  const torso = new THREE.InstancedMesh(mergeParts([CK.B(0.4, 0.17, 0.25, 0, 0.93, 0, W, 'denim', { alt: 1 }), CK.B(0.41, 0.035, 0.258, 0, 1.02, 0, '#3a3440', 'leather', { alt: 3, b: 0 }),
+    CK.B(0.42, 0.2, 0.25, 0, 1.12, 0, W, 'weave'), CK.B(0.45, 0.25, 0.27, 0, 1.33, 0, W, 'weave'), CK.B(0.12, 0.09, 0.26, 0.215, 1.45, 0, W, 'seam', P0), CK.B(0.12, 0.09, 0.26, -0.215, 1.45, 0, W, 'seam', P0),
+    CK.B(0.24, 0.045, 0.2, 0, 1.475, 0, W, 'rib', { alt: 2, b: 0 }), CK.B(0.455, 0.05, 0.275, 0, 1.3, 0, W, 'plain', { alt: 2, b: 0 })]), cMat, N);
+  const head = new THREE.InstancedMesh(mergeParts([CK.B(0.1, 0.08, 0.1, 0, 0, 0, W, 'plain', P0), CK.B(0.27, 0.28, 0.26, 0, 0.17, 0, W, 'plain', { b: 0.018 }), CK.face(0.234, 0.244, 0, 0.17, 0.1305, W),
+    CK.B(0.032, 0.036, 0.022, 0, 0.135, 0.139, '#e2e2e2', 'plain', P0), CK.B(0.026, 0.06, 0.05, 0.145, 0.16, 0, '#dcdcdc', 'plain', P0), CK.B(0.026, 0.06, 0.05, -0.145, 0.16, 0, '#dcdcdc', 'plain', P0),
+    CK.B(0.285, 0.07, 0.275, 0, 0.3, -0.005, W, 'hair', { alt: 1 }), CK.B(0.285, 0.2, 0.07, 0, 0.2, -0.11, W, 'hair', { alt: 1, b: 0 }),
+    CK.B(0.03, 0.12, 0.17, 0.142, 0.24, -0.04, W, 'hair', { alt: 1, b: 0 }), CK.B(0.03, 0.12, 0.17, -0.142, 0.24, -0.04, W, 'hair', { alt: 1, b: 0 }),
+    CK.B(0.2, 0.04, 0.03, 0.03, 0.29, 0.132, W, 'hair', { alt: 1, b: 0, rz: -0.12 })]), cHead, N);
+  const arms = new THREE.InstancedMesh(mergeParts([CK.B(0.12, 0.24, 0.13, 0, -0.11, 0, W, 'weave'), CK.B(0.105, 0.04, 0.115, 0, -0.25, 0, W, 'plain', { alt: 1, b: 0 }),
+    CK.B(0.112, 0.17, 0.122, 0, -0.35, 0, W, 'weave', { alt: 1 }), CK.B(0.085, 0.08, 0.09, 0, -0.475, 0, W, 'plain', { alt: 2, b: 0 }), CK.B(0.075, 0.04, 0.075, 0, -0.53, 0.005, W, 'plain', { alt: 2, b: 0 })]), cMat, N * 2);
+  const legs = new THREE.InstancedMesh(mergeParts([CK.B(0.15, 0.4, 0.17, 0, -0.2, 0, W, 'denim'), CK.B(0.135, 0.05, 0.155, 0, -0.42, 0, W, 'plain', { alt: 1, b: 0 }),
+    CK.B(0.14, 0.33, 0.16, 0, -0.6, 0, W, 'denim', { alt: 1 }), CK.B(0.155, 0.1, 0.25, 0, -0.82, 0.04, W, 'leather', { alt: 2, b: 0 }), CK.B(0.16, 0.03, 0.26, 0, -0.885, 0.04, '#3a3a3a', 'tread', { alt: 3, b: 0 })]), cMat, N * 2);
+  const xT = instExtras(torso), xH = instExtras(head, true), xA = instExtras(arms), xL = instExtras(legs);
   const col = new THREE.Color();
+  const HAIRS = ['#1b1410', '#2a1a12', '#5a3a1a', '#a0703a', '#d9b26a', '#22203a', '#8a8a90', '#ff5fa8', '#27d8cf', '#9b7bff'];
+  const SHOES = ['#f6f1e7', '#22203a', '#ff3f6a', '#27d8cf', '#c9b38a', '#ffd447'];
   for (const d of crowd) {
     const top = CROWD_TOPS[(d.i * 7) % CROWD_TOPS.length], sk = SKINS[(d.i * 5) % SKINS.length], lg2 = d.kind === 'coat' ? '#22203a' : CROWD_LEGS[(d.i * 3) % CROWD_LEGS.length];
-    torso.setColorAt(d.i, col.set(d.kind === 'coat' ? '#f6f1e7' : top)); head.setColorAt(d.i, col.set(sk));
-    arms.setColorAt(d.i * 2, col.set(d.i % 3 ? top : sk)); arms.setColorAt(d.i * 2 + 1, col.set(d.i % 3 ? top : sk));
-    legs.setColorAt(d.i * 2, col.set(lg2)); legs.setColorAt(d.i * 2 + 1, col.set(lg2));
+    const shirt = d.kind === 'coat' ? '#f6f1e7' : top, acc = d.i % 3 === 1 ? CROWD_TOPS[(d.i * 3 + 4) % CROWD_TOPS.length] : shirt, bare = d.i % 4 === 2;
+    torso.setColorAt(d.i, col.set(shirt)); xT.b(d.i, lg2); xT.c(d.i, acc);
+    head.setColorAt(d.i, col.set(sk)); xH.b(d.i, HAIRS[(d.i * 7 + 3) % HAIRS.length]); xH.face(d.i, (d.i * 3) % CROWD_FACE_N);
+    for (const k of [0, 1]) {
+      arms.setColorAt(d.i * 2 + k, col.set(d.i % 3 ? shirt : sk)); xA.b(d.i * 2 + k, d.i % 3 === 1 ? shirt : sk); xA.c(d.i * 2 + k, sk);
+      legs.setColorAt(d.i * 2 + k, col.set(lg2)); xL.b(d.i * 2 + k, bare ? sk : lg2); xL.c(d.i * 2 + k, SHOES[(d.i * 5 + 1) % SHOES.length]);
+    }
   }
   for (const m of [torso, head, arms, legs, cones]) m.frustumCulled = false;
   const Rt = new THREE.Matrix4(), Bm = new THREE.Matrix4(), Lm = new THREE.Matrix4(), M = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(0, 0, 0, 'XYZ'), v = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), sv = new THREE.Vector3();
@@ -744,6 +855,9 @@ export function buildRoom(place, scene, game) {
     n.g.position.set(x, y, z); n.g.rotation.y = yaw;
     group.add(n.g);
   }
+  // the cast blink, talk and react whenever the room ticks (walking about, shopping, in a scene)
+  const idle0 = room.idle;
+  room.idle = (t, dt, still) => { idle0.call(room, t, dt, still); for (const k in room.npc) room.npc[k].tickFace(dt || 1 / 60); };
   group.position.set(room.ox, OY, room.oz);
   group.traverse((o) => o.layers.enable(1));
   if (!room.seats) room.seats = [];

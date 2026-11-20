@@ -114,11 +114,12 @@ export function createDirector(camera, game) {
           for (const key in room.npc) { const o = room.npc[key]; if (o !== S && o !== Lr) pose(o, o.seated ? Math.atan2(S.x - o.x, S.z - o.z) : o.home, dt); }
           if (seated()) game.act.update(dt, NOCTL, null); else player.animate(dt, 0, null);
           player.talking = S.isMe && n < line[1].length;
+          { const fc = S.isMe ? player : S; fc.talking = n < line[1].length; fc.expr = act === 'talk' ? null : act; }   // the speaker's face (actors/blocky.js)
           const talking = reducedMotion || n < line[1].length || act !== 'talk';
           gesture(S, act, t, talking);
-          const sy = S.y + 1.56, ly = Lr.y + 1.56, push = reducedMotion ? 0 : k;
+          const sy = S.y + 1.68, ly = Lr.y + 1.68, push = reducedMotion ? 0 : k;
           if (kind === 'wide') { const w = T ? T.wide : room.wide; pos.set(w[0], w[1], w[2]); look.set(lerp(w[3], S.x, 0.5), w[4], lerp(w[5], S.z, 0.5)); pos.lerp(look, push * 0.07); fov = 46; }
-          else if (kind === 'cu') { pos.set(S.x + ux * 1.45 + px * 0.34, sy + 0.04, S.z + uz * 1.45 + pz * 0.34); look.set(S.x, sy + 0.04, S.z); pos.lerp(look, push * 0.1); fov = 30; }
+          else if (kind === 'cu') { pos.set(S.x + ux * 1.75 + px * 0.4, sy + 0.02, S.z + uz * 1.75 + pz * 0.4); look.set(S.x, sy - 0.04, S.z); pos.lerp(look, push * 0.1); fov = 30; }
           else if (kind === 'two') { const mx = (S.x + Lr.x) / 2, mz = (S.z + Lr.z) / 2; pos.set(mx + px * (2.6 + d * 0.5), (sy + ly) / 2 - 0.15, mz + pz * (2.6 + d * 0.5)); look.set(mx, (sy + ly) / 2 - 0.2, mz); pos.x += ux * push * 0.25; pos.z += uz * push * 0.25; fov = 40; }
           else { const ob = T ? 1.3 : 0.95, os = T ? 0.78 : 0.55; pos.set(Lr.x + ux * ob + px * os, ly + (T ? 0.3 : 0.2), Lr.z + uz * ob + pz * os); look.set(S.x - px * 0.25, sy - 0.05, S.z - pz * 0.25); pos.lerp(look, push * 0.06); fov = 36; }
           if (room.clampCam) room.clampCam(pos); else { pos.x = lim(pos.x, room.hx - 0.45); pos.z = lim(pos.z, room.hz - 0.45); pos.y = Math.min(pos.y, room.h - 0.35); }
@@ -126,7 +127,7 @@ export function createDirector(camera, game) {
           setFov(fov);
           camera.lookAt(O.x + look.x, OY + look.y, O.z + look.z);
         },
-        end() { player.talking = false; for (const a of [S, Lr]) { const m = parts(a); m.head.rotation.set(0, 0, 0); if (!a.isMe) { m.armR.rotation.set(0, 0, 0); m.armL.rotation.set(0, 0, 0); } } },
+        end() { player.talking = false; player.expr = null; S.talking = false; S.expr = null; for (const a of [S, Lr]) { const m = parts(a); m.head.rotation.set(0, 0, 0); if (!a.isMe) { m.armR.rotation.set(0, 0, 0); m.armL.rotation.set(0, 0, 0); } } },
       };
       return beat;
     });

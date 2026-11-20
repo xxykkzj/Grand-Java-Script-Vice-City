@@ -1,8 +1,9 @@
 // Pedestrians (and the drivers you can see through car windows). Everyone is drawn with a
 // handful of InstancedMeshes: torsos, heads, limbs, hats and blob shadows, so fifty people
-// cost five draw calls. They walk a sidewalk graph and cross on the walk phase.
+// cost five draw calls. Refined blocks with pixel faces (actors/blocky.js). They walk a sidewalk graph and cross on the walk phase.
 import * as THREE from 'three';
-import { box, cyl, merge, angleDelta, clamp, PI, dailyCurve, outOfSight } from '../core/util.js';
+import { angleDelta, clamp, PI, dailyCurve, outOfSight } from '../core/util.js';
+import { kit, blockyMaterial, instExtras, crowdAtlas, mergeParts, CROWD_FACE_N } from './blocky.js';
 import { SIDE_X, KEY } from '../world/layout.js';
 import { KH, KV, KEY_JUNCTIONS } from '../world/key.js';
 import { H_ROADS, walkOK } from '../world/roads.js';
@@ -67,26 +68,42 @@ export function createPeds(scene, R, grid, game) {
   const inKeyF = () => game.focus().x < KEY.x1 + 20;
 
   // ---- instanced body parts
-  const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
-  const mk = (geo, count) => { const m = new THREE.InstancedMesh(geo, mat, count); m.frustumCulled = false; scene.add(m); return m; };
-  const torso = mk(merge([box(0.42, 0.56, 0.24, 0, 0.28, 0, '#ffffff'), box(0.43, 0.1, 0.25, 0, 0.03, 0, '#b8b8b8'), box(0.16, 0.08, 0.16, 0, 0.6, 0, '#d8d8d8')]), N + DRIVERS);
-  const head = mk(merge([box(0.24, 0.25, 0.24, 0, 0.125, 0, '#ffffff'), box(0.255, 0.1, 0.25, 0, 0.215, -0.01, '#3a3a3a'), box(0.255, 0.16, 0.08, 0, 0.13, -0.09, '#3a3a3a'),
-    box(0.04, 0.04, 0.02, -0.06, 0.14, 0.122, '#202020'), box(0.04, 0.04, 0.02, 0.06, 0.14, 0.122, '#202020')]), N + DRIVERS);
-  const limb = mk(merge([box(0.13, 0.5, 0.14, 0, -0.25, 0, '#ffffff'), box(0.135, 0.12, 0.17, 0, -0.56, 0.015, '#4a4a4a')]), N * 4);
-  const hat = mk(merge([cyl(0.2, 0.2, 0.03, 8, 0, 0.26, 0, '#ffffff'), cyl(0.125, 0.135, 0.1, 8, 0, 0.31, 0, '#ffffff'), box(0.27, 0.035, 0.02, 0, 0.275, 0.125, '#555555')]), N);
+  // refined blocks, the cheap way: the big blocks bevelled, the small ones sharp; per-person second and third
+  // colours (trousers / hair / band, accents / shoes / hands) and a face from the shared crowd atlas
+  const A = crowdAtlas(), K = kit(A), W = '#ffffff', P0 = { b: 0 };
+  const mat = blockyMaterial({ atlas: A, inst: true }), headMat = blockyMaterial({ atlas: A, inst: true, face: true });
+  const mk = (geo, count, m = mat) => { const o = new THREE.InstancedMesh(geo, m, count); o.frustumCulled = false; scene.add(o); return o; };
+  const torso = mk(mergeParts([K.B(0.4, 0.12, 0.24, 0, 0.06, 0, W, 'denim', { alt: 1, b: 0 }), K.B(0.41, 0.03, 0.25, 0, 0.12, 0, '#3a3440', 'leather', { alt: 3, b: 0 }),
+    K.B(0.42, 0.2, 0.25, 0, 0.235, 0, W, 'weave'), K.B(0.45, 0.22, 0.265, 0, 0.44, 0, W, 'weave'),
+    K.B(0.11, 0.08, 0.25, 0.2, 0.55, 0, W, 'seam', P0), K.B(0.11, 0.08, 0.25, -0.2, 0.55, 0, W, 'seam', P0),
+    K.B(0.22, 0.04, 0.19, 0, 0.58, 0, W, 'rib', { alt: 2, b: 0 }), K.B(0.455, 0.045, 0.27, 0, 0.42, 0, W, 'plain', { alt: 2, b: 0 })]), N + DRIVERS);
+  const head = mk(mergeParts([K.B(0.1, 0.08, 0.1, 0, -0.02, 0, W, 'plain', P0), K.B(0.26, 0.26, 0.24, 0, 0.13, 0, W, 'plain', { b: 0.016 }), K.face(0.228, 0.228, 0, 0.13, 0.1205, W),
+    K.B(0.03, 0.034, 0.02, 0, 0.1, 0.127, '#e2e2e2', 'plain', P0), K.B(0.024, 0.055, 0.045, 0.135, 0.12, 0, '#dcdcdc', 'plain', P0), K.B(0.024, 0.055, 0.045, -0.135, 0.12, 0, '#dcdcdc', 'plain', P0),
+    K.B(0.275, 0.065, 0.255, 0, 0.25, -0.005, W, 'hair', { alt: 1, b: 0 }), K.B(0.275, 0.19, 0.065, 0, 0.15, -0.1, W, 'hair', { alt: 1, b: 0 }),
+    K.B(0.026, 0.11, 0.15, 0.137, 0.19, -0.04, W, 'hair', { alt: 1, b: 0 }), K.B(0.026, 0.11, 0.15, -0.137, 0.19, -0.04, W, 'hair', { alt: 1, b: 0 }),
+    K.B(0.19, 0.035, 0.03, 0.025, 0.24, 0.122, W, 'hair', { alt: 1, b: 0, rz: -0.12 })]), N + DRIVERS, headMat);
+  const limb = mk(mergeParts([K.B(0.13, 0.24, 0.14, 0, -0.12, 0, W, 'weave'), K.B(0.115, 0.04, 0.125, 0, -0.26, 0, W, 'plain', { alt: 1, b: 0 }),
+    K.B(0.125, 0.22, 0.135, 0, -0.39, 0, W, 'weave', { alt: 1 }), K.B(0.13, 0.09, 0.16, 0, -0.545, 0.015, W, 'leather', { alt: 2, b: 0 }),
+    K.B(0.135, 0.025, 0.165, 0, -0.6, 0.015, W, 'tread', { alt: 2, b: 0 })]), N * 4);
+  const hat = mk(mergeParts([K.B(0.26, 0.1, 0.25, 0, 0.32, 0, W, 'weave', { b: 0.012 }), K.B(0.265, 0.03, 0.255, 0, 0.285, 0, W, 'rib', { alt: 1, b: 0 }),
+    K.B(0.38, 0.022, 0.36, 0, 0.275, 0, W, 'weave', P0)]), N);
+  const xT = instExtras(torso), xH = instExtras(head, true), xL = instExtras(limb), xHat = instExtras(hat);
   const shadow = new THREE.InstancedMesh(new THREE.CircleGeometry(0.42, 10).rotateX(-PI / 2), new THREE.MeshBasicMaterial({
     color: 0, transparent: true, opacity: 0.26, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), N);
   shadow.frustumCulled = false; shadow.renderOrder = 1; scene.add(shadow);
 
   const col = new THREE.Color(), pick = (a) => a[Math.floor(Math.random() * a.length)];
   const peds = [];
+  const HAIR = ['#1b1410', '#2a1a12', '#5a3a1a', '#a0703a', '#d9b26a', '#22203a', '#8a8a90', '#c4c0c8', '#b0402a'];
+  const SHOE = ['#f6f1e7', '#22203a', '#ff3f6a', '#27d8cf', '#c9b38a', '#ffd447', '#5a3a1a'];
   function dress(p) {
     const i = p.i, skin = pick(SKIN), shirt = pick(SHIRT), legs = pick(LEGS);
-    torso.setColorAt(i, col.set(shirt)); head.setColorAt(i, col.set(skin));
-    const sleeves = Math.random() < 0.5 ? shirt : skin, shorts = Math.random() < 0.35 ? skin : legs;
-    limb.setColorAt(i * 4, col.set(shorts)); limb.setColorAt(i * 4 + 1, col.set(shorts));
-    limb.setColorAt(i * 4 + 2, col.set(sleeves)); limb.setColorAt(i * 4 + 3, col.set(sleeves));
-    hat.setColorAt(i, col.set(pick(HAT)));
+    torso.setColorAt(i, col.set(shirt)); xT.b(i, legs); xT.c(i, Math.random() < 0.45 ? pick(SHIRT) : shirt);
+    head.setColorAt(i, col.set(skin)); xH.b(i, Math.random() < 0.08 ? skin : pick(HAIR)); xH.face(i, Math.floor(Math.random() * CROWD_FACE_N));
+    const long = Math.random() < 0.5, shorts = Math.random() < 0.35, shoe = pick(SHOE);
+    for (const k of [0, 1]) { limb.setColorAt(i * 4 + k, col.set(legs)); xL.b(i * 4 + k, shorts ? skin : legs); xL.c(i * 4 + k, shoe); }
+    for (const k of [2, 3]) { limb.setColorAt(i * 4 + k, col.set(shirt)); xL.b(i * 4 + k, long ? shirt : skin); xL.c(i * 4 + k, skin); }
+    hat.setColorAt(i, col.set(pick(HAT))); xHat.b(i, pick(SHIRT));
     p.hat = Math.random() < 0.4; p.h = 0.9 + Math.random() * 0.2; p.w = 0.88 + Math.random() * 0.3; p.voice = 0.75 + Math.random() * 0.6;
     for (const m of [torso, head, limb, hat]) m.instanceColor.needsUpdate = true;
   }
@@ -105,7 +122,11 @@ export function createPeds(scene, R, grid, game) {
     if (p.e.cross) p.d = 0;
     peds.push(p);
   }
-  for (let i = 0; i < DRIVERS; i++) { torso.setColorAt(N + i, col.set(pick(SHIRT))); head.setColorAt(N + i, col.set(pick(SKIN))); }
+  for (let i = 0; i < DRIVERS; i++) {
+    const k = N + i, sk = pick(SKIN);
+    torso.setColorAt(k, col.set(pick(SHIRT))); xT.b(k, pick(LEGS)); xT.c(k, pick(SHIRT));
+    head.setColorAt(k, col.set(sk)); xH.b(k, pick(HAIR)); xH.face(k, Math.floor(Math.random() * CROWD_FACE_N));
+  }
 
   const B = new THREE.Matrix4(), Lm = new THREE.Matrix4(), M = new THREE.Matrix4(), ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
   const q = new THREE.Quaternion(), eu = new THREE.Euler(0, 0, 0, 'YXZ'), v = new THREE.Vector3(), sc = new THREE.Vector3();
