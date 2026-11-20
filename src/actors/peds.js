@@ -4,10 +4,11 @@
 import * as THREE from 'three';
 import { angleDelta, clamp, PI, dailyCurve, outOfSight } from '../core/util.js';
 import { kit, blockyMaterial, instExtras, crowdAtlas, mergeParts, CROWD_FACE_N } from './blocky.js';
-import { SIDE_X, KEY } from '../world/layout.js';
+import { SIDE_X, KEY, FOOTPRINTS, FOOTBOXES, onRoad } from '../world/layout.js';
 import { KH, KV, KEY_JUNCTIONS } from '../world/key.js';
 import { H_ROADS, walkOK } from '../world/roads.js';
 import { createBeachgoers, BEACH_N } from './beachgoers.js';
+import { createPedProps } from './pedprops.js';
 
 // BN: the beach crowd (actors/beachgoers.js) shares the meshes; DRIVERS: one per vehicle slot (vehicles.js CAP)
 const N = 52, DRIVERS = 110, BN = BEACH_N;
@@ -90,11 +91,15 @@ export function createPeds(scene, R, grid, game) {
     K.B(0.135, 0.025, 0.165, 0, -0.6, 0.015, W, 'tread', { alt: 2, b: 0 })]), (N + BN) * 4);
   const hat = mk(mergeParts([K.B(0.26, 0.1, 0.25, 0, 0.32, 0, W, 'weave', { b: 0.012 }), K.B(0.265, 0.03, 0.255, 0, 0.285, 0, W, 'rib', { alt: 1, b: 0 }),
     K.B(0.38, 0.022, 0.36, 0, 0.275, 0, W, 'weave', P0)]), N + BN);
+  // drivers' arms: upper arm + forearm per arm, 4 instances per vehicle slot, one extra draw call (placed in update())
+  const arms = mk(mergeParts([K.B(0.1, 1, 0.1, 0, -0.5, 0, W, 'weave', P0)]), DRIVERS * 4);
+  instExtras(arms);
   const xT = instExtras(torso), xH = instExtras(head, true), xL = instExtras(limb), xHat = instExtras(hat);
   const shadow = new THREE.InstancedMesh(new THREE.CircleGeometry(0.42, 10).rotateX(-PI / 2), new THREE.MeshBasicMaterial({
     color: 0, transparent: true, opacity: 0.26, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), N + BN);
   shadow.frustumCulled = false; shadow.renderOrder = 1; scene.add(shadow);
 
+  const ZERO0 = new THREE.Matrix4().makeScale(0, 0, 0);
   const col = new THREE.Color(), pick = (a) => a[Math.floor(Math.random() * a.length)];
   const peds = [];
   const HAIR = ['#1b1410', '#2a1a12', '#5a3a1a', '#a0703a', '#d9b26a', '#22203a', '#8a8a90', '#c4c0c8', '#b0402a'];
@@ -144,8 +149,10 @@ export function createPeds(scene, R, grid, game) {
     peds.push(p);
   }
   for (let i = 0; i < DRIVERS; i++) {
-    const k = N + BN + i, sk = pick(SKIN);
-    torso.setColorAt(k, col.set(pick(SHIRT))); xT.b(k, pick(LEGS)); xT.c(k, pick(SHIRT));
+    const k = N + BN + i, sk = pick(SKIN), sh = pick(SHIRT);
+    for (let a = 0; a < 4; a++) arms.setColorAt(i * 4 + a, col.set(a & 1 ? sk : sh));      // sleeve, then bare forearm
+    arms.setMatrixAt(i * 4, ZERO0); arms.setMatrixAt(i * 4 + 1, ZERO0); arms.setMatrixAt(i * 4 + 2, ZERO0); arms.setMatrixAt(i * 4 + 3, ZERO0);
+    torso.setColorAt(k, col.set(sh)); xT.b(k, pick(LEGS)); xT.c(k, pick(SHIRT));
     head.setColorAt(k, col.set(sk)); xH.b(k, pick(HAIR)); xH.face(k, Math.floor(Math.random() * CROWD_FACE_N));
   }
 
@@ -276,12 +283,17 @@ export function createPeds(scene, R, grid, game) {
   // pushed straight out. Moving cars (3 m/s and more) knock people over as before (hitCheck). Cheap: the
   // per-frame neighbour grid (main.js) gives the few cars within reach.
   const PR = 0.3, BOXK = { car: [2.2, 0.95], truck: [2.7, 1.05], bike: [1.1, 0.4], tank: [3.3, 2.0], heli: [2.6, 1.5] };
-  const VB = [];                                  // scratch: nearby vehicle boxes [cx, cz, fx, fz, hl, hw, slow]
-  for (let k = 0; k < 24; k++) VB.push([0, 0, 0, 0, 0, 0, 0]);
-  let nVB = 0;
-  const stats = { pushes: 0, sidesteps: 0, turned: 0, ms: 0, calls: 0 };
+  const VB = [];                                  // scratch: nearby boxes [cx, cz, fx, fz, hl, hw, stopped, static prop]
+  for (let k = 0; k < 64; k++) VB.push([0, 0, 0, 0, 0, 0, 0, 0]);
+  let nVB = 0, nCars = 0;
+  const stats = { pushes: 0, sidesteps: 0, turned: 0, ms: 0, calls: 0, blocked: 0, steered: 0, ghosts: 0 };
+  // fixed props (actors/pedprops.js): the same kind of box, always 'stopped', so the walkers' sidestep and the
+  // push-out below treat them like a parked car. Built on the first frame (the loose props come after the peds).
+  const PROPS = createPedProps(game, FOOTPRINTS, FOOTBOXES);
+  let propsOn = false;
+  const nearProps = (x, z, r, ex1, ez1, ex2, ez2) => { if (!propsOn || !api.collide || !api.avoidProps) return nVB; return (nVB = PROPS.fill(VB, nVB, x, z, r, ex1, ez1, ex2, ez2)); };
   function nearCars(x, z, r) {
-    nVB = 0;
+    nVB = nCars = 0;
     if (!api.collide) return 0;
     grid.query(x, z, r, (o) => {
       if (o.isPed || o.off || nVB >= VB.length || (o.y || 0) > 1.5 || (o.kind === 'heli' && !(o.y < 0.6))) return;
@@ -290,9 +302,9 @@ export function createPeds(scene, R, grid, game) {
       if (dx * dx + dz * dz > (r + hl) * (r + hl)) return;
       const b = VB[nVB++];
       b[0] = o.x; b[1] = o.z; b[2] = Math.sin(o.yaw); b[3] = Math.cos(o.yaw); b[4] = hl; b[5] = hw;
-      b[6] = o.kind === 'tank' ? Math.abs(o.speed || 0) < 2 : Math.hypot(o.vx || 0, o.vz || 0) < 2;
+      b[6] = o.kind === 'tank' ? Math.abs(o.speed || 0) < 2 : Math.hypot(o.vx || 0, o.vz || 0) < 2; b[7] = 0;
     });
-    return nVB;
+    return (nCars = nVB);
   }
   // how far (cx, cz) must move to get the point (x, z) out of every nearby box (padded by PR); 0 if clear
   const PUSH = [0, 0];
@@ -310,40 +322,108 @@ export function createPeds(scene, R, grid, game) {
     return ox !== 0 || oz !== 0;
   }
   // anyone not walking the sidewalk graph (hanging about, an event's actor, the beach crowd): just pushed out
-  function shove(p) {
+  // (props: also out of fixed props, except the one the person is using: a goal / origin spot, see pedprops.js)
+  function shove(p, props = true, gx = NaN, gz = NaN, ux = NaN, uz = NaN) {
     if (p.state === SIT || p.state === LIE || p.state === ACT || (p.gy || 0) < -0.3) return false;
-    if (!nearCars(p.x, p.z, 4)) return false;
-    if (!carPush(p.x, p.z)) return false;
+    nearCars(p.x, p.z, 4);
+    if (props) nearProps(p.x, p.z, 2.5, gx, gz, ux, uz);
+    if (!nVB || !carPush(p.x, p.z)) return false;
     stats.pushes++;
     return true;
   }
   // a walker on edge (a -> b): the lateral offset that clears every stopped car ahead, from the box corners
   // projected onto the path's frame (along u, across n). Returns [target lateral, along-distance to the
   // nearest blocking car or Infinity].
-  const AV = [0, 0];
-  function avoid(p, ax, az, ux, uz, s, L, look) {
-    let Lt = p.lane, near = Infinity;
-    const M = PR + 0.2;
-    for (let pass = 0; pass < 4; pass++) {
-      let changed = false;
-      for (let k = 0; k < nVB; k++) {
-        const b = VB[k];
-        if (!b[6]) continue;
-        const bx = b[0] - ax, bz = b[1] - az, ca = bx * ux + bz * uz, cl = -bx * uz + bz * ux;
-        // half extents of the oriented box along u and n
-        const fu = b[2] * ux + b[3] * uz, fn = -b[2] * uz + b[3] * ux;
-        const ea = Math.abs(fu) * b[4] + Math.abs(fn) * b[5] + M, el = Math.abs(fn) * b[4] + Math.abs(fu) * b[5] + M;
-        if (ca + ea < s - 0.2 || ca - ea > s + look) continue;
-        if (Lt <= cl - el || Lt >= cl + el) continue;
-        const lo = cl - el - 0.05, hi = cl + el + 0.05;
-        Lt = Math.abs(L - lo) <= Math.abs(L - hi) ? lo : hi;
-        near = Math.min(near, Math.max(0, ca - ea - s));
-        changed = true;
-      }
-      if (!changed) break;
+  const AV = [0, 0, 0], LATMAX = 3;
+  // can someone stand at lateral offset l on this path, abreast of the prop? (not out into the road, not far off the line)
+  function latOK(l, ax, az, ux, uz, ca, cross) {
+    if (Math.abs(l) > LATMAX) return false;
+    return cross || !onRoad(ax + ux * ca - uz * l, az + uz * ca + ux * l, 0.1);
+  }
+  // Every box within the look-ahead window, as [from, to, lo, hi, static, centre] along (u) and across (n) the path.
+  // The sidestep is the candidate lateral (the lane itself, or just outside either side of any box) nearest to
+  // where the person is that clears every box in the window; if the whole window is too crowded (two props
+  // either side of the way, a prop and a hydrant), the window is shortened to the nearest boxes and tried
+  // again, so the next prop is dealt with once the first is passed. Nothing fits: blocked (stop short, turn round).
+  const AB = [];
+  for (let k = 0; k < 64; k++) AB.push([0, 0, 0, 0, 0, 0]);
+  const CAND = new Float64Array(300);
+  function avoid(p, ax, az, ux, uz, s, L, look, cross) {
+    const M = PR + 0.2, lane = p.lane;
+    let n = 0, near = Infinity;
+    for (let k = 0; k < nVB; k++) {
+      const b = VB[k];
+      if (!b[6]) continue;
+      const bx = b[0] - ax, bz = b[1] - az, ca = bx * ux + bz * uz, cl = -bx * uz + bz * ux;
+      // half extents of the oriented box along u and n
+      const fu = b[2] * ux + b[3] * uz, fn = -b[2] * uz + b[3] * ux;
+      const ea = Math.abs(fu) * b[4] + Math.abs(fn) * b[5] + M, el = Math.abs(fn) * b[4] + Math.abs(fu) * b[5] + M;
+      if (ca + ea < s - 0.2 || ca - ea > s + look) continue;
+      const r = AB[n++]; r[0] = ca - ea; r[1] = ca + ea; r[2] = cl - el; r[3] = cl + el; r[4] = b[7]; r[5] = ca;
+      if (lane > r[2] && lane < r[3]) near = Math.min(near, Math.max(0, r[0] - s));
     }
-    AV[0] = Lt; AV[1] = near;
+    AV[1] = near; AV[2] = 0;
+    if (near === Infinity) { AV[0] = lane; return AV; }
+    for (const w of [1, 0.6, 0.3, 0]) {          // window: 100 %, 60 %, 30 %, 0 % of the look-ahead
+      const end = s + look * w;
+      let nc = 0;
+      CAND[0] = lane; CAND[1] = 0; nc = 1;
+      for (let k = 0; k < n; k++) { const r = AB[k]; if (r[0] > end) continue; CAND[nc * 2] = r[2] - 0.05; CAND[nc * 2 + 1] = r[5]; nc++; CAND[nc * 2] = r[3] + 0.05; CAND[nc * 2 + 1] = r[5]; nc++; }
+      let best = NaN, bd = Infinity;
+      for (let c = 0; c < nc; c++) {
+        const l = CAND[c * 2];
+        const d = Math.abs(l - L);
+        if (d >= bd) continue;
+        let ok = true;
+        for (let k = 0; k < n; k++) { const r = AB[k]; if (r[0] > end) continue; if (l > r[2] && l < r[3]) { ok = false; break; } }
+        if (!ok) continue;
+        // a sidestep round a fixed prop stays on the sidewalk: not out into the road, not far off the line
+        if (c > 0) { let st = false; for (let k = 0; k < n; k++) { const r = AB[k]; if (r[4] && r[5] === CAND[c * 2 + 1]) { st = true; break; } } if (st && !latOK(l, ax, az, ux, uz, CAND[c * 2 + 1], cross)) continue; }
+        best = l; bd = d;
+      }
+      if (best === best) { AV[0] = best; return AV; }
+    }
+    AV[0] = lane; AV[2] = 1;
     return AV;
+  }
+  // A free mover (the beach crowd, walking straight at a goal): the direction to take so as not to run into a
+  // fixed prop. Rays along the wanted direction, then bent to either side in steps until one is clear for `look`.
+  // Props at the goal (gx, gz) or at the spot the person is using / leaving (p.use) are exempt.
+  const STE = [0, 0], RM = PR + 0.15;
+  function rayT(b, px, pz, dx, dz) {
+    const rx = px - b[0], rz = pz - b[1], oa = rx * b[2] + rz * b[3], op = rx * b[3] - rz * b[2], da = dx * b[2] + dz * b[3], dp = dx * b[3] - dz * b[2], ha = b[4] + RM, hp = b[5] + RM;
+    let t0 = -1e9, t1 = 1e9;
+    if (Math.abs(da) < 1e-6) { if (Math.abs(oa) > ha) return Infinity; } else { let a = (-ha - oa) / da, c = (ha - oa) / da; if (a > c) { const x = a; a = c; c = x; } t0 = Math.max(t0, a); t1 = Math.min(t1, c); }
+    if (Math.abs(dp) < 1e-6) { if (Math.abs(op) > hp) return Infinity; } else { let a = (-hp - op) / dp, c = (hp - op) / dp; if (a > c) { const x = a; a = c; c = x; } t0 = Math.max(t0, a); t1 = Math.min(t1, c); }
+    return t1 > Math.max(t0, 0) ? Math.max(t0, 0) : Infinity;
+  }
+  const clearT = (px, pz, dx, dz) => { let m = Infinity; for (let k = 0; k < nVB; k++) { const t = rayT(VB[k], px, pz, dx, dz); if (t < m) m = t; } return m; };
+  function steer(p, dx, dz, look, gx, gz) {
+    STE[0] = dx; STE[1] = dz;
+    if (!propsOn || !api.collide || !api.avoidProps || p.ghost > 0) return STE;
+    nVB = 0;
+    const u = p.use;
+    nearProps(p.x, p.z, look + 2.5, gx, gz, u ? u[0] : NaN, u ? u[1] : NaN);
+    if (!nVB) { p.sw = 0; return STE; }
+    let best = clearT(p.x, p.z, dx, dz);
+    if (best >= look) { p.sw = 0; return STE; }
+    stats.steered++;
+    // which way round: keep the side already chosen, else away from the middle of the nearest blocker
+    let side = p.sw;
+    if (!side) {
+      let nb = null, nt = Infinity;
+      for (let k = 0; k < nVB; k++) { const t = rayT(VB[k], p.x, p.z, dx, dz); if (t < nt) { nt = t; nb = VB[k]; } }
+      side = nb && ((nb[0] - p.x) * dz - (nb[1] - p.z) * dx) > 0 ? -1 : 1;
+    }
+    let bx = dx, bz = dz;
+    for (let k = 1; k <= 7; k++) {
+      const ang = side * (k & 1 ? 1 : -1) * 0.42 * Math.ceil(k / 2);
+      const c = Math.cos(ang), s2 = Math.sin(ang), ndx = dx * c - dz * s2, ndz = dx * s2 + dz * c, t = clearT(p.x, p.z, ndx, ndz);
+      if (t > best) { best = t; bx = ndx; bz = ndz; }
+      if (t >= look) { p.sw = side * (k & 1 ? 1 : -1); break; }
+    }
+    STE[0] = bx; STE[1] = bz;
+    return STE;
   }
   function update(p, dt, t) {
     if (p.evt) { evtStep(p, dt); if (shove(p)) { p.x += PUSH[0]; p.z += PUSH[1]; } hitCheck(p); return; }
@@ -399,16 +479,19 @@ export function createPeds(scene, R, grid, game) {
     // cars on the way: pick a sidestep that clears them (walking or waiting at a crossing), then the push-out
     p.slow = 1;
     const tc = performance.now();
-    if (nearCars(p.x, p.z, 7)) {
+    nearCars(p.x, p.z, 7); nearProps(p.x, p.z, 6);
+    if (nVB) {
       const free = p.state === WALK && Math.hypot(p.ox, p.oz) <= 0.25;
       if (free || p.state === WAIT) {
-        const L = p.lane + p.sx, av = avoid(p, a.x, a.z, ux, uz, p.d, L, 2.2 + p.speed * 0.6);
+        const L = p.lane + p.sx, av = avoid(p, a.x, a.z, ux, uz, p.d, L, 2.2 + p.speed * 0.6, !!e.cross);
         const want = av[0] - p.lane, gap = Math.abs(want - p.sx);
         if (want !== 0 && gap > 0.02) stats.sidesteps++;
         // close to a car with the sidestep not done yet: mostly step sideways, barely forwards
         if (av[1] < 1.4 && gap > 0.12) p.slow = 0.12 + 0.6 * clamp(av[1] / 1.4, 0, 1) * 0.3;
+        // a prop (or a car) across the whole way, no room to step round it: stop short of it, then turn round
+        if (av[2]) { p.slow = Math.min(p.slow, clamp(av[1] / 1.2, 0, 1)); if (av[1] < 0.6) stats.blocked++; }
         const st = clamp(want - p.sx, -1.9 * dt, 1.9 * dt); p.sx += st; p.sxv = dt > 0 ? st / dt : 0;
-        p.stuck = av[1] < 0.3 && gap > 0.12 && free ? (p.stuck || 0) + dt : 0;
+        p.stuck = (av[1] < 0.3 && gap > 0.12 && free) || (av[2] && av[1] < 0.6) ? (p.stuck || 0) + dt : 0;
       }
       else p.sxv = 0;
     } else { const st = clamp(-p.sx, -1.2 * dt, 1.2 * dt); p.sx += st; p.sxv = dt > 0 ? st / dt : 0; p.stuck = 0; }
@@ -426,7 +509,7 @@ export function createPeds(scene, R, grid, game) {
       p.x += cx; p.z += cz;
     }
     // boxed in for a while (a car right across the way with no side to step to): turn round
-    if (p.stuck > 4) {
+    if (p.stuck > 3) {
       stats.turned++;
       const A = p.a; p.a = p.b; p.b = A; p.d = p.e.len - p.d; p.lane = -p.lane; p.sx = -p.sx; p.stuck = 0;
       p.e = p.a.adj.find((x) => x.to === p.b) || p.e;
@@ -436,6 +519,26 @@ export function createPeds(scene, R, grid, game) {
     if (p.state === WALK && p.v && Math.hypot(p.ox, p.oz) <= 0.25) { const yx = ux * p.v * p.slow - uz * (p.sxv || 0), yz = uz * p.v * p.slow + ux * (p.sxv || 0); p.yaw += angleDelta(p.yaw, Math.atan2(yx, yz)) * (1 - Math.exp(-8 * dt)); }
     p.phase += dt * (2 + p.v * 3.2);
     hitCheck(p);
+  }
+  // a driver's arm from the shoulder S to the hand H (car-local, drawn under the current B): two segments of
+  // length a with the elbow bent down and out. Instance base = upper arm, base + 1 = forearm.
+  const AS = new THREE.Vector3(), AH = new THREE.Vector3(), AE = new THREE.Vector3(), AD = new THREE.Vector3(), AN = new THREE.Vector3(), AQ = new THREE.Quaternion(), DOWN = new THREE.Vector3(0, -1, 0), ASC = new THREE.Vector3();
+  function seg(idx, p0, p1) {
+    AD.subVectors(p1, p0);
+    const len = AD.length() || 1e-3;
+    Lm.compose(p0, AQ.setFromUnitVectors(DOWN, AD.multiplyScalar(1 / len)), ASC.set(1, len, 1));
+    arms.setMatrixAt(idx, M.multiplyMatrices(B, Lm));
+  }
+  function arm(base, sx, sy, sz, hx, hy, hz, a) {
+    AS.set(sx, sy, sz); AH.set(hx, hy, hz);
+    AD.subVectors(AH, AS);
+    let L = AD.length();
+    const mx = 2 * a * 0.98;
+    if (L > mx) { AH.copy(AS).addScaledVector(AD, mx / L); AD.subVectors(AH, AS); L = mx; }
+    AD.multiplyScalar(1 / L);
+    AN.set(sx > 0 || (sx === 0 && hx > 0) ? 0.5 : -0.5, -1, -0.25); AN.addScaledVector(AD, -AN.dot(AD)).normalize();
+    AE.copy(AS).addScaledVector(AD, L / 2).addScaledVector(AN, Math.sqrt(Math.max(0, a * a - L * L / 4)));
+    seg(base, AS, AE); seg(base + 1, AE, AH);
   }
   // traffic and the player's own wheels
   function hitCheck(p) {
@@ -561,11 +664,12 @@ export function createPeds(scene, R, grid, game) {
 
   // the beach crowd: its own pool of people in the same meshes (indices N .. N + BN - 1)
   const beach = createBeachgoers({ game, base: N, count: BN, torso, head, limb, hat, shadow, part, B, M, v, q, eu, sc, ZERO, dress, dressBeach, knock, shout, standUp: () => {},
-    hitCheck: (p) => { if (shove(p)) { p.x += PUSH[0]; p.z += PUSH[1]; } hitCheck(p); },
+    steer, onGhost: () => { stats.ghosts++; },
+    hitCheck: (p) => { const u = p.use; if (shove(p, !(p.ghost > 0), p.gx, p.gz, u ? u[0] : NaN, u ? u[1] : NaN)) { p.x += PUSH[0]; p.z += PUSH[1]; } hitCheck(p); },
     S: { WALK, DOWN, LIE, SIT, FLINCH, ACT } });
   const all = () => (beach.on ? [...peds, ...beach.list] : peds);
   const api = {
-    peds, count: N, beach, carStats: stats, collide: true,
+    peds, count: N, beach, carStats: stats, collide: true, avoidProps: true, props: PROPS,
     // the footprint box test the checks use: is (x, z) inside any nearby vehicle (unpadded)?
     inCar(x, z) { nearCars(x, z, 4); for (let k = 0; k < nVB; k++) { const b = VB[k], rx = x - b[0], rz = z - b[1]; if (Math.abs(rx * b[2] + rz * b[3]) < b[4] && Math.abs(rx * b[3] - rz * b[2]) < b[5]) return true; } return false; },
     // scare everyone within r of (x, z); the closest ones go flying
@@ -668,6 +772,8 @@ export function createPeds(scene, R, grid, game) {
     get target() { return target; },
     update(dt, t, frame, cars) {
       const f = game.focus();
+      if (!propsOn && api.collide) { PROPS.build(); if (game.loose) PROPS.bindLoose(game.loose); propsOn = true; }
+      if (propsOn && game.loose && frame % 8 === 0) PROPS.scan();
       density(dt);
       for (const p of peds) {
         if (p.off) continue;
@@ -678,15 +784,24 @@ export function createPeds(scene, R, grid, game) {
       beach.update(dt, t, frame, draw);
       // drivers sit on the left: a torso and a head per occupied car
       for (const c of cars) {
-        const i = N + BN + c.idx;
-        if (c.off || !c.hasDriver || !(c.ai || c.jacking)) { torso.setMatrixAt(i, ZERO); head.setMatrixAt(i, ZERO); continue; }
+        const i = N + BN + c.idx, ai = c.idx * 4;
+        if (c.off || !c.hasDriver || !(c.ai || c.jacking)) { torso.setMatrixAt(i, ZERO); head.setMatrixAt(i, ZERO); for (let a = 0; a < 4; a++) arms.setMatrixAt(ai + a, ZERO); continue; }
         B.compose(v.set(c.x, c.y, c.z), q.setFromEuler(eu.set(c.tx, c.yaw, c.tz)), sc.set(1, 1, 1));
-        if (c.kind === 'bike') { part(torso, i, 0, 0.92, -0.42, 0.5, 0, 0.9, 0.9); part(head, i, 0, 1.42, -0.1, 0.1, 0, 1, 1); continue; }
+        // the wheel angle follows the car's steering input a little late
+        c.wa = (c.wa || 0) + ((c.steerLast || 0) * 1.1 - (c.wa || 0)) * Math.min(1, dt * 10);
+        if (c.kind === 'bike') {
+          part(torso, i, 0, 0.92, -0.42, 0.5, 0, 0.9, 0.9); part(head, i, 0, 1.42, -0.1, 0.1, 0, 1, 1);
+          for (const sd of [1, -1]) arm(ai + (sd > 0 ? 0 : 2), sd * 0.24, 1.35, -0.19, sd * 0.3, 1.2, 0.46 + sd * c.wa * 0.05, 0.36);
+          continue;
+        }
         const st = (c.spec && c.spec.seat) || SEAT0;
         part(torso, i, st[0], st[1], st[2], -0.12, 0, 0.9, 0.9);
         part(head, i, st[0], st[1] + 0.58, st[2] - 0.05, 0, 0, 1, 1);
+        // hands on a wheel in front of the seat, turned by the steering
+        const ca = Math.cos(c.wa), sa = Math.sin(c.wa);
+        for (const sd of [1, -1]) arm(ai + (sd > 0 ? 0 : 2), st[0] + sd * 0.24, st[1] + 0.49, st[2] - 0.11, st[0] + sd * 0.16 * ca, st[1] + 0.22 + sd * 0.16 * sa, st[2] + 0.42 - sd * 0.16 * sa * 0.3, 0.3);
       }
-      for (const m of [torso, head, limb, hat, shadow]) m.instanceMatrix.needsUpdate = true;
+      for (const m of [torso, head, limb, hat, shadow, arms]) m.instanceMatrix.needsUpdate = true;
     },
   };
   return api;

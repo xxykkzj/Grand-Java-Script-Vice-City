@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { timeU, pointScaleU, pushOut, pause, reducedMotion, createGrid, beatU, beatNow, BEAT_LEN, nightU } from './core/util.js';
 import { createInput } from './core/input.js';
-import { makeLayout, clampToWorld, onLand, propsOnRoad, zoneName, FOOTPRINTS, footprintsOnRoad } from './world/layout.js';
+import { makeLayout, clampToWorld, onLand, onRoad, propsOnRoad, zoneName, FOOTPRINTS, footprintsOnRoad } from './world/layout.js';
 import { checkBeach, BEACH_ZONES } from './world/beach.js';
 import { createEat } from './game/eat.js';
 import { buildKey } from './world/keyCity.js';
@@ -247,6 +247,7 @@ async function boot() {
     sittingPeds: () => peds.peds.filter((p) => !p.off && p.hang && p.hang.kind === 'seat').length,
     // ---- checks for the new systems
     propsOnRoad: () => propsOnRoad(L),
+    onRoad: (x, z, r = 0) => !!onRoad(x, z, r),
     // everything built into the town meshes that stands on the ground (sign legs, shelters, booths...): none on a lane
     footprints: () => { const by = {}; for (const f of FOOTPRINTS) { const k = f.what.split(':')[0]; by[k] = (by[k] || 0) + 1; } return { n: FOOTPRINTS.length, by, bad: footprintsOnRoad(), list: FOOTPRINTS.filter((f) => /sign leg/.test(f.what)).map((f) => [f.what, +f.x.toFixed(1), +f.z.toFixed(1)]) }; },
     // ---- the beach: what stands in the exclusion zones (should be []), palms on the sand, the beach crowd
@@ -533,6 +534,7 @@ async function boot() {
     else { cam.spec = v && v.spec || null; cam.update(dt, input, game.mode, game.focus(), game.heading(), speed, fx, player.phase); }
     // in first person on foot the courier's own body would sit inside the camera
     cockpit.update(dt, v, cam.first && !cut.active && !game.inside && !!v, ctl.steer);
+    vehicles.firstPerson = cam.first && !cut.active && !game.inside && !!v;
     const hideBody = cam.first && !cut.active && !game.inside && game.mode === 'foot';
     if (player.model.root.visible === hideBody && !player.hidden) player.model.root.visible = !hideBody;
     pointScaleU.value = renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360));

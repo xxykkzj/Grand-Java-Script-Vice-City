@@ -661,7 +661,8 @@ export function createVehicles(scene, L, fx, audio) {
         }
         m4.compose(p3.set(c.x, c.y, c.z), q.setFromEuler(e), s3);
         if (c.model) {
-          kitMesh.setMatrixAt(c.ki, m4); kitMesh.setVisibleAt(c.ki, true); m4.makeScale(0, 0, 0);
+          // driving it in first person: the cockpit overlay stands in for the body, whose glass is opaque from inside
+          kitMesh.setMatrixAt(c.ki, m4); kitMesh.setVisibleAt(c.ki, !(c.driven && api.firstPerson)); m4.makeScale(0, 0, 0);
           if (kitLo[c.model] !== undefined && api.eye) {
             const lod = (c.x - api.eye.x) ** 2 + (c.z - api.eye.z) ** 2 > (quality.high ? LOD_HIGH * LOD_HIGH : LOD_LOW * LOD_LOW) && !c.driven;
             if (lod !== c.lod) { c.lod = lod; kitMesh.setGeometryIdAt(c.ki, lod ? kitLo[c.model] : kitGid[c.model]); }

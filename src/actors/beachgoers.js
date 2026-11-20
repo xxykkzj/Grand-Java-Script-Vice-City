@@ -107,7 +107,7 @@ export function createBeachgoers(ctx) {
     if (p.slot && p.slot.taken === p) p.slot.taken = null;
     if (p.slot && p.slot.seat && p.slot.seat.taken === p) p.slot.seat.taken = null;
     const qi = queue.indexOf(p); if (qi >= 0) queue.splice(qi, 1);
-    p.slot = null; p.off = true; p.mode = 'off'; p.state = WALK; p.tilt = 0; p.flee = 0; p.leash = false;
+    p.slot = null; p.use = null; p.off = true; p.mode = 'off'; p.state = WALK; p.tilt = 0; p.flee = 0; p.leash = false;
     for (const m of [torso, head, hat, shadow]) m.setMatrixAt(p.i, ZERO);
     for (let k = 0; k < 4; k++) limb.setMatrixAt(p.i * 4 + k, ZERO);
   }
@@ -125,7 +125,7 @@ export function createBeachgoers(ctx) {
     }
     s.wait = 0;
     outfit(p, s.type);
-    Object.assign(p, { off: false, slot: s, x: at[0], z: at[1], yaw: Math.atan2(s.x - at[0], s.z - at[1]) || 0, state: WALK, tilt: 0, v: 0, flee: 0, ox: 0, oz: 0, gy: ground(at[0], at[1]), dir: Math.random() < 0.5 ? 1 : -1, t: Math.random() * 4, leash: false });
+    Object.assign(p, { use: [s.x, s.z], ghost: 0, sw: 0, bd: undefined, off: false, slot: s, x: at[0], z: at[1], yaw: Math.atan2(s.x - at[0], s.z - at[1]) || 0, state: WALK, tilt: 0, v: 0, flee: 0, ox: 0, oz: 0, gy: ground(at[0], at[1]), dir: Math.random() < 0.5 ? 1 : -1, t: Math.random() * 4, leash: false });
     s.taken = p;
     if (s.seat) s.seat.taken = p;
     p.mode = at[0] === s.x && at[1] === s.z ? 'there' : 'arrive';
@@ -186,7 +186,16 @@ export function createBeachgoers(ctx) {
     const dp = depth(p.x, p.z);
     const swim = dp > 0.95;
     const s = swim ? 1.0 : dp > 0.3 ? sp * 0.6 : sp;
-    if (d > 0.05) { const m = Math.min(d, s * dt); p.x += dx / d * m; p.z += dz / d * m; p.yaw += angleDelta(p.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-8 * dt)); }
+    if (d > 0.05) {
+      // round any fixed prop in the way (actors/peds.js steer); the goal and the spot being left are exempt
+      p.gx = x; p.gz = z;
+      const w = ctx.steer ? ctx.steer(p, dx / d, dz / d, Math.min(d, 2.6), x, z) : null, ux = w ? w[0] : dx / d, uz = w ? w[1] : dz / d;
+      const m = Math.min(d, s * dt); p.x += ux * m; p.z += uz * m; p.yaw += angleDelta(p.yaw, Math.atan2(ux, uz)) * (1 - Math.exp(-8 * dt));
+      // no way through for a while: walk through it rather than stand there for good
+      if (p.ghost > 0) p.ghost -= dt;
+      else if (d < 0.5 || p.bd === undefined || Math.abs(x - p.bx) > 1 || Math.abs(z - p.bz) > 1 || d < p.bd - 0.1) { p.bd = d; p.bt = 0; p.bx = x; p.bz = z; }
+      else if ((p.bt += dt) > 3.5) { p.ghost = 2.5; p.bt = 0; p.bd = d; if (ctx.onGhost) ctx.onGhost(); }
+    }
     p.v = d > 0.05 ? s : 0;
     p.gy = swim ? WL - 1.36 : Math.min(0, ground(p.x, p.z));
     if (swim) { p.state = ACT; swimPose(p, tgt); blend(p.o, tgt, 1 - Math.exp(-6 * dt)); } else if (p.state === ACT || p.state === SIT || p.state === LIE) { p.state = WALK; p.tilt = 0; }

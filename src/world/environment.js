@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import { lerp, damp, clamp, fogU, nightU, timeU, glareU, wetU, rainU, reflU, reducedMotion } from '../core/util.js';
 
 const col = (h) => new THREE.Color(h);
+const lum = (c) => c.r * 0.299 + c.g * 0.587 + c.b * 0.114;
+let HOR_NIGHT = 0, HOR_DUSK = 1;   // set right after PRESET below
 const PRESET = {
   night: {
     top: col('#03020f'), mid: col('#140a38'), hor: col('#3c165e'), sunA: col('#ff2f8a'), sunB: col('#7a1a6a'),
@@ -36,6 +38,7 @@ const PRESET = {
     sunI: 1.8, hemiI: 1.25, neon: 0.85, lit: 0.42, stars: 0.1, size: 0.17, stripe: 1, fogNear: 90, fogFar: 560,
   },
 };
+HOR_NIGHT = lum(PRESET.night.hor); HOR_DUSK = lum(PRESET.dusk.hor);
 // hour -> look. Everything in between is interpolated every frame (uniform and colour updates only).
 const KEYS = [[0, 'night'], [4.8, 'night'], [6.1, 'dawn'], [7.6, 'day'], [16.6, 'day'], [18.3, 'golden'], [19.5, 'dusk'], [20.4, 'dusk'], [21.6, 'night'], [24, 'night']];
 const STOPS = [['dawn', 6.1], ['day', 12], ['golden', 18.3], ['dusk', 19.7], ['night', 22.5]];
@@ -158,7 +161,10 @@ export function createEnvironment(scene, sky, ocean, city, camera, audio) {
       // the sky stays bright from late afternoon until well after the sun dips (afterglow), so this fades out only
       // once the sun is ~7 degrees below the horizon (about 21:00), not at sunset itself
       const sl = clamp((sunDir.y + 0.13) / 0.2, 0, 1);
-      const sunLow = sl * sl * (3 - 2 * sl) * (1 - clamp((sunDir.y - 0.5) / 0.25, 0, 1));
+      // ...and follow the horizon's own brightness too, so the glow waits until the afterglow has actually faded
+      const hL = cur.hor.r * 0.299 + cur.hor.g * 0.587 + cur.hor.b * 0.114;
+      const skyK = clamp((hL - HOR_NIGHT) / (HOR_DUSK - HOR_NIGHT), 0, 1);
+      const sunLow = Math.max(sl * sl * (3 - 2 * sl), skyK * skyK) * (1 - clamp((sunDir.y - 0.5) / 0.25, 0, 1));
       env.glare = sunLow * (1 - Math.max(w.fog, w.cloud * 0.85)); glareU.value = env.glare;
       scene.fog.color.copy(cur.hor).lerp(cur.mid, 0.25 + 0.2 * env.glare).multiplyScalar(1 - 0.32 * env.glare);
       if (w.fog > 0.01) {
