@@ -1,10 +1,9 @@
 // The game layer on top of the sandbox: cash, health, heat (wanted stars) and the Coast
 // Patrol, carjacking, pickups and the CAUGHT / KNOCKED OUT cards.
-// Heat comes from taking an occupied vehicle, running people over, tank fire and red lights in
-// view of a patrol car. Bumping other cars is just traffic: it never adds a star.
+// Heat comes from taking an occupied vehicle, running people over, tank fire and shooting at the
+// patrol. Bumping other cars and running red lights are just traffic: they never add a star.
 import * as THREE from 'three';
 import { box, merge, clamp, lerp, angleDelta, segBlocked, timeU, PI, reducedMotion } from '../core/util.js';
-import { signal } from '../world/roads.js';
 import { onRoad } from '../world/layout.js';
 import { createGlow } from '../world/glow.js';
 
@@ -12,15 +11,15 @@ const $ = (id) => document.getElementById(id);
 const CASH = [[40, 205], [-205, 112], [228, 116], [-150, -144], [150, -144], [118, 71], [-262, 4], [0, -112]];
 const REASON = {
   jack: 'THAT WAS NOT YOUR RIDE', ped: 'WATCH WHERE YOU ROLL', tank: 'HEAVY ARTILLERY ON THE BOULEVARD',
-  red: 'COAST PATROL SAW THAT RED LIGHT', patrol: 'YOU STOLE A PATROL CAR',
+  patrol: 'YOU STOLE A PATROL CAR',
   copshot: 'YOU OPENED FIRE ON THE COAST PATROL', shots: 'SHOOTING UP CARS IN FRONT OF THE PATROL', copwreck: 'A PATROL CAR WENT UP IN SMOKE',
 };
 
 export function createRules(game, scene) {
   const { L, vehicles, player, audio, hud, env, peds, traffic, R, cam } = game;
-  Object.assign(game, { money: 250, health: 100, wanted: 0, cooling: false, mission: null, busy: null, inside: null, stats: { jobs: 0, reds: 0 } });
+  Object.assign(game, { money: 250, health: 100, wanted: 0, cooling: false, mission: null, busy: null, inside: null, stats: { jobs: 0 } });
   const cd = {};
-  let unseen = 0, hurtCd = 0, bust = 0, losT = 0, seen = false, frame = 0, jack = null, lastNode = null;
+  let unseen = 0, hurtCd = 0, bust = 0, losT = 0, seen = false, frame = 0, jack = null;
 
   // ---- markers and pickups
   const basic = new THREE.MeshBasicMaterial({ vertexColors: true });
@@ -77,7 +76,32 @@ export function createRules(game, scene) {
     audio.lose();
     game.story.onDown(title);
     setTimeout(() => fade.classList.add('on'), 2300);
+    setTimeout(() => respawn(at, fee), 2750);
+  }
+  // blown up while still inside: slow motion, the colour drains, the camera pulls back from the wreck and
+  // a big TOTALLED card; then the clinic, with its usual bill
+  function totalled(v) {
+    if (game.busy === 'down') return;
+    game.busy = 'down';
+    if (jack) { jack.c.ai && (jack.c.ai.hold = false); jack.c.jacking = false; door.visible = false; jack = null; }
+    const at = L.clinic, fee = Math.min(game.money, Math.max(40, Math.round(game.money * 0.1 / 5) * 5));
+    game.health = 0;
+    game.story.onDown('TOTALLED');
+    const cp = game.camera.position, dx = cp.x - v.x, dz = cp.z - v.z, d = Math.hypot(dx, dz) || 1;
+    game.deathCam = { t: 0, x: v.x, y: v.y || 0, z: v.z, ux: dx / d, uz: dz / d };
+    game.slow = reducedMotion ? 1 : 0.3;
+    document.body.classList.add('dead');
+    stats.totalled++;
+    audio.lose();
     setTimeout(() => {
+      $('cardt').textContent = 'TOTALLED'; $('cards').textContent = fee ? `SEABREEZE CLINIC BILL: -$${fee}` : 'SEABREEZE CLINIC BILL: ON THE HOUSE';
+      card.className = 'on tot';
+    }, 700);
+    setTimeout(() => fade.classList.add('on'), 3300);
+    setTimeout(() => { document.body.classList.remove('dead'); game.slow = 1; game.deathCam = null; respawn(at, fee); }, 3750);
+  }
+  function respawn(at, fee) {
+    {
       leaveVehicle();
       game.places.putOutside(at.x, at.z);
       // walk out of the doorway (at.z is 5.4 m in front of the facade) a few steps onto the sidewalk.
@@ -91,8 +115,9 @@ export function createRules(game, scene) {
       game.money -= fee; game.health = 100; game.wanted = 0; unseen = 0; bust = 0;
       card.className = ''; game.busy = 'walkout';
       setTimeout(() => fade.classList.remove('on'), 80);
-    }, 2750);
+    }
   }
+  const stats = { totalled: 0 };
 
   // ---- after CAUGHT / KNOCKED OUT: stroll out of the station or clinic, then turn along the sidewalk
   let walk = null;
@@ -181,7 +206,15 @@ export function createRules(game, scene) {
   game.pedHit = (p, o) => { if (game.events && game.events.pedHit(p, o)) return; if (o.driven) crime('ped', 1, 2); };
 
   const rules = {
-    crime, hurt, startJack, leaveVehicle,
+    crime, hurt, startJack, leaveVehicle, totalled, stats,
+    // the camera while TOTALLED plays: rising and pulling back from the wreck (real time, not slowed)
+    deathCam(camera, dt) {
+      const d = game.deathCam;
+      d.t += dt;
+      const k = 1 - Math.exp(-d.t * 0.8), r = 6 + k * 15, h = 2.5 + k * 11;
+      camera.position.set(d.x + d.ux * r, d.y + h, d.z + d.uz * r);
+      camera.lookAt(d.x, d.y + 0.8, d.z);
+    },
     blips: [],
     update(dt) {
       frame++;
@@ -231,16 +264,6 @@ export function createRules(game, scene) {
       } else bust = 0;
       game.cooling = game.wanted > 0 && unseen > 6;
 
-      // running a red in front of a patrol car
-      const v = game.vehicle;
-      let inNode = null;
-      if (v && v.kind !== 'heli') for (const n of R.lights) if (Math.abs(v.x - n.x) < n.hx && Math.abs(v.z - n.z) < n.hz) { inNode = n; break; }
-      if (inNode && inNode !== lastNode && pSpeed() > 5) {
-        const h = Math.abs(v.vx) > Math.abs(v.vz);
-        if (signal(inNode, h, t) === 2) { game.stats.reds++; if (near < 55 && seen) crime('red', 1, 5); }
-      }
-      lastNode = inNode;
-
       // traffic hurts when you are on foot
       hurtCd -= dt;
       if (onFoot() && !game.busy && !game.inside && hurtCd <= 0 && player.pos.y < 1.2) {
@@ -261,7 +284,7 @@ export function createRules(game, scene) {
       const bl = rules.blips;
       bl.length = 0;
       for (const p of picks) if (p.t <= 0) bl.push({ x: p.x, z: p.z, color: p.med ? '#ff8ad0' : '#6dffb0', near: true });
-      game.places.blips(bl); game.story.blips(bl); if (game.events) game.events.blips(bl);
+      game.places.blips(bl); game.story.blips(bl); if (game.events) game.events.blips(bl); if (game.pursuit) game.pursuit.blips(bl);
     },
   };
   return rules;

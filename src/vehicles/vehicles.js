@@ -6,8 +6,8 @@ import { carGeometry, carGlassGeometry, patrolKitGeometry, tankGeometry, heliGeo
 import { kitGeometry, kitPaint } from '../world/kits.js';
 import { createGlow } from '../world/glow.js';
 
-export const CAP = 90;
-const POLICE = 6, BIKES = 8, HELIS = 2;
+export const CAP = 104;
+const POLICE = 6, BIKES = 12, HELIS = 2;
 // Vehicle condition (see game/damage.js for the stages, smoke, fire and explosions)
 export const MAXHP = { car: 100, bike: 60, tank: 420, heli: 140 };
 export function resetDamage(v) {

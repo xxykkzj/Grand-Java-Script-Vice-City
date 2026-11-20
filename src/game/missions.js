@@ -2,6 +2,7 @@
 // clear objective each, checkpoints, a timer only on the legs that need one, a pass card with
 // the reward and a fail card with retry.
 import { MISSIONS, ODD_JOB } from './story.js';
+import * as THREE from 'three';
 import { makeMarker } from './cutscene.js';
 import { FLOOR } from './interiors.js';
 
@@ -10,6 +11,26 @@ const $ = (id) => document.getElementById(id);
 export function createStory(game, scene) {
   const { L, player, hud, audio, env, vehicles, save } = game;
   const mark = makeMarker(scene, '#ffd166');
+  // the objective star: an extruded five-point star turning slowly inside the objective's light pillar
+  // (a soft pillar of its own where there is none, e.g. a bike to get on). One mesh, nothing allocated per frame.
+  const starShape = new THREE.Shape();
+  for (let i = 0; i < 10; i++) { const a = Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 0.27 : 0.62; if (i) starShape.lineTo(Math.cos(a) * r, Math.sin(a) * r); else starShape.moveTo(Math.cos(a) * r, Math.sin(a) * r); }
+  const starGeo = new THREE.ExtrudeGeometry(starShape, { depth: 0.16, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.04, bevelSegments: 1 }).translate(0, 0, -0.08);
+  const star = new THREE.Mesh(starGeo, new THREE.MeshLambertMaterial({ color: '#ffe14a', emissive: '#ffb000', emissiveIntensity: 0.85 }));
+  star.visible = false; scene.add(star);
+  const pillar = makeMarker(scene, '#ffd166', 1.2, 7);
+  const tgt = { x: 0, z: 0, own: false, on: false };
+  let starT = 0;
+  // where the objective is right now: the next job's giver, the place to visit, the drop / checkpoint, the bike
+  function objTarget() {
+    tgt.on = false; tgt.own = false;
+    if (!A) { const m = next(); if (m && L.places[m.giver]) { const p = L.places[m.giver]; tgt.x = p.x; tgt.z = p.z; tgt.on = true; } return tgt; }
+    const s = step();
+    if (s.type === 'visit') { const p = L.places[s.place]; tgt.x = p.x; tgt.z = p.z; tgt.on = true; }
+    else if (s.type === 'drop' || s.type === 'route') { tgt.x = mark.position.x; tgt.z = mark.position.z; tgt.on = true; }
+    else if (s.type === 'mount' && A.bike && !A.bike.driven) { tgt.x = A.bike.x; tgt.z = A.bike.z; tgt.on = true; tgt.own = true; }
+    return tgt;
+  }
   const card = $('card');
   let A = null, jobWait = 0, cardT = 0, pendingFail = null, lastDrop = null;
 
@@ -179,6 +200,17 @@ export function createStory(game, scene) {
       }
       objective();
     },
+    // every frame: the star follows the objective; hidden indoors, in scenes and with no objective
+    tickStar(dt) {
+      const o = objTarget(), show = o.on && !game.inside && game.busy !== 'cut' && game.busy !== 'down';
+      star.visible = show; pillar.visible = show && o.own;
+      if (!show) return;
+      starT += dt;
+      star.position.set(o.x, 2.45 + Math.sin(starT * 1.6) * 0.14, o.z);
+      star.rotation.y = starT * 1.1;
+      if (o.own) pillar.position.set(o.x, 0, o.z);
+    },
+    starState() { const o = objTarget(); return { visible: star.visible, x: +star.position.x.toFixed(1), y: +star.position.y.toFixed(2), z: +star.position.z.toFixed(1), target: o.on ? [+o.x.toFixed(1), +o.z.toFixed(1)] : null, ownPillar: pillar.visible, story: save.story, step: A ? A.si : null, type: A ? step().type : null }; },
     blips(out) {
       if (!A) {
         const m = next();

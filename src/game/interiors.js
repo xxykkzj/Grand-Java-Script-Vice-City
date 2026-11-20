@@ -701,7 +701,9 @@ function buildClub(room) {
 // ---- Zigzag Threads -----------------------------------------------------------------------------
 function buildWear(room) {
   const g = [];
-  shell(g, 6, 4.5, 4.2, '#ffd9e6', '#fff6ec', ['#ffb36b', '#ff9a5c', '#ffc38a'], '#fff0d8', '#ff9a3d');
+  // warm but not glaring: dusty-rose and sand tiles, terracotta walls, a toned ceiling (it used to be the
+  // brightest room in the game by far, and bloomed white at night on High)
+  shell(g, 6, 4.5, 4.2, '#b9849a', '#cdb3a6', ['#c97c55', '#b86c4a', '#cf8a62'], '#a8927f', '#ff9a3d');
   // zigzag dado along the back wall
   for (let i = 0; i < 12; i++) g.push(box(1.1, 0.14, 0.05, -5.5 + i, 3.2, -4.46, i % 2 ? '#ff2bd1' : '#18f0ff', 0, 0, i % 2 ? 0.5 : -0.5));
   // rails of jackets along both side walls
@@ -716,7 +718,7 @@ function buildWear(room) {
   }
   // fitting podium and a three-panel mirror
   g.push(cyl(1.1, 1.2, 0.2, 18, -2.2, 0.1, -2.6, '#ff2bd1'), cyl(0.95, 0.95, 0.03, 18, -2.2, 0.215, -2.6, '#fff6ec'));
-  for (const [x, ry] of [[-3.5, 0.5], [-2.2, 0], [-0.9, -0.5]]) g.push(box(1.2, 2.5, 0.06, x, 1.45, -4.2 + Math.abs(ry) * 0.6, '#bfe9ff', 0, ry), box(1.3, 0.1, 0.08, x, 2.75, -4.19 + Math.abs(ry) * 0.6, '#ffe14a', 0, ry));
+  for (const [x, ry] of [[-3.5, 0.5], [-2.2, 0], [-0.9, -0.5]]) g.push(box(1.2, 2.5, 0.06, x, 1.45, -4.2 + Math.abs(ry) * 0.6, '#8fb2cc', 0, ry), box(1.3, 0.1, 0.08, x, 2.75, -4.19 + Math.abs(ry) * 0.6, '#ffe14a', 0, ry));
   // counter with a till, two mannequins in the window
   g.push(box(2.4, 1, 0.8, 3.2, 0.5, -2.2, '#7a3cff'), box(2.6, 0.08, 1, 3.2, 1.04, -2.2, '#fff6ec'), box(0.5, 0.35, 0.4, 3.9, 1.25, -2.2, '#22203a'), box(0.4, 0.2, 0.05, 3.9, 1.5, -2.35, '#8dff5a'));
   [[-3.6, '#ff7a2f', '#ffd84a'], [3.6, '#3a1d8a', '#18f0ff']].forEach(([x, a, b]) => {

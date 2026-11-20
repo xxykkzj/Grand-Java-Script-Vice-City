@@ -35,9 +35,13 @@ button{font-family:inherit;touch-action:manipulation}
   clip-path:polygon(calc(10 * var(--u)) 0,100% 0,100% calc(100% - 10 * var(--u)),calc(100% - 10 * var(--u)) 100%,0 100%,0 calc(10 * var(--u)))}
 #tl{position:absolute;top:calc(var(--pad) + var(--sat));left:calc(var(--pad) + var(--sal));display:flex;flex-direction:column;align-items:flex-start;gap:calc(10 * var(--u))}
 #tr{position:absolute;top:calc(var(--pad) + var(--sat));right:calc(var(--pad) + var(--sar));display:flex;flex-direction:column;align-items:flex-end;gap:calc(8 * var(--u))}
-#mapwrap{position:relative;width:calc(156 * var(--u));height:calc(156 * var(--u));flex:none;border-radius:50%;
+#mapwrap{--mk:1.35;position:relative;width:calc(156 * var(--u) * var(--mk));height:calc(156 * var(--u) * var(--mk));flex:none;border-radius:50%;
   border:2px solid var(--pink);box-shadow:0 0 14px rgba(255,63,180,.55),0 0 0 4px rgba(10,5,24,.6),inset 0 0 18px rgba(10,5,24,.9);overflow:hidden;background:var(--ink)}
 #map{width:100%;height:100%;display:block}
+/* the minimap is a little bigger on touch screens too, and back to its old size where the screen is narrow or short */
+body.touch #mapwrap{--mk:1.15}
+@media (max-width:560px),(max-height:430px){#mapwrap,body.touch #mapwrap{--mk:1}}
+@media (max-width:380px){#mapwrap,body.touch #mapwrap{--mk:.8}}
 #stack{display:flex;flex-direction:column;align-items:flex-end;gap:calc(6 * var(--u));min-width:calc(176 * var(--u))}
 #stack>.chip{width:100%;text-align:right}
 #clock{padding:calc(6 * var(--u)) calc(12 * var(--u)) calc(7 * var(--u));display:flex;align-items:baseline;justify-content:flex-end;gap:calc(10 * var(--u))}
@@ -69,6 +73,7 @@ button{font-family:inherit;touch-action:manipulation}
   clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
 .tb:active,.tb:focus-visible{background:rgba(255,63,180,.4);outline:none}
 .tb svg{width:22px;height:22px;fill:var(--cyan)}
+#bmute{font-size:20px;letter-spacing:0}#bmute.off{opacity:.55;text-decoration:line-through}
 body:not(.touch) #bgear{min-width:34px;height:34px;opacity:.75}body:not(.touch) #bgear svg{width:18px;height:18px}
 #hint{position:absolute;left:calc(16 * var(--u) + var(--sal));bottom:calc(44 * var(--u) + var(--sab));display:flex;flex-wrap:wrap;gap:calc(6 * var(--u)) calc(14 * var(--u));max-width:60vw;font-size:calc(12 * var(--u));letter-spacing:.06em}
 #hint span{display:inline-flex;align-items:center;gap:6px;text-shadow:0 1px 4px var(--ink)}
@@ -225,6 +230,21 @@ body.cinemode #hud,body.cinemode #tzone,body.cinemode #tctl,body.cinemode #sub{d
 #card p{margin:14px auto 0;max-width:min(900px,90vw);font-size:clamp(11px,calc(13 * var(--u)),17px);line-height:1.8;letter-spacing:.24em;color:var(--paper)}
 #card.pass h2{background:linear-gradient(180deg,#f4fff0 8%,#8dffb0 40%,var(--cyan) 70%,#7a5cff 95%);-webkit-background-clip:text;background-clip:text}
 #card.fail h2{background:linear-gradient(180deg,#fff 8%,#ff8fb0 40%,var(--pink) 70%,#7a1a6a 95%);-webkit-background-clip:text;background-clip:text}
+#heathint{position:absolute;right:calc(var(--pad) + var(--sar));top:46%;max-width:min(calc(250 * var(--u)),46vw);padding:calc(9 * var(--u)) calc(12 * var(--u));
+  display:flex;flex-direction:column;gap:calc(4 * var(--u));font-size:calc(11 * var(--u));line-height:1.45;letter-spacing:.06em;color:var(--paper);
+  background:rgba(10,5,24,.78);border:1px solid rgba(255,63,180,.6);border-right:3px solid var(--pink);border-radius:calc(6 * var(--u)) 0 0 calc(6 * var(--u));
+  transform:translateX(calc(100% + var(--pad) + var(--sar) + 8px));opacity:0;transition:transform .5s ease,opacity .5s}
+#heathint.on{transform:none;opacity:.95}
+#heathint b{font:800 calc(12 * var(--u)) var(--disp);letter-spacing:.2em;color:var(--pink)}
+#heathint kbd{font-size:calc(11 * var(--u))}#heathint small{opacity:.75;font-size:calc(10 * var(--u))}
+body.touch #heathint{top:38%}
+@media (prefers-reduced-motion:reduce){#heathint{transition:opacity .3s}}
+#card.tot{background:radial-gradient(90% 70% at 50% 50%,rgba(20,0,0,.05),rgba(10,0,0,.55))}
+#card.tot h2{font:900 clamp(56px,min(15vw,20vh),190px)/.85 "Bodoni 72","Didot","Bodoni MT","Playfair Display",Georgia,"Times New Roman",serif;font-stretch:condensed;letter-spacing:-.01em;
+  transform:scaleX(.8);background:none;color:#d4121c;-webkit-text-stroke:2px #1a0000;filter:drop-shadow(0 5px 0 #000) drop-shadow(0 0 18px rgba(0,0,0,.8))}
+#card.tot p{color:#f2e6e6;text-shadow:0 1px 3px #000}
+body.dead #hud{visibility:hidden}
+#gl{transition:filter 1.2s}body.dead #gl{filter:grayscale(.85) contrast(1.1) brightness(.85)}
 #card.pass{background:radial-gradient(90% 70% at 50% 50%,rgba(10,5,24,.15),rgba(10,5,24,.6))}
 
 /* ---------- shop menu ---------- */
@@ -342,7 +362,7 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
     <div id="tbar">
       <button id="bview" class="tb tonly" type="button" aria-label="Camera view">VIEW</button>
       <button id="bcodes" class="tb tonly" type="button" aria-label="Cheat codes">CODES</button>
-      <button id="bmute" class="tb tonly" type="button" aria-label="Mute">MUTE</button>
+      <button id="bmute" class="tb tonly" type="button" aria-label="Music on or off (M)" aria-pressed="true">♪</button>
       <button id="bgear" class="tb" type="button" aria-label="Pause and settings" title="Pause and settings"><svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="21.8,10.0 22.0,12.0 19.5,13.5 19.0,14.9 20.3,17.6 19.1,19.1 16.2,18.3 14.9,19.0 14.0,21.8 12.0,22.0 10.5,19.5 9.1,19.0 6.4,20.3 4.9,19.1 5.7,16.2 5.0,14.9 2.2,14.0 2.0,12.0 4.5,10.5 5.0,9.1 3.7,6.4 4.9,4.9 7.8,5.7 9.1,5.0 10.0,2.2 12.0,2.0 13.5,4.5 14.9,5.0 17.6,3.7 19.1,4.9 18.3,7.8 19.0,9.1"/><circle cx="12" cy="12" r="3.6" fill="#0a0518"/></svg></button>
     </div>
   </div>
@@ -425,7 +445,7 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
     <p id="keys" class="kbonly" hidden>
       <kbd>W A S D</kbd> move &nbsp; <kbd>Shift</kbd> sprint &nbsp; <kbd>Space</kbd> jump &nbsp; <kbd>Drag</kbd> look &nbsp; <kbd>V</kbd> camera view &nbsp; <kbd>E</kbd> vehicles, bikes, counters<br>
       Skate into a glowing ring to walk into a place &nbsp;·&nbsp; the pulsing blip on the map is your next job<br>
-      <kbd>~</kbd> / <kbd>T</kbd> cheat console &nbsp; <kbd>N</kbd> time of day &nbsp; <kbd>[</kbd> <kbd>]</kbd> time speed &nbsp; <kbd>M</kbd> mute &nbsp; <kbd>P</kbd> perf panel &nbsp; <kbd>K</kbd> cinematic camera
+      <kbd>~</kbd> / <kbd>T</kbd> cheat console &nbsp; <kbd>N</kbd> time of day &nbsp; <kbd>[</kbd> <kbd>]</kbd> time speed &nbsp; <kbd>M</kbd> music on / off (<kbd>Shift</kbd>+<kbd>M</kbd> all sound) &nbsp; <kbd>P</kbd> perf panel &nbsp; <kbd>K</kbd> cinematic camera
     </p>
   </div>
   <nav id="tlinks" aria-label="About this demo">

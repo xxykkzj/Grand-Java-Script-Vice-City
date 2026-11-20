@@ -120,7 +120,9 @@ export function createTraffic(R, vehicles, grid, game) {
       // physics car with synthetic inputs: point at the player, back out when wedged
       const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), vf = c.vx * fx + c.vz * fz, inp = ai.inp;
       inp.steer = clamp(angleDelta(c.yaw, Math.atan2(dxp, dzp)) * 2.5, -1, 1);
-      inp.throttle = dp < 4.6 ? (vf > 1 ? -1 : 0) : vf < (dp < 14 ? 7 : 19) ? 1 : vf > (dp < 14 ? 9 : 99) ? -1 : 0;
+      // from three stars they drive harder and lean on you instead of stopping short
+      const hard = game.wanted >= 3 && !!game.vehicle;
+      inp.throttle = dp < 4.6 && !hard ? (vf > 1 ? -1 : 0) : vf < (dp < 14 ? (hard ? 11 : 7) : hard ? 24 : 19) ? 1 : vf > (dp < 14 ? (hard ? 13 : 9) : 99) ? -1 : 0;
       if (Math.abs(vf) < 0.8 && dp > 7) ai.stuck += dt; else ai.stuck = Math.max(0, ai.stuck - dt);
       if (ai.stuck > 1.4) { ai.rev = 1.1; ai.stuck = 0; }
       if (ai.rev > 0) { ai.rev -= dt; inp.throttle = -1; inp.steer = -inp.steer; }
@@ -141,7 +143,20 @@ export function createTraffic(R, vehicles, grid, game) {
     if (ai.hold) { ai.speed = 0; c.vx = c.vz = 0; ai.braking = true; return; }
     // a suspect on foot: the patrol follows along the road and pulls up close by, it never mounts the kerb
     const onFoot = tgt && tgt.isPed;
-    if (chase && !onFoot && dp < 32 && (ai.los = !segBlocked(c.x, c.z, f.x, f.z, solids))) { ai.pursuit = true; ai.stuck = 0; return; }
+    // three stars and up, you in a vehicle: a patrol car on the road ahead of you stops across it (a roadblock),
+    // then joins the chase once you are close or after a few seconds
+    if (chase && !tgt && game.wanted >= 3 && game.vehicle) {
+      const v = game.vehicle, sp = Math.hypot(v.vx || 0, v.vz || 0);
+      if (ai.block > 0) {
+        ai.block -= dt; ai.speed = 0; c.vx = c.vz = 0; ai.braking = true;
+        c.yaw += angleDelta(c.yaw, ai.blockYaw) * (1 - Math.exp(-4 * dt));
+        if (dp < 9 || ai.block <= 0) { ai.block = 0; ai.blockCd = 9; ai.pursuit = true; ai.stuck = 0; }
+        return;
+      }
+      ai.blockCd = (ai.blockCd || 0) - dt;
+      if (ai.blockCd <= 0 && sp > 8 && dp > 15 && dp < 45 && -(v.vx * dxp + v.vz * dzp) / (sp * dp) > 0.85) { ai.block = 4; ai.blockYaw = Math.atan2(v.vx, v.vz) + Math.PI / 2; api.blocks++; return; }
+    }
+    if (chase && !onFoot && dp < (game.wanted >= 3 ? 42 : 32) && (ai.los = !segBlocked(c.x, c.z, f.x, f.z, solids))) { ai.pursuit = true; ai.stuck = 0; return; }
 
     const e = ai.edge;
     let vmax = ai.inConn ? 6 : ai.cruise, red = false;
@@ -226,7 +241,7 @@ export function createTraffic(R, vehicles, grid, game) {
   }
 
   const api = {
-    police, count: () => cars.reduce((n, c) => n + (c.ai && !c.off ? 1 : 0), 0),
+    police, blocks: 0, count: () => cars.reduce((n, c) => n + (c.ai && !c.off ? 1 : 0), 0),
     get target() { return target; },
     place,
     // put a car on the lane nearest to (x, z), heading along yaw (street events)

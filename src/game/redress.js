@@ -127,7 +127,7 @@ function wear(room) {
   // reflections in the three-panel mirror
   for (const [x, ry] of [[-3.5, 0.5], [-2.2, 0], [-0.9, -0.5]]) {
     const cz = -4.2 + Math.abs(ry) * 0.6, nx = Math.sin(ry), nz = Math.cos(ry);
-    B.add(1.12, 2.4, x + nx * 0.035, 1.45, cz + nz * 0.035, ry, (c, W, H) => P.mirror(c, W, H, ['#d8f0ff', '#a8c8e8'], [['#ff9a5c', 6], ['#ff2bd1', 4], ['#18f0ff', 4], ['#fff6ec', 6]], Math.round(x * 10)));
+    B.add(1.12, 2.4, x + nx * 0.035, 1.45, cz + nz * 0.035, ry, (c, W, H) => P.mirror(c, W, H, ['#a6c0d6', '#6f8cab'], [['#ff9a5c', 6], ['#ff2bd1', 4], ['#18f0ff', 4], ['#fff6ec', 6]], Math.round(x * 10)));
   }
   // the shop's name in neon over the dado, a sale sign behind the counter on a dark board (Mimi reads against it)
   B.add(3.4, 0.55, 2.6, 3.76, -4.47, 0, (c, W, H) => P.neon(c, W, H, 'Zigzag Threads', '#ff2bd1', { size: 0.6 }), 160);
@@ -160,7 +160,8 @@ function wear(room) {
   room.blocks.push({ x0: sx - 0.3, x1: sx + 0.3, z0: sz - 0.3, z1: sz + 0.3 });
   pools.push(disc(-2.2, 0.23, -2.6, 1.0, '#ffd0e8', 0.35), disc(2.6, 3.76, -4.46, 1.7, '#ff2bd1', 0.25, 'z'));
   room.lights = [{ x: -2.2, y: 3.5, z: -2.0, hex: '#fff0e0', r: 5, k: 0.5 }, { x: 3, y: 3.5, z: -2.0, hex: '#ffe0d0', r: 5, k: 0.5 }, { x: 0, y: 3.5, z: 1.4, hex: '#fff0e0', r: 6, k: 0.4 }, { x: 2.6, y: 3.7, z: -4.2, hex: '#ff2bd1', r: 3, k: 0.6 }];
-  room.amb = 0.82; room.ambCol = '#fff4f0';
+  room.amb = 0.64; room.ambCol = '#f6e6ec';
+  room.bloomK = 0.4;                                                 // pale walls: keep the night bloom subtle
   also(room, (t, dt, still) => { stand.rotation.y += dt * (still ? 0.15 : 0.6); });
 }
 

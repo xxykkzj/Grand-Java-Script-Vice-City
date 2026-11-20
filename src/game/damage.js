@@ -141,7 +141,7 @@ export function createDamage(game) {
     if (v.police && by === 'player') rules.crime('copwreck', 1, 1);
     // nearby vehicles take a beating; anything within reach goes flying; people stumble and run
     blast(v.x, y + 0.6, v.z, { r: 11 * Math.max(0.8, big), dmg: 48 * big, by: by === 'player' ? 'ram' : 'world', src: v, push: 16 * big, props: 1.3, knock: 6.5 * big, scare: 60, hurt: 40 });
-    if (game.vehicle === v) rules.hurt(999);                 // still inside: KNOCKED OUT
+    if (game.vehicle === v) rules.totalled(v);               // still inside: TOTALLED, then the clinic
     if (api.onExplode) api.onExplode(v);
   }
 

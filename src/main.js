@@ -21,6 +21,7 @@ import { createFollowCamera } from './player/camera.js';
 import { createCockpit } from './player/cockpit.js';
 import { createAudio } from './audio/audio.js';
 import { createMusic } from './audio/music.js';
+import { THEME_OF } from './audio/themes.js';
 import { createHud } from './ui/hud.js';
 import { createTouch, coarse } from './ui/touch.js';
 import { createCheats } from './cheats/cheats.js';
@@ -36,6 +37,9 @@ import { createActivity } from './game/activity.js';
 import { createDamage } from './game/damage.js';
 import { createCombat } from './game/combat.js';
 import { createEvents } from './game/events.js';
+import { createPursuit } from './game/pursuit.js';
+import { createParking } from './game/parking.js';
+import { createHeatHint } from './ui/heathint.js';
 import { createRooftops } from './game/rooftops.js';
 import { createStunts } from './game/stunts.js';
 import { createSwim } from './player/swim.js';
@@ -174,6 +178,9 @@ async function boot() {
   venues.restore();                           // a motel save brings back its cash and clock
   const combat = game.combat = createCombat(game, scene);
   const events = game.events = createEvents(game, scene);
+  const pursuit = game.pursuit = createPursuit(game, scene);
+  const parking = game.parking = createParking(game);
+  const heatHint = createHeatHint(game);
   const roofs = game.roofs = createRooftops(game);
   const stunts = game.stunts = createStunts(game);
   const cine = game.cine = createCinematic(game);
@@ -302,6 +309,19 @@ async function boot() {
     exitRoom: () => places.exit(),
     // the Blue Pelican's record player and its now-playing card
     music: () => { const S = music.state, el = document.getElementById('nowplay'); return { status: S.status, tracks: S.tracks.length, note: S.note, playing: S.playing, level: +S.level.toFixed(2), rec: +music.rec.toFixed(2), skips: S.skips, room: sound.room, card: el && !el.hidden ? el.textContent : null }; },
+    // Coast Patrol escalation: what is out (patrol cars, roadblocks, the helicopter, the tank) and their shots
+    pursuit: () => ({ wanted: game.wanted, patrols: traffic.police.filter((c) => !c.off).length, blocks: traffic.blocks, heli: pursuit.heli, tank: pursuit.tank, ...pursuit.stats, laserShots: combat.stats.laserShots, laserHits: combat.stats.laserHits, stuns: combat.stats.stuns }),
+    pursuitWarp: () => pursuit.warp(),
+    deathState: () => ({ busy: game.busy, slow: game.slow || 1, card: document.getElementById('card').className, title: document.getElementById('cardt').textContent, dead: document.body.classList.contains('dead'), totalled: rules.stats.totalled, x: +player.pos.x.toFixed(1), z: +player.pos.z.toFixed(1), clinic: [L.clinic.x, L.clinic.z], vehicle: !!game.vehicle, health: Math.round(game.health), money: game.money }),
+    heatHint: () => heatHint.state(),
+    mapDots: () => ({ ...hud.dots }),
+    star: () => story.starState(),
+    parking: () => parking.check(),
+    nearestVacant: () => parking.nearest(),
+    footSpots: (n) => parking.samples(n),
+    // music: which theme plays, the auto-off and the M switch
+    musicState: () => ({ ...audio.musicState(), room: sound.room, want: sound.theme }),
+    musicAuto: (sec) => audio.musicAuto(sec),
     venueKeys: () => [...Object.keys(L.places), ...Object.keys(L.venues)],
     evtGo: (off = 0.6) => { const t = events.target(); if (!t) return null; const v = game.vehicle; if (v) { v.x = t.x + off; v.z = t.z; v.vx = v.vz = 0; } else player.pos.set(t.x + off, 0, t.z); return t; },
   };
@@ -369,7 +389,12 @@ async function boot() {
       case 'KeyE': interact(); break;
       case 'KeyF': if (game.mode === 'tank') fire(); else if (game.started && !game.busy && !cheats.open) act.toggle(); break;
       case 'KeyN': hud.toast('TIME SKIP', 'FAST-FORWARDING TO ' + env.cycle().replace('GOLDEN', 'GOLDEN HOUR')); break;
-      case 'KeyM': hud.toast(audio.toggleMute() ? 'SOUND OFF' : 'SOUND ON'); break;
+      case 'KeyM':
+        if (e.shiftKey) { hud.toast(audio.toggleMute() ? 'ALL SOUND OFF' : 'ALL SOUND ON', 'SHIFT+M · M ALONE SWITCHES THE MUSIC'); break; }
+        { const r = audio.toggleMusic(); syncMusicBtn();
+          if (r === 'off') hud.toast('MUSIC OFF', 'SOUND EFFECTS STAY ON · M (TOUCH: ♪) TURNS IT BACK ON');
+          else hud.toast('MUSIC ON', r === 'street' ? 'THE STREET MUSIC IS BACK · M AGAIN SWITCHES ALL MUSIC OFF' : 'STREET AND INDOOR THEMES · M TO SWITCH OFF'); }
+        break;
       case 'KeyP': hud.togglePerf(); break;
       case 'KeyK': if (game.started && !game.busy && !cheats.open && !cine.start()) hud.toast('CINEMATIC MODE', 'NOT AVAILABLE INDOORS OR IN A SCENE'); break;
       case 'KeyV': hud.toast('CAMERA', cam.cycleView().name); break;
@@ -379,6 +404,10 @@ async function boot() {
 
   await progress(0.92, 'SWITCHING ON THE NEON…');
   const ctl = { move: 0, strafe: 0, sprint: false, jump: false, throttle: 0, steer: 0, hand: false, up: false, down: false };
+  // the touch top bar's music button shows whether the street music is on
+  const syncMusicBtn = () => { const b = $('bmute'); if (b) { b.classList.toggle('off', !audio.streetOn); b.setAttribute('aria-pressed', String(audio.streetOn)); } };
+  audio.onAutoOff = () => { syncMusicBtn(); hud.toast('MUSIC OFF', 'PRESS M (TOUCH: ♪) TO TURN IT BACK ON'); };
+  syncMusicBtn();
   const sound = { engine: 0, engineRev: 0, heavy: false, skate: 0, rotor: 0, rain: 0, siren: 0, duck: false, room: 0 };
   let last = performance.now(), raf = 0, frameN = 0, turnT = 0;
 
@@ -387,7 +416,8 @@ async function boot() {
   function draw() {
     renderer.info.reset();
     renderer.render(scene, camera);
-    if (bloom.on) bloom.render(nightU.value);
+    // a room can tone the bloom down (Zigzag Threads' pale walls would glow otherwise)
+    if (bloom.on) bloom.render(nightU.value * (game.inside && game.inside.room && game.inside.room.bloomK != null ? game.inside.room.bloomK : 1));
   }
   function frame(now) {
     raf = requestAnimationFrame(frame);
@@ -396,7 +426,7 @@ async function boot() {
     const raw = Math.min(Math.max((now - last) / 1000, 0), 0.5);
     last = now;
     stunts.update(Math.min(raw, 0.05));
-    const dt = Math.min(raw, 0.05) * stunts.scale;       // slow motion while a stunt jump is in the air
+    const dt = Math.min(raw, 0.05) * stunts.scale * (game.slow || 1);   // slow motion: a stunt jump in the air, TOTALLED
     timeU.value += dt; game.dt = dt;
     // the shared music clock: free-runs on real time, pulled onto the synth's own position when there is sound
     {
@@ -449,7 +479,7 @@ async function boot() {
     if (game.mode === 'bike' && game.vehicle) player.ride(game.vehicle);
     peds.update(dt, timeU.value, frameN, vehicles.cars);
     animals.update(dt);
-    if (game.started) { rules.update(dt); story.update(dt); places.update(dt, ctl); venues.tick(dt); events.update(dt); marine.blips(rules.blips); roofs.update(dt); }
+    if (game.started) { rules.update(dt); pursuit.update(dt); parking.update(raw); heatHint.update(raw); story.update(dt); story.tickStar(dt); places.update(dt, ctl); venues.tick(dt); events.update(dt); marine.blips(rules.blips); roofs.update(dt); }
     city.tick(timeU.value);
     fx.update(dt);
     player.tickFace(dt);
@@ -458,7 +488,8 @@ async function boot() {
     const v = game.vehicle;
     const speed = v ? (v.kind === 'tank' ? v.speed : Math.hypot(v.vx, v.vz)) : player.speed;
     if (!game.started && !reducedMotion) cam.yaw += dt * 0.04;
-    if (cut.active) cut.update(dt);
+    if (game.deathCam) rules.deathCam(camera, Math.min(raw, 0.05));
+    else if (cut.active) cut.update(dt);
     else if (game.inside) { /* places.update owns the camera indoors */ }
     else if (stunts.cam) stunts.camUpdate(dt);
     else if (cine.active) cine.update(dt);
@@ -512,7 +543,9 @@ async function boot() {
     sound.rotor = vehicles.heli ? vehicles.heli.spool * (v === vehicles.heli ? 1 : 0.35) : 0;
     sound.rain = env.rainAmt; sound.siren = game.siren || 0; sound.duck = cut.active;
     sound.room = !game.inside ? 0 : game.inside.key === 'club' ? 2 : game.inside.key === 'lounge' ? 3 : 1;
-    music.update(dt, !!game.inside && game.inside.key === 'lounge' && game.busy !== 'door', game.paused);
+    sound.theme = !game.inside ? 'street' : game.busy === 'arcade' ? 'arcadeGame' : THEME_OF[game.inside.key] || null;
+    sound.night = nightU.value; sound.wanted = game.wanted;
+    music.update(dt, !!game.inside && game.inside.key === 'lounge' && game.busy !== 'door' && audio.musicOn, game.paused);
     sound.rec = music.rec;
     sound.club = game.inside && game.inside.key === 'club' ? game.inside.room.level.music : 1;
     sound.lounge = game.inside && game.inside.room.inLounge && game.inside.room.inLounge(player.pos.x - game.inside.room.ox) ? 1 : 0;

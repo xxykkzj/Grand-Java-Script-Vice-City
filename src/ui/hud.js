@@ -163,8 +163,14 @@ export function createHud(L, groundCanvas, renderer, keyCanvas) {
       g.translate(R, R); g.rotate(rot); g.scale(SCALE, SCALE); g.translate(-(focus.x + OX), -(focus.z + OZ));
       g.drawImage(base, 0, 0);
       const flash = (performance.now() / 250) % 2 < 1;
+      const dots = hud.dots || (hud.dots = { police: 0, traffic: 0, other: 0, vacantSkipped: 0 });
+      dots.police = dots.traffic = dots.other = dots.vacantSkipped = 0;
       for (const v of st.vehicles.all()) {
         if (v === st.inVehicle || v.sink) continue;
+        // vacant parked cars and bikes aren't drawn (too many dots); moving traffic, the patrol and the
+        // helicopters / tank are
+        if (!v.ai && !v.police && (v.kind === 'car' || v.kind === 'bike')) { dots.vacantSkipped++; continue; }
+        if (v.police) dots.police++; else if (v.ai) dots.traffic++; else dots.other++;
         let s = 4;
         if (v.police) { g.fillStyle = v.ai && v.ai.siren ? (flash ? '#ff2a3a' : '#3a7aff') : '#9fd8ff'; s = 6; }
         else if (v.kind === 'car') { g.fillStyle = v.ai ? 'rgba(255,225,74,.6)' : '#ffe14a'; s = v.ai ? 3 : 4; }

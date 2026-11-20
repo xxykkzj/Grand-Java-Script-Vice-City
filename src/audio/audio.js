@@ -1,15 +1,26 @@
-// All sound is synthesised with Web Audio: a looping synthwave track (bass arpeggio,
-// pad, pluck arp, drum machine) plus engine, rotor, skates, rain and explosions. The one exception is the
-// Blue Pelican Lounge, which streams recorded tracks from assets/music (audio/music.js) through recordBus().
+// All sound is synthesised with Web Audio: the street score and one theme per indoor place (audio/themes.js,
+// crossfaded on the way in and out), Club Prism's phrase-built track, plus engine, rotor, skates, rain and
+// explosions. The one exception is the Blue Pelican Lounge, which streams recorded tracks from assets/music
+// (audio/music.js) through recordBus() when there are any.
+// Music on / off (M): the street music plays for a couple of minutes after the start, then fades out and
+// stays off unless the player turns it back on; the player's choice is remembered (localStorage).
 import { BPM } from '../core/util.js';
+import { THEMES } from './themes.js';
 const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
 const STEP = 60 / BPM / 4;
 // Am - F - C - G, root as a MIDI note and whether the third is minor
 const CHORDS = [{ root: 45, third: 3 }, { root: 41, third: 4 }, { root: 48, third: 4 }, { root: 43, third: 4 }];
-const BASS = [0, null, 12, 0, null, 12, 0, 7, 0, null, 12, 0, 7, 12, 0, 12];
+const MUSIC_KEY = 'neon-coast-music';
+const AUTO_OFF = 150;                 // seconds of street music after the start before it fades out
 
 export function createAudio() {
-  let ctx = null, master, music, mfilt, sfx, noise, arpBus, timer = 0, nextT = 0, stepI = 0, song = 0;
+  let ctx = null, master, music, mfilt, sfx, noise, arpBus, space, timer = 0, nextT = 0, song = 0;
+  // music state: on (the player's switch), keep (street music stays on, no auto-off), fired (the auto-off happened)
+  let pref = null;
+  try { pref = localStorage.getItem(MUSIC_KEY); } catch (e) { pref = null; }
+  const mus = { on: pref !== 'off', keep: pref === 'on', fired: false, until: AUTO_OFF, slow: false };
+  const players = [];                 // themes playing now (two while crossfading)
+  const savePref = (v) => { try { localStorage.setItem(MUSIC_KEY, v); } catch (e) { /* private mode */ } };
   let eng, rotor, skate, rain, siren, hum, spray, fire, uw, ufilt, heyT = 0, zapT = 0, splashT = 0;
   const A = {
     muted: false, ready: false,
@@ -38,6 +49,10 @@ export function createAudio() {
       const dl = ctx.createDelay(1); dl.delayTime.value = STEP * 3;
       const fb = ctx.createGain(); fb.gain.value = 0.36;
       arpBus.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(music);
+      // a soft echo the themes send to (its time follows the current theme's tempo)
+      space = ctx.createDelay(1.5); space.delayTime.value = 0.36;
+      { const sf = ctx.createGain(), lp = ctx.createBiquadFilter(); sf.gain.value = 0.38; lp.type = 'lowpass'; lp.frequency.value = 2600;
+        space.connect(lp); lp.connect(sf); sf.connect(space); lp.connect(music); }
 
       const loop = (filterType, freq, q = 0.7) => {
         const src = ctx.createBufferSource(); src.buffer = noise; src.loop = true;
@@ -82,6 +97,7 @@ export function createAudio() {
       siren = sg;
 
       nextT = ctx.currentTime + 0.1;
+      mus.until = ctx.currentTime + AUTO_OFF;
       timer = setInterval(tick, 50);
       A.ready = true;
       A.setMuted(A.muted);
@@ -100,6 +116,24 @@ export function createAudio() {
       return { ctx, out: A._rec };
     },
     toggleMute() { A.setMuted(!A.muted); return A.muted; },
+    // ---- music (M). 'street' = the street music came back after the auto-off, 'on' / 'off' = all music
+    get musicOn() { return mus.on; },
+    get streetOn() { return mus.on && (mus.keep || !mus.fired); },
+    onAutoOff: null,
+    toggleMusic() {
+      if (mus.on && mus.fired && !mus.keep) { mus.keep = true; savePref('on'); return 'street'; }
+      mus.on = !mus.on; if (mus.on) mus.keep = true;
+      savePref(mus.on ? 'on' : 'off');
+      return mus.on ? 'on' : 'off';
+    },
+    // automated checks: fire the auto-off after `sec` seconds of play; read the state
+    musicAuto(sec) { mus.until = (ctx ? ctx.currentTime : 0) + sec; mus.fired = false; },
+    musicState() {
+      const cur = players.find((p) => !p.out);
+      return { on: mus.on, keep: mus.keep, fired: mus.fired, street: A.streetOn, theme: cur ? cur.id : null, section: cur ? cur.secKey : null, playing: players.map((p) => p.id + (p.out ? '(out)' : '')),
+        gain: cur ? +cur.g.gain.value.toFixed(3) : 0, pref: (() => { try { return localStorage.getItem(MUSIC_KEY); } catch (e) { return null; } })() };
+    },
+    mood: { night: 0, wanted: 0 },
     suspend() { if (ctx) ctx.suspend(); },
     resume() { if (ctx) ctx.resume(); },
     // continuous layers, called every frame. Values are 0..1.
@@ -130,9 +164,16 @@ export function createAudio() {
       // room 3: the Blue Pelican Lounge. Its recorded tracks (s.rec, 0..1 as they fade in) take over from the
       // synth; with no records the house synth plays there, a little softer and warmer than on the street
       const ck = s.club || 1, lg = s.lounge || 0, rec = s.rec || 0;
-      const mg = s.room === 2 ? (s.duck ? 0.5 : 1.05) * ck * (1 - lg * 0.4) : s.duck ? 0.3 : s.room === 1 ? 0.42 : s.room === 3 ? 0.46 : 0.55;
+      const mg = s.room === 2 ? (s.duck ? 0.5 : 1.05) * ck * (1 - lg * 0.4) : s.duck ? 0.3 : s.room === 1 ? 0.5 : s.room === 3 ? 0.5 : 0.55;
       music.gain.setTargetAtTime(mg * (1 - rec), t, 0.3);
-      mfilt.frequency.setTargetAtTime(s.room === 1 ? 1500 : s.room === 3 ? 5200 : s.room === 2 ? 16000 - lg * 13000 - (1 - Math.min(ck, 1)) * 9000 : 16000, t, 0.25);
+      mfilt.frequency.setTargetAtTime(s.room === 3 ? 7000 : s.room === 2 ? 16000 - lg * 13000 - (1 - Math.min(ck, 1)) * 9000 : 16000, t, 0.25);
+      // the theme for where you are: the street music fades out for good after a while (unless kept on)
+      A.mood.night = s.night || 0; A.mood.wanted = s.wanted || 0;
+      if (mus.on && !mus.keep && !mus.fired && t > mus.until && !s.room && !s.duck) { mus.fired = true; mus.slow = true; if (A.onAutoOff) A.onAutoOff(); }
+      let id = s.theme === undefined ? 'street' : s.theme;
+      if (!mus.on || (id === 'street' && !A.streetOn)) id = null;
+      setTheme(id, !mus.on ? 0.5 : mus.slow && !id ? 6 : 1.2);
+      mus.slow = false;
       if (A._rec) A._rec.gain.setTargetAtTime(s.duck ? 0.5 : 0.9, t, 0.3);
     },
     club: false,
@@ -248,76 +289,158 @@ export function createAudio() {
     o.connect(f); f.connect(g); g.connect(bus); o.start(t); o.stop(t + dur + 0.05);
   }
   // a rising noise sweep for the build
-  function riser(t, dur) {
+  function riser(t, dur, bus = music) {
     const src = ctx.createBufferSource(); src.buffer = noise; src.loop = true;
     const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 2.5;
     f.frequency.setValueAtTime(500, t); f.frequency.exponentialRampToValueAtTime(9000, t + dur);
     const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.22, t + dur * 0.97); g.gain.linearRampToValueAtTime(0, t + dur);
-    src.connect(f); f.connect(g); g.connect(music); src.start(t); src.stop(t + dur + 0.05);
+    src.connect(f); f.connect(g); g.connect(bus); src.start(t); src.stop(t + dur + 0.05);
   }
-  function kick(t, v = 0.95) {
+  function kick(t, v = 0.95, bus = music, f0 = 160, f1 = 40, dur = 0.28) {
     const o = ctx.createOscillator(), g = ctx.createGain();
-    o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.13);
-    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
-    o.connect(g); g.connect(music); o.start(t); o.stop(t + 0.3);
+    o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.46);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(bus); o.start(t); o.stop(t + dur + 0.02);
   }
-  // Club Prism's own track: same key and tempo as the street tune, built in 16-bar phrases
-  // (12 bars of groove, a 2-bar breakdown, a 2-bar build, then the drop)
+  // ---- the synth kit the themes play (audio/themes.js): a voice is one or two oscillators, made per note
+  const K = {
+    tone(type, midi, t, dur, vol, bus, o = {}) {
+      vol = Math.max(vol, 0.0003);
+      const osc = ctx.createOscillator(), g = ctx.createGain(), f = mtof(midi);
+      osc.type = type;
+      if (o.scoop) { osc.frequency.setValueAtTime(f * Math.pow(2, -o.scoop / 1200), t); osc.frequency.exponentialRampToValueAtTime(f, t + 0.07); } else osc.frequency.setValueAtTime(f, t);
+      if (o.det) osc.detune.value = o.det;
+      let out = osc;
+      if (o.cut) {
+        const fl = ctx.createBiquadFilter(); fl.type = o.ftype || 'lowpass'; fl.Q.value = o.q ?? 0.7;
+        fl.frequency.setValueAtTime(o.cut, t); if (o.cutEnd) fl.frequency.exponentialRampToValueAtTime(o.cutEnd, t + dur);
+        osc.connect(fl); out = fl;
+      }
+      const a = o.att || 0.005;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + a);
+      if (o.sus) g.gain.linearRampToValueAtTime(vol * 0.7, t + Math.max(a + 0.01, dur * 0.8));
+      g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(dur, a + 0.02));
+      out.connect(g); g.connect(bus); osc.start(t); osc.stop(t + Math.max(dur, a + 0.02) + 0.05);
+    },
+    noise(t, vol, dur, type, freq, bus, o = {}) {
+      const src = ctx.createBufferSource(); src.buffer = noise;
+      const f = ctx.createBiquadFilter(); f.type = type; f.frequency.setValueAtTime(freq, t); f.Q.value = o.q ?? 0.7;
+      if (o.sweep) f.frequency.exponentialRampToValueAtTime(o.sweep, t + dur);
+      const g = ctx.createGain(), a = o.att || 0.002;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(vol, 0.0003), t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      src.connect(f); f.connect(g); g.connect(bus); src.start(t, Math.random() * 1.5); src.stop(t + dur + 0.02);
+    },
+    kick(t, v, bus, f0 = 150, f1 = 42, dur = 0.24) { kick(t, v, bus, f0, f1, dur); },
+    ep(m, t, dur, v, bus, bright = 0) { K.tone('sine', m, t, dur, v, bus); K.tone('sine', m + 24, t, Math.min(dur, 0.18), v * (0.12 + bright * 0.12), bus); },
+    pluck(m, t, dur, v, bus, br = 1, type = 'sawtooth') { K.tone(type, m, t, dur, v, bus, { cut: 700 + 2600 * br, cutEnd: Math.max(mtof(m) * 1.3, 160), q: 1.2 }); },
+    horn(m, t, dur, v, bus, cut = 1100) { K.tone('sawtooth', m, t, dur, v, bus, { cut, q: 2.2, att: 0.045, scoop: 40, sus: true }); },
+    harp(m, t, dur, v, bus) { K.tone('square', m, t, dur, v, bus, { cut: 1500, ftype: 'bandpass', q: 0.9, att: 0.035, scoop: 70, sus: true }); K.tone('sawtooth', m, t, dur, v * 0.45, bus, { cut: 2200, det: 9, att: 0.05, sus: true }); },
+    bell(m, t, dur, v, bus) { K.tone('sine', m, t, dur, v, bus, { att: 0.003 }); K.tone('sine', m, t, dur * 0.35, v * 0.3, bus, { det: 1758 }); },
+    chip(type, m, t, dur, v, bus) { K.tone(type, m, t, dur, v, bus, { att: 0.002, sus: true }); },
+    pad(ms, t, dur, v, bus, cut = 1200, type = 'sawtooth', det = 0) {
+      const att = Math.min(0.6, dur * 0.25);
+      for (const m of ms) { K.tone(type, m, t, dur, v, bus, { cut, att, sus: true, det: -det }); if (det) K.tone(type, m, t, dur, v, bus, { cut, att, sus: true, det }); }
+    },
+    bass(m, t, dur, v, bus, cut = 700, type = 'triangle') { K.tone(type, m, t, dur, v, bus, { cut, cutEnd: Math.max(cut * 0.45, 90), att: 0.006 }); },
+    snare(t, v, bus, o = {}) {
+      if (o.brush) { K.noise(t, v, 0.16, 'bandpass', 2600, bus, { q: 0.5, att: 0.006 }); return; }
+      K.noise(t, v, 0.16, 'highpass', 1400, bus); K.tone('triangle', 55, t, 0.08, v * 0.5, bus, { cut: 2000 });
+    },
+    hat(t, v, bus, open = false) { K.noise(t, v, open ? 0.22 : 0.035, 'highpass', 7500, bus); },
+    ride(t, v, bus) { K.noise(t, v, 0.5, 'bandpass', 5600, bus, { q: 2.2 }); K.noise(t, v * 0.6, 0.06, 'highpass', 9000, bus); },
+    brush(t, v, bus) { K.noise(t, v, 0.24, 'bandpass', 3200, bus, { q: 0.6, att: 0.05, sweep: 4200 }); },
+    clap(t, v, bus) { for (let i = 0; i < 3; i++) K.noise(t + i * 0.011, v * (i === 2 ? 1 : 0.6), i === 2 ? 0.14 : 0.02, 'bandpass', 1300, bus, { q: 1.2 }); },
+    rim(t, v, bus) { K.noise(t, v, 0.03, 'bandpass', 2400, bus, { q: 5 }); K.tone('square', 85, t, 0.025, v * 0.25, bus, { cut: 3000 }); },
+    shaker(t, v, bus) { K.noise(t, v, 0.06, 'highpass', 5500, bus, { att: 0.012 }); },
+    metal(t, v, bus) { K.noise(t, v, 0.2, 'bandpass', 3300, bus, { q: 14 }); K.tone('square', 87, t, 0.06, v * 0.3, bus, { cut: 4000 }); },
+    riser(t, dur, bus) { riser(t, dur, bus); },
+  };
+  // Club Prism's own track: same key and tempo as the old street tune, built in 16-bar phrases
+  // (12 bars of groove, a 2-bar breakdown, a 2-bar build, then the drop). It runs on the shared clock
+  // (song), which the dance floor and the Dance-Off judge against.
   const CBASS = [null, null, 12, null, null, 0, 12, null, null, null, 12, 0, 7, null, 12, 10];
-  function clubStep(step, t) {
+  function clubStep(step, t, P) {
+    const bus = P.g, arp = P.arp;
     const pb = Math.floor(step / 16) % 16, s = step & 15, ch = CHORDS[(step >> 4) % 4];
     const brk = pb === 12 || pb === 13, build = pb >= 14, lift = build ? (pb - 14) * 16 + s : 0;
-    if (!brk && s % 4 === 0 && !(pb === 15 && s >= 8)) kick(t, pb === 0 && s === 0 ? 1.1 : 0.95);
-    if (!brk && !build && (s === 4 || s === 12)) { hit(0.32, 0.18, 'bandpass', 1700, 0, t, music); hit(0.2, 0.12, 'highpass', 2600, 0, t + 0.012, music); }
+    if (!brk && s % 4 === 0 && !(pb === 15 && s >= 8)) kick(t, pb === 0 && s === 0 ? 1.1 : 0.95, bus);
+    if (!brk && !build && (s === 4 || s === 12)) { hit(0.32, 0.18, 'bandpass', 1700, 0, t, bus); hit(0.2, 0.12, 'highpass', 2600, 0, t + 0.012, bus); }
     if (build) {   // snare roll that speeds up into the drop
       const every = lift < 16 ? 4 : lift < 24 ? 2 : 1;
-      if (s % every === 0) hit(0.08 + lift * 0.007, 0.1, 'bandpass', 1500 + lift * 40, 0, t, music);
-      if (lift === 0) riser(t, STEP * 32);
+      if (s % every === 0) hit(0.08 + lift * 0.007, 0.1, 'bandpass', 1500 + lift * 40, 0, t, bus);
+      if (lift === 0) riser(t, STEP * 32, bus);
     }
     if (!brk) {
-      hit(s % 4 === 2 ? 0.1 : 0.045, 0.03, 'highpass', 8000, 0, t, music);
-      if (s % 4 === 2) hit(0.13, 0.2, 'highpass', 9500, 0, t, music);
-    } else if (s % 4 === 2) hit(0.05, 0.05, 'highpass', 9000, 0, t, music);
-    // bass: offbeat octave line (a long sub note in the breakdown)
-    if (brk) { if (s === 0) note('sine', ch.root - 12, t, STEP * 15, 0.3, 300, music); }
-    else if (CBASS[s] !== null) note('sawtooth', ch.root - 12 + CBASS[s], t, STEP * 0.9, 0.28, build ? 500 + lift * 30 : 1100, music);
-    // chord stabs on the off-beats
-    if (!brk && (s === 3 || s === 10 || (s === 14 && pb % 2))) for (const off of [12, 12 + ch.third, 19]) note('square', ch.root + off, t, 0.16, 0.035, build ? 1200 + lift * 90 : 2600, music);
-    // sixteenth-note arpeggio, up and over the chord
-    const ARP = [0, 7, 12, ch.third + 12, 19, 12, 7, ch.third + 12];
-    if (!brk && (pb >= 2 || s % 2 === 0)) note('square', ch.root + 24 + ARP[s % 8], t, 0.1, build ? 0.02 + lift * 0.001 : 0.028, 3200, arpBus);
-    // pad: always there quietly, big in the breakdown
-    if (s === 0) for (const off of [0, ch.third, 7, 12]) for (const det of [-8, 8]) note('sawtooth', ch.root + off, t, STEP * 16.5, brk ? 0.05 : 0.018, brk ? 1600 : 900, music, det, 0.3);
-    if (brk && (s === 0 || s === 6 || s === 10)) note('triangle', ch.root + 24 + (s === 6 ? 7 : s === 10 ? ch.third : 12), t, STEP * 4, 0.07, 3000, arpBus, 0, 0.02);
+      hit(s % 4 === 2 ? 0.1 : 0.045, 0.03, 'highpass', 8000, 0, t, bus);
+      if (s % 4 === 2) hit(0.13, 0.2, 'highpass', 9500, 0, t, bus);
+    } else if (s % 4 === 2) hit(0.05, 0.05, 'highpass', 9000, 0, t, bus);
+    if (brk) { if (s === 0) note('sine', ch.root - 12, t, STEP * 15, 0.3, 300, bus); }
+    else if (CBASS[s] !== null) note('sawtooth', ch.root - 12 + CBASS[s], t, STEP * 0.9, 0.28, build ? 500 + lift * 30 : 1100, bus);
+    if (!brk && (s === 3 || s === 10 || (s === 14 && pb % 2))) for (const off of [12, 12 + ch.third, 19]) note('square', ch.root + off, t, 0.16, 0.035, build ? 1200 + lift * 90 : 2600, bus);
+    // sixteenth-note arpeggio, up and over the chord (every other phrase it turns round the other way)
+    const ARP = (step >> 8) % 2 ? [12, 7, ch.third + 12, 19, 12, 0, 7, ch.third + 12] : [0, 7, 12, ch.third + 12, 19, 12, 7, ch.third + 12];
+    if (!brk && (pb >= 2 || s % 2 === 0)) note('square', ch.root + 24 + ARP[s % 8], t, 0.1, build ? 0.02 + lift * 0.001 : 0.028, 3200, arp);
+    if (s === 0) for (const off of [0, ch.third, 7, 12]) for (const det of [-8, 8]) note('sawtooth', ch.root + off, t, STEP * 16.5, brk ? 0.05 : 0.018, brk ? 1600 : 900, bus, det, 0.3);
+    if (brk && (s === 0 || s === 6 || s === 10)) note('triangle', ch.root + 24 + (s === 6 ? 7 : s === 10 ? ch.third : 12), t, STEP * 4, 0.07, 3000, arp, 0, 0.02);
   }
-  function schedule(step, t) {
-    if (A.club) return clubStep(song, t);
-    const bar = (step >> 4) % 4, s = step & 15, ch = CHORDS[bar];
-    // drums
-    if (s % 4 === 0) {
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.12);
-      g.gain.setValueAtTime(0.9, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
-      o.connect(g); g.connect(music); o.start(t); o.stop(t + 0.26);
+  // ---- the theme players: one per theme, crossfaded; themes with their own tempo keep their own clock
+  function newPlayer(id) {
+    const th = THEMES[id] || (id === 'club' ? { sync: true, vol: 1 } : null);
+    if (!th) return null;
+    const t = ctx.currentTime, g = ctx.createGain();
+    g.gain.value = 0.0001; g.gain.setTargetAtTime(th.vol ?? 1, t, 0.3); g.connect(music);
+    const p = { id, th, g, wet: null, arp: null, out: false, end: 0, nextT: t + 0.06, s: 0, barIn: 0, sec: null, secKey: '', formI: -1, loop: 0, n: 0, phr: 0, line: null,
+      spb: 60 / (th.bpm || BPM) / 4, rs: (Math.random() * 4294967295) >>> 0 };
+    p.r = () => (p.rs = (Math.imul(p.rs, 1664525) + 1013904223) >>> 0) / 4294967296;
+    if (th.wet) { p.wet = ctx.createGain(); p.wet.gain.value = th.wet; g.connect(p.wet); p.wet.connect(space); space.delayTime.setTargetAtTime(Math.min(1.2, p.spb * 3), t, 0.2); }
+    if (th.sync) { p.arp = ctx.createGain(); p.arp.gain.value = 0.0001; p.arp.gain.setTargetAtTime(1, t, 0.3); p.arp.connect(arpBus); }
+    return p;
+  }
+  function setTheme(id, fade) {
+    const cur = players.find((p) => !p.out);
+    if ((cur ? cur.id : null) === id) return;
+    const t = ctx.currentTime;
+    if (cur) {
+      cur.out = true; cur.end = t + fade * 1.3 + 0.2;
+      for (const g of [cur.g, cur.arp]) if (g) { g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t); g.gain.setTargetAtTime(0, t, fade / 3); }
     }
-    if (s === 4 || s === 12) { hit(0.38, 0.16, 'highpass', 1400, 0, t, music); note('triangle', 55, t, 0.08, 0.2, 2000, music); }
-    if (s % 2 === 0) hit(s % 4 === 2 ? 0.13 : 0.07, s % 4 === 2 ? 0.09 : 0.035, 'highpass', 7500, 0, t, music);
-    // bass
-    if (BASS[s] !== null) note('sawtooth', ch.root - 12 + BASS[s], t, STEP * 0.95, 0.3, 900, music);
-    // pluck arp up and down the chord
-    const tones = [0, ch.third, 7, 12, 7, ch.third, 12, 7];
-    if (step >= 16) note('square', ch.root + 12 + tones[s % 8], t, 0.14, 0.05, 2600, arpBus);
-    // pad, one chord per bar
-    if (s === 0) for (const off of [0, ch.third, 7]) for (const det of [-7, 7]) note('sawtooth', ch.root + off, t, STEP * 16.5, 0.028, 1100, music, det, 0.35);
-    // a small lead phrase on the second half of the loop
-    if (step >= 32 && (s === 0 || s === 6 || s === 10)) note('triangle', ch.root + 24 + (s === 6 ? 7 : s === 10 ? ch.third : 12), t, STEP * 3.5, 0.06, 3000, arpBus, 0, 0.02);
+    if (id) { const p = newPlayer(id); if (p) players.push(p); }
+  }
+  const E = {};
+  function stepPlayer(p, t) {
+    const th = p.th;
+    if (!p.sec || (p.s === 0 && p.barIn >= p.sec.length)) {
+      p.barIn = 0; p.line = null;
+      if (th.pick) { p.secKey = th.pick(p, A.mood); p.n++; p.loop = p.n; }
+      else { p.formI = (p.formI + 1) % th.form.length; if (p.formI === 0 && p.n) p.loop++; p.secKey = th.form[p.formI]; p.n++; }
+      p.sec = th.sec[p.secKey];
+      if (th.bpmFor) p.spb = 60 / th.bpmFor(p, A.mood) / 4;
+    }
+    const bar = p.sec[p.barIn], nb = bar.length, ci = Math.min(nb - 1, Math.floor(p.s * nb / 16));
+    E.t = t + (th.swing && p.s % 4 === 2 ? th.swing * p.spb * 0.667 : 0); E.s = p.s; E.bar = bar; E.chord = bar[ci];
+    E.next = ci < nb - 1 ? bar[ci + 1] : (p.sec[p.barIn + 1] || p.sec[0])[0];
+    E.barIn = p.barIn; E.bars = p.sec.length; E.secKey = p.secKey; E.formI = p.formI; E.loop = p.loop; E.p = p; E.r = p.r;
+    E.spb = p.spb; E.bus = p.g; E.mood = A.mood; E.last = p.barIn === p.sec.length - 1;
+    th.play(E, K);
+    if (++p.s === 16) { p.s = 0; p.barIn++; }
   }
   function tick() {
     if (!ctx || ctx.state !== 'running') return;
-    if (nextT < ctx.currentTime - 0.1) nextT = ctx.currentTime + 0.05;
-    while (nextT < ctx.currentTime + 0.25) {
-      schedule(stepI, nextT);
-      nextT += STEP; stepI = (stepI + 1) % 64; song++;
+    const now = ctx.currentTime;
+    // the shared clock (beatNow, the club, the dance floor) always runs, music or not
+    if (nextT < now - 0.1) nextT = now + 0.05;
+    while (nextT < now + 0.25) {
+      for (const p of players) if (p.th.sync && (!p.out || nextT < p.end)) clubStep(song, nextT, p);
+      nextT += STEP; song++;
+    }
+    for (const p of players) {
+      if (p.th.sync) continue;
+      if (p.nextT < now - 0.1) p.nextT = now + 0.05;
+      while (p.nextT < now + 0.25 && (!p.out || p.nextT < p.end)) { stepPlayer(p, p.nextT); p.nextT += p.spb; }
+    }
+    for (let i = players.length - 1; i >= 0; i--) {
+      const p = players[i];
+      if (p.out && now > p.end + 0.5) { for (const g of [p.g, p.wet, p.arp]) if (g) g.disconnect(); players.splice(i, 1); }
     }
   }
   return A;

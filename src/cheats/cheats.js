@@ -4,6 +4,8 @@ import { clampToWorld } from '../world/layout.js';
 
 const $ = (id) => document.getElementById(id);
 
+// the code that clears the wanted level (the heat hint, ui/heathint.js, shows it)
+export const CODE_CLEAR_HEAT = 'LOWPROFILE';
 export const CODES = {
   HEAVYMETAL: 'Spawn the Disco Tank (click / F to fire)',
   ROTORWASH: 'Spawn a helicopter (E to board)',

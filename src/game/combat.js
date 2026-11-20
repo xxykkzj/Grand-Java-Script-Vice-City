@@ -418,10 +418,10 @@ export function createCombat(game, scene) {
   }
 
   // ---- the Coast Patrol's pulse lasers (3 stars and up)
+  // they only ever shoot at the vehicle you are in: on foot the patrol chases and arrests, it never fires
   function laserTarget() {
     const v = game.vehicle;
-    if (v) return { x: v.x, y: vMid(v), z: v.z, vx: v.vx || 0, vz: v.vz || 0, v };
-    return { x: player.pos.x, y: player.pos.y + 1.1, z: player.pos.z, vx: player.vel.x, vz: player.vel.z, v: null };
+    return v ? { x: v.x, y: vMid(v), z: v.z, vx: v.vx || 0, vz: v.vz || 0, v } : null;
   }
   function laserShot(c, T, d) {
     const s = Math.sin(c.yaw), co = Math.cos(c.yaw), mx = c.x + s * LASER_MOUNT[2], my = (c.y || 0) + LASER_MOUNT[1], mz = c.z + co * LASER_MOUNT[2];
@@ -452,8 +452,7 @@ export function createCombat(game, scene) {
     } else fx.sparks(ex, ey, ez, 5, '#ff8af0');
   }
   function policeLasers(dt) {
-    const on = game.wanted >= 3 && !game.busy && !game.inside && game.started;
-    const T = on ? laserTarget() : null;
+    const T = game.wanted >= 3 && !game.busy && !game.inside && game.started ? laserTarget() : null, on = !!T;
     const cool = game.wanted >= 5 ? 1.25 : game.wanted >= 4 ? 1.9 : 2.7;
     for (const c of traffic.police) {
       const S = c.laser || (c.laser = { t: 1 + Math.random() * 1.5, phase: 'idle', shots: 0, los: false, losT: 0 });
