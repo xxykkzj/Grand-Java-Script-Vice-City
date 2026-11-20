@@ -71,7 +71,7 @@ export function createBloom(renderer) {
       // at sunset the sky, sea and fog behind the shore are bright but it is not night yet: raise the threshold and
       // drop the gain so the horizon does not bleed a halo over the beach-side models
       U.uThr.value = 0.9 - 0.28 * night + 0.32 * glare;
-      U.uGain.value = (0.1 + 0.7 * night) * (1 - 0.7 * glare);
+      U.uGain.value = (0.1 + 0.7 * night) * (1 - 0.85 * glare);
       const ac = renderer.autoClear;
       renderer.autoClear = false;
       renderer.copyFramebufferToTexture(src);

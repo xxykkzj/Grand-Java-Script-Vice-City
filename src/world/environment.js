@@ -155,7 +155,10 @@ export function createEnvironment(scene, sky, ocean, city, camera, audio) {
         cur.fogNear = lerp(cur.fogNear, 30, w.rain); cur.fogFar = lerp(cur.fogFar, 300, w.rain);
       }
       // low sun: how much the sunset is shining straight at the camera's side of the world (0 by night / overcast)
-      const sunLow = clamp((sunDir.y + 0.02) / 0.08, 0, 1) * (1 - clamp((sunDir.y - 0.5) / 0.25, 0, 1));
+      // the sky stays bright from late afternoon until well after the sun dips (afterglow), so this fades out only
+      // once the sun is ~7 degrees below the horizon (about 21:00), not at sunset itself
+      const sl = clamp((sunDir.y + 0.13) / 0.2, 0, 1);
+      const sunLow = sl * sl * (3 - 2 * sl) * (1 - clamp((sunDir.y - 0.5) / 0.25, 0, 1));
       env.glare = sunLow * (1 - Math.max(w.fog, w.cloud * 0.85));
       scene.fog.color.copy(cur.hor).lerp(cur.mid, 0.25 + 0.2 * env.glare).multiplyScalar(1 - 0.32 * env.glare);
       if (w.fog > 0.01) {
