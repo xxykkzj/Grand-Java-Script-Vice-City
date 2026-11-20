@@ -28,6 +28,7 @@ import { createTraffic } from './actors/traffic.js';
 import { createPeds } from './actors/peds.js';
 import { createDirector } from './game/cutscene.js';
 import { createPlaces } from './game/places.js';
+import { createVenues } from './game/venues.js';
 import { createStory } from './game/missions.js';
 import { createRules } from './game/rules.js';
 import { createActivity } from './game/activity.js';
@@ -165,8 +166,10 @@ async function boot() {
   const rules = game.rules = createRules(game, scene);
   const damage = game.damage = createDamage(game);
   const places = game.places = createPlaces(game, scene, camera);
+  const venues = game.venues = createVenues(game);
   const story = game.story = createStory(game, scene);
   const act = game.act = createActivity(game);
+  venues.restore();                           // a motel save brings back its cash and clock
   const combat = game.combat = createCombat(game, scene);
   const events = game.events = createEvents(game, scene);
   const roofs = game.roofs = createRooftops(game);
@@ -284,6 +287,18 @@ async function boot() {
     districts: () => ({ a: districts.showA, b: districts.showB }),
     zone: () => { const f = game.focus(); return zoneName(f.x, f.z); },
     nearCount: (r = 150) => { const f = game.focus(); return { cars: vehicles.cars.filter((c) => !c.off && c.ai && Math.hypot(c.x - f.x, c.z - f.z) < r).length, peds: peds.peds.filter((p) => !p.off && Math.hypot(p.x - f.x, p.z - f.z) < r).length, kit: vehicles.cars.filter((c) => !c.off && c.model && c.ai).length }; },
+    // ---- the venues (automated checks)
+    venue: () => {
+      const p = game.inside, r = p && p.room;
+      return { inside: p ? p.key : null, busy: game.busy, shop: places.shop, msg: places.msg, money: game.money, health: Math.round(game.health), tod: +env.tod.toFixed(2),
+        calls: renderer.info.render.calls, meshes: r ? r.drawn() : 0, arcade: { mode: venues.arcade.mode, score: Math.floor(venues.arcade.score), best: save.arcade || 0 }, vest: !!save.vest, motel: save.motel || null, stats: { ...venues.stats },
+        x: +(player.pos.x - (r ? r.ox : 0)).toFixed(2), z: +(player.pos.z - (r ? r.oz : 0)).toFixed(2) };
+    },
+    // stand on a room's use spot (i) and press E; choose(i) picks a line in an open menu
+    useAt: (i = 0) => { const r = game.inside && game.inside.room; if (!r) return null; const u = (r.uses || [r.use])[i]; player.pos.set(r.ox + u.x, player.floor, r.oz + u.z); places.use(); return game.busy; },
+    choose: (i) => places.choose(i),
+    exitRoom: () => places.exit(),
+    venueKeys: () => [...Object.keys(L.places), ...Object.keys(L.venues)],
     evtGo: (off = 0.6) => { const t = events.target(); if (!t) return null; const v = game.vehicle; if (v) { v.x = t.x + off; v.z = t.z; v.vx = v.vz = 0; } else player.pos.set(t.x + off, 0, t.z); return t; },
   };
   game.signalAt = (n, h) => signal(n, h, timeU.value);
@@ -332,6 +347,7 @@ async function boot() {
       return;
     }
     if (game.busy === 'shop') { places.key(e); return; }
+    if (game.busy === 'arcade') { venues.key(e); return; }
     if (game.busy === 'fail') { story.key(e); return; }
     // weapons: 1-5 pick one (when not dancing), Q cycles (and holsters)
     const wd = /^(Digit|Numpad)([1-5])$/.exec(e.code);
@@ -429,7 +445,7 @@ async function boot() {
     if (game.mode === 'bike' && game.vehicle) player.ride(game.vehicle);
     peds.update(dt, timeU.value, frameN, vehicles.cars);
     animals.update(dt);
-    if (game.started) { rules.update(dt); story.update(dt); places.update(dt, ctl); events.update(dt); marine.blips(rules.blips); roofs.update(dt); }
+    if (game.started) { rules.update(dt); story.update(dt); places.update(dt, ctl); venues.tick(dt); events.update(dt); marine.blips(rules.blips); roofs.update(dt); }
     city.tick(timeU.value);
     fx.update(dt);
     player.tickFace(dt);
@@ -461,6 +477,7 @@ async function boot() {
     // context hints
     if (game.started) {
       if (game.busy === 'shop') hud.setHint(places.hint());
+      else if (game.busy === 'arcade') hud.setHint(venues.hint());
       else if (game.busy) hud.setHint(game.busy === 'cut' ? [['Space / Enter', 'next line'], ['X', 'skip scene']] : game.busy === 'fail' ? [['Enter', 'retry from checkpoint'], ['Esc', 'walk away']] : []);
       else if (game.inside) hud.setHint(places.hint());
       else if (!v && swim.wet) hud.setHint(swim.hint());

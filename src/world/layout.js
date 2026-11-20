@@ -38,6 +38,17 @@ export const PLACE_DEFS = {
   mart: { name: 'Pelican Pantry 24', title: 'PELICAN PANTRY 24', color: '#5dff9a' },
   arms: { name: 'Volt & Spark Supply', title: 'VOLT & SPARK SUPPLY', color: '#3ad6ff' },
 };
+// More places to walk into (game/venues.js). They hang off existing buildings but leave the street as it
+// is (no new signs or neon): only their door ring and a minimap blip. `face` is the way the door looks
+// (0 = +z, the old town's boulevard side), `along` slides the door along that face, `out` is how far
+// in front of the wall the ring stands.
+export const VENUE_DEFS = {
+  diner: { name: 'Sunset Strip Diner', title: 'SUNSET STRIP DINER', color: '#ff6a3d', at: 'Sunset Strip Diner', face: 0, along: 0, out: 5.2 },
+  arcade: { name: 'Seahorse Arcade', title: 'SEAHORSE ARCADE', color: '#ffe14a', at: 'Seahorse Cinema', face: 0, along: 3, out: 5.2 },
+  motel: { name: 'Moonlite Motor Inn', title: 'MOONLITE MOTOR INN · ROOM 7', color: '#ff8fc4', at: 'Moonlite Motor Inn', isle: 'key', face: Math.PI / 2, along: 0, out: 5.2 },
+  mall: { name: 'Seafoam Galleria', title: 'SEAFOAM GALLERIA', color: '#27d8cf', at: 'Seafoam Galleria', isle: 'key', face: Math.PI, along: 5, out: 4.6 },
+  bait: { name: 'Starboard Bait & Tackle', title: 'STARBOARD BAIT & TACKLE', color: '#8dff5a', at: 'Starboard Marina', isle: 'key', face: -Math.PI / 2, along: 0, out: 5.2 },
+};
 
 export function makeLayout() {
   const r = rng(1986);
@@ -213,7 +224,15 @@ export function makeLayout() {
   for (const p of key.parking) parking.push(p);
   const ramps = [...A_RAMPS, ...key.ramps];
   registerRamps(surf, ramps, solids);
-  return { buildings, lamps, palms, parking, umbrellas, huts, solids, bar, station, clinic, places, bikes, booths, props, cafe, loose: [], planters: [], key, ramps, surf };
+  // the venues: door ring position from the building face
+  const venues = {};
+  for (const k in VENUE_DEFS) {
+    const d = VENUE_DEFS[k], b = (d.isle === 'key' ? key.buildings : buildings).find((q) => q.name === d.at), f = d.face;
+    const nx = Math.round(Math.sin(f)), nz = Math.round(Math.cos(f));
+    const fx = nx ? (nx > 0 ? b.x1 : b.x0) : b.cx + d.along, fz = nz ? (nz > 0 ? b.z1 : b.z0) : b.cz + d.along;
+    venues[k] = { key: k, ...d, b, x: fx + nx * d.out, z: fz + nz * d.out, nx, nz, venue: true };
+  }
+  return { buildings, lamps, palms, parking, umbrellas, huts, solids, bar, station, clinic, places, venues, bikes, booths, props, cafe, loose: [], planters: [], key, ramps, surf };
 }
 
 // The two stunt ramps in the old town (the key's are in world/key.js): off the promenade across the

@@ -108,7 +108,7 @@ export function createTouch(game) {
     if (!b) {
       b = document.createElement('button'); b.type = 'button'; b.className = 'tbtn';
       const t = document.createElement('b'); t.textContent = label;
-      const k = document.createElement('small'); k.textContent = { Space: '', KeyE: 'E', KeyF: 'F', KeyX: 'X', KeyS: '', KeyC: '', Enter: '', Escape: '', KeyR: '', KeyG: 'G', KeyQ: 'Q' }[code] ?? '';
+      const k = document.createElement('small'); k.textContent = { Space: '', KeyE: 'E', KeyF: 'F', KeyX: 'X', KeyS: '', KeyC: '', Enter: '', Escape: '', KeyR: '', KeyG: 'G', KeyQ: 'Q', ArrowLeft: '', ArrowRight: '' }[code] ?? '';
       b.append(t, k); b.setAttribute('aria-label', label);
       bindKey(b, code);
       pool.set(id, b);
@@ -120,6 +120,7 @@ export function createTouch(game) {
     const b = game.busy, v = game.vehicle, act = game.act;
     if (b === 'cut') return [['Space', 'NEXT'], ['KeyX', 'SKIP']];
     if (b === 'fail') return [['Enter', 'RETRY'], ['Escape', 'DROP']];
+    if (b === 'arcade') return game.venues.touchButtons();
     if (b) return [];
     // weapons (game/combat.js): FIRE, a firework BANG (DROP behind a vehicle) and SWAP, all with auto-aim
     const wb = game.combat ? game.combat.touchButtons() : [];

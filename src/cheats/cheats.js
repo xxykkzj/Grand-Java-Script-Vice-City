@@ -22,7 +22,7 @@ export const CODES = {
   SPARKCRATE: 'Every neon blaster and firework, fully loaded',
   HIGHTIDE: 'Drop into the sea off the beach (swim: C dives, Space rises)',
   FINSUP: 'Call a shark (it keeps attacking in deep water: swim for the beach, a pier ladder or shallows)',
-  REWIND: 'Forget the saved story, outfits and blasters',
+  REWIND: 'Forget the saved story, outfits, blasters, the motel save, the vest and the arcade best',
   HELP: 'List codes',
 };
 
@@ -57,7 +57,7 @@ export function createCheats(game) {
       return 'ONE COMET, KEYS IN';
     },
     REWIND() {
-      Object.assign(game.save, { outfit: 'classic', owned: [], story: 0, gift: {}, arms: {}, armsIntro: 0 });
+      Object.assign(game.save, { outfit: 'classic', owned: [], story: 0, gift: {}, arms: {}, armsIntro: 0, vest: 0, motel: null, arcade: 0 });
       if (game.combat) game.combat.reset();
       game.persist();
       player.model.setOutfit({ jacket: '#12b5a6', trim: '#e6258f', light: '#f7f5ef', bag: '#f2b63a' });

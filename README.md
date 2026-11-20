@@ -25,11 +25,11 @@ Dee's bar, the Velvet Flamingo, owes $5,000 by Sunday. Marty Glitz at Club Prism
 - The current objective sits under the minimap. A countdown only appears on the legs that need one.
 - Fail a job (time, knocked out, caught) and you get JOB BLOWN: `Enter` retries from the last checkpoint, `Esc` drops it.
 - Finishing a job shows the pass card with the reward. Finishing the story unlocks the Flamingo Royale jacket and better pay on Dee's repeatable odd jobs (`E` at her counter).
-- Progress, your outfit, the outfits you own and your blasters and ammo are kept in the browser's local storage. The `REWIND` code clears them.
+- Progress, your outfit, the outfits you own, your blasters and ammo, the snorkel vest and your Skate Surge best are kept in the browser's local storage; sleeping at the Moonlite Motor Inn also saves your cash and the clock. The `REWIND` code clears them.
 
 ## Places you can walk into
 
-Each has its own coloured ring at the door on Lumina Boulevard, a short walk-in scene and an interior that is only built and drawn while you are in it. Walk into the white ring by the door to leave. While you are indoors the patrol cannot see you, so heat cools off.
+Each has its own coloured ring at the door (and a square blip on the minimap), a short walk-in scene and an interior that is only built and drawn while you are in it. Walk into the white ring by the door to leave; a yellow ring marks the spot where `E` (the USE button on touch) does something. While you are indoors the patrol cannot see you, so heat cools off.
 
 | Place | Ring | Inside |
 | --- | --- | --- |
@@ -40,6 +40,20 @@ Each has its own coloured ring at the door on Lumina Boulevard, a short walk-in 
 | **Volt & Spark Supply** | blue | Zizi Sparks's neon blaster and firework shop, east of the start on the boulevard (a lightning bolt and a firework burst in neon by the door). Small and brightly lit: a pale checked floor, a violet counter with a case of firework bangs, and behind Zizi (tangerine overalls, teal hair, goggles) a dark display wall of glowing blasters; crates of fireworks along the left wall, a practice target on the right. The first visit plays her safety talk. `E` at the counter: buy the five weapons below, or more ammo for the ones you own. Weapons and ammo are kept with your save. |
 
 Characters indoors are lit with a soft rim light so they read against light and dark walls alike.
+
+**Finer dressing.** Every interior has painted signs, menus, posters, shelf fronts and neon pieces (all invented text, painted into one canvas per room), cheap fake mirror reflections (the Flamingo's back bar, the Zigzag fitting mirror, the lounge, the Pantry's round security mirror), rugs, plants, ceiling fans, pipes and light rigs, baked lighting with soft light pools, and small animated touches: a fish tank and a cycling jukebox glow at the Flamingo, a flickering tube at the Pantry, a plasma globe at Volt & Spark, a spinning sunglasses stand at Zigzag. Light shafts under lamps only show on High graphics; with reduced motion the fans, fish and flicker calm down. Each room stays within about 25 draw calls (the club, the busiest, about 23 on High).
+
+### More places to walk into
+
+Five venues, each with a resident, a few lines of their own and something to do. They hang off existing buildings: only their door ring is new on the street.
+
+| Place | Where | Ring | Inside, and what you can do |
+| --- | --- | --- | --- |
+| **Sunset Strip Diner** | Lumina Boulevard, old town (under its sign) | orange | Checkered floor, a pink counter with red stools, booths with painted windows, a pie case, a kitchen pass with heat lamps, a big menu board, a flickering EAT sign and a jukebox. **Dot** (mint uniform, paper cap). `E` at the gap in the counter: order a meal that restores health (Bottomless Coffee $2 +10 up to The Blue Plate $24, full health). `E` at the jukebox picks a song. `F` sits you at the counter or in a booth. |
+| **Seahorse Arcade** | the Seahorse Cinema lobby, old town | yellow | A dark room with a cosmic carpet, eight cabinets of invented games, two pinball tables, air hockey and the token counter. **Token** runs it. `E` at the back cabinet plays **Skate Surge** ($1 a go): steer a skater down a neon road (`←` `→` / `A` `D`, the stick or the on-screen arrows), dodge cones, puddles and cars, grab stars. The score climbs the longer you last; your best is saved and shown on the cabinet's attract screen. `Enter` plays again, `Esc` quits. |
+| **Moonlite Motor Inn, room 7** | Solano Key, by the Sunbowl (east face) | pink | The safehouse: a rattan bed under a flamingo painting, a TV that flickers on channel 86, a window with VACANCY glowing outside, a kitchenette. **Hazel** (lilac perm, cat-eye glasses). `E` by the bed: **Sleep till morning** (8:00) or **Nap till golden hour** (18:30), both with full health and no heat, or **Just save**. Saving writes your cash and the clock to local storage; a reload puts them back. |
+| **Seafoam Galleria** | Solano Key, Halcyon Avenue (north face) | teal | A skylit atrium: a three-tier fountain, five painted shopfronts (Tape Deck Tropics, Sole Patrol, Byte Shack, Glow Getter, Seashell Sweets) and four more up on the mezzanine, an escalator that is out of order, benches, palms, a directory. **Kiki** and her pretzel cart: `E` for a Classic Knot ($6, +25) or a Cinnamon Swirl ($9, +40). `E` at the fountain tosses a coin ($1) for a wish; every fifth wish Kiki throws you a free pretzel. |
+| **Starboard Bait & Tackle** | Solano Key, Starboard Marina (west face) | green | Planked walls, rods in a rack, Big Bertha on the wall, a tide chart, LIVE BAIT in flickering neon, a fish tank, life rings, the marina through the back window, a canoe on the ceiling. **Cap'n Rudy** (captain's hat, yellow slicker, a big white beard). `E` at the counter: the **Buoy-O Snorkel Vest** ($90, you can stay under water 75% longer, kept with your save), **Tackle Trivia** (a sea question, $10 for a right answer) and Saltwater Taffy ($4, +12). |
 
 ## Dancing at Club Prism
 
@@ -251,7 +265,7 @@ Press `~` or `T`, type a code (not case-sensitive), press Enter.
 | `HEAVYMETAL` | Drops the Disco Tank in front of you. The turret follows the camera; click or `F` fires a shell that sends cars flying (and the heat up). |
 | `ROTORWASH` | Brings the helicopter to you. One is also parked near the start. `E` to board. |
 | `TWOWHEELS` | Brings a parked Comet to you. |
-| `REWIND` | Forgets the saved story progress, outfits and blasters. |
+| `REWIND` | Forgets the saved story progress, outfits, blasters, the motel save, the snorkel vest and the arcade best. |
 | `NIGHTSHIFT` | Toggles night: neon, lit windows, stars. |
 | `STORMFRONT` | Toggles a thunderstorm: rain, lightning, thunder, wet roads. |
 | `CLEARSKIES` | Clear weather. |

@@ -26,6 +26,12 @@ export const CAST = {
   KILO: { name: 'DJ KILOWATT', color: '#b9a0ff', voice: 0.85 },
   MIMI: { name: 'MIMI', color: '#ff9a5c', voice: 1.35 },
   ZIZI: { name: 'ZIZI SPARKS', color: '#ffb14a', voice: 1.3 },
+  // the venues (game/venues.js)
+  DOT: { name: 'DOT', color: '#7fffd0', voice: 1.2 },
+  TOKEN: { name: 'TOKEN', color: '#ffe14a', voice: 1.1 },
+  HAZEL: { name: 'HAZEL', color: '#d8b8ff', voice: 0.95 },
+  KIKI: { name: 'KIKI', color: '#ffd166', voice: 1.4 },
+  RUDY: { name: "CAP'N RUDY", color: '#9dffb0', voice: 0.65 },
   // voices of the street events (game/events.js): subtitles only, no scene
   DISPATCH: { name: 'PATROL DISPATCH', color: '#5ff0e0', voice: 0.9 },
   OFFICER: { name: 'OFFICER DUARTE', color: '#19d8c8', voice: 0.8 },
@@ -196,6 +202,11 @@ export const BARKS = {
   mart: ['GUS', ['Welcome to Pelican Pantry, please do not lean on the slush machine.', 'The hot dogs are from today. Mostly.', "You didn't see a shoebox. There is no shoebox."]],
   bar: ['DEE', ["Skates off the stools, Skye.", 'First fizz is free. The second one is also free. I am bad at business.']],
   club: ['KILO', ['This next one goes out to everybody on eight wheels.', 'Floor is open. Hairspray is optional.']],
+  diner: ['DOT', ["Sit anywhere, hon. Anywhere that isn't sticky.", 'Pie of the day is lime. Pie of yesterday is also lime.', 'Coffee refills are free. Opinions cost extra.', 'Skates are fine. Wheelies are not.']],
+  arcade: ['TOKEN', ['One token a go. Skate Surge eats quarters and dreams.', 'High score board gets wiped every full moon. Allegedly.', 'No leaning on the cabinets. They have feelings. And alarms.']],
+  motel: ['HAZEL', ['Fresh towels, fresh sheets, same old ice machine.', 'Checkout is whenever you wake up, sugar.', "The pool's closed. The pool has been closed since 1979."]],
+  mall: ['KIKI', ["Kiki's Knots! Warm pretzels, warmer smiles!", 'Toss a coin in the fountain. The fountain likes shiny things.', "Escalator's been broken all week. Call it stairs with ambition."]],
+  bait: ['RUDY', ['Ahoy. Mind the bait fridge, it bites back.', "Forty years on the water and I still can't swim. Ask me how.", 'Tides are up, prices are down. Mostly.']],
   arms: ['ZIZI', ['Goggles on, fingers off the glowy ones.', 'Everything here is certified toy-grade. Mostly.', 'Bangs are for the road, not the boardwalk.', 'It only zaps cars and bins. People just get a fright.']],
 };
 
@@ -250,6 +261,54 @@ export const SNACKS = [
 ];
 
 // Street vending machines (F at the front). All brands made up.
+// ---- the venues (game/venues.js) -------------------------------------------------------------------
+export const DINER_MENU = [
+  { id: 'coffee', name: 'BOTTOMLESS COFFEE', note: 'Hot, black, refills till sunrise. +10 health', price: 2, heal: 10 },
+  { id: 'lime', name: 'KEY LIME SLICE', note: 'Tart enough to fix your posture. +25 health', price: 6, heal: 25 },
+  { id: 'stack', name: 'SUNRISE STACK', note: 'Three pancakes, one sunny egg, all the syrup. +45 health', price: 10, heal: 45 },
+  { id: 'burger', name: 'STRIP BURGER & FRIES', note: 'Grilled on the boulevard since 1971. +70 health', price: 16, heal: 70 },
+  { id: 'plate', name: 'THE BLUE PLATE', note: "Meatloaf, mash, greens. Dot's mother's recipe. Full health", price: 24, heal: 100 },
+];
+export const DINER_SIT = ['Dot slides a glass of ice water down the counter. It stops exactly in front of you.', 'The jukebox hums. The coffee pot gurgles. Nobody is in a hurry.'];
+export const JUKEBOX = ['SUNSET BOULEVARD SHUFFLE', 'NEON HEARTBREAK (EXTENDED)', 'CHROME BUMPER BLUES', 'PALM TREE PROMISE', 'MIDNIGHT MILKSHAKE', 'SKATE KEY SERENADE'];
+export const MOTEL_MENU = [
+  { id: 'morning', name: 'SLEEP TILL MORNING', note: 'Wake at 8:00 with full health. Saves your cash and the clock.', tag: '8:00', to: 8 },
+  { id: 'sunset', name: 'NAP TILL GOLDEN HOUR', note: 'Wake at 18:30. Saves your cash and the clock.', tag: '18:30', to: 18.5 },
+  { id: 'save', name: 'JUST SAVE', note: 'Write it all down in the guest book and stay up.', tag: 'SAVE' },
+];
+export const MOTEL_WAKE = ['Hazel slipped a mint under the door. It says GOOD MORNING in icing.', 'The ice machine coughed all night. You slept like a log anyway.', 'Somebody in room 6 was practising the saxophone. Badly. Lovingly.'];
+export const PRETZELS = [
+  { id: 'wish', name: 'TOSS A COIN', note: 'Make a wish in the fountain. The fountain answers. Sort of.', price: 1 },
+  { id: 'knot', name: "KIKI'S CLASSIC KNOT", note: 'Salty, warm, the size of your face. +25 health', price: 6, heal: 25 },
+  { id: 'swirl', name: 'CINNAMON SWIRL', note: 'Sugar, spice and a little bit of glitter. +40 health', price: 9, heal: 40 },
+];
+export const WISHES = [
+  'The fountain gurgles. You feel 3% luckier.',
+  'A coin lands heads up. Somewhere, a parking ticket forgives you.',
+  'The water glitters. Your next green light lasts a little longer.',
+  'You wish for world peace. The fountain says it will see what it can do.',
+  'Plink. A seagull outside nods, as if it understood.',
+  'Your coin skips twice and sinks. That counts as a double wish.',
+];
+export const BAIT_MENU = [
+  { id: 'vest', name: 'BUOY-O SNORKEL VEST', note: 'Bright orange, very sensible. You can stay under 75% longer.', price: 90 },
+  { id: 'trivia', name: 'TACKLE TRIVIA', note: "Answer one of Rudy's sea questions. $10 for every right answer.", tag: 'FREE' },
+  { id: 'taffy', name: 'SALTWATER TAFFY', note: 'Chewy, pink, no actual sea water. +12 health', price: 4, heal: 12 },
+];
+// [question, [answers], index of the right one]
+export const TRIVIA = [
+  ['Which fish can puff itself up like a balloon?', ['PUFFERFISH', 'SWORDFISH', 'TUNA'], 0],
+  ['What do you call a baby fish?', ['A FRY', 'A CUB', 'A TADPOLE'], 0],
+  ['How does a crab usually walk?', ['SIDEWAYS', 'BACKWARDS ONLY', 'IT HOPS'], 0],
+  ['Which sea animal has eight arms?', ['OCTOPUS', 'STARFISH', 'SQUID HAS SIX'], 0],
+  ['What do fish breathe through?', ['GILLS', 'SNORKELS', 'FINS'], 0],
+  ['Which of these is NOT a fish?', ['DOLPHIN', 'SNAPPER', 'GROUPER'], 0],
+  ['What makes the tides go in and out?', ['THE MOON', 'THE WIND', 'BIG BOATS'], 0],
+  ['A seahorse dad does what?', ['CARRIES THE EGGS', 'BUILDS A NEST', 'SINGS TO THEM'], 0],
+];
+export const TRIVIA_RIGHT = ["Shiver me timbers, that's right!", 'Spot on, deckhand. Ten bucks.', 'You know your fish. Rudy is impressed. Mildly.'];
+export const TRIVIA_WRONG = ["Nope! Back to the shallow end.", 'Close. Not really. But close.', "Rudy shakes his head so hard his hat nearly falls off."];
+
 export const VEND = {
   coolwave: [
     { id: 'cw', name: 'COOLWAVE CLASSIC', note: 'Blue, fizzy, tastes like a sea breeze. +10 health', price: 3, heal: 10 },

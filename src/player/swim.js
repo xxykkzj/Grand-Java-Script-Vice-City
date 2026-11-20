@@ -287,7 +287,7 @@ export function createSwim(game) {
         const sub = headTop < WL - 0.03 && !airborne;
         if (sub !== S.submerged) { S.submerged = sub; if (sub) audio.splash(0.15); }
         if (sub) {
-          S.breath = Math.max(0, S.breath - dt / BREATH_S);
+          S.breath = Math.max(0, S.breath - dt / (BREATH_S * (game.save && game.save.vest ? 1.75 : 1)));   // the Buoy-O vest (Starboard Bait & Tackle)
           S.bubbleT -= dt;
           if (S.bubbleT <= 0) { S.bubbleT = 0.9 + Math.random() * 1.2; if (game.sea) game.sea.bubbles.emit(pos.x, hip + 0.2, pos.z); audio.bubble(); }
           if (S.breath <= 0) {

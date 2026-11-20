@@ -328,7 +328,7 @@ export function faceDriver(u, reduced = false) {
 
 // ---- shared atlases ---------------------------------------------------------------------------------------
 // the story cast (row per character) and the city's crowd (eight face variants)
-export const CAST_ROW = { SKYE: 0, DEE: 1, GLITZ: 2, GUS: 3, KILO: 4, TAPS: 5, ZIZI: 6, MIMI: 7 };
+export const CAST_ROW = { SKYE: 0, DEE: 1, GLITZ: 2, GUS: 3, KILO: 4, TAPS: 5, ZIZI: 6, MIMI: 7, DOT: 8, TOKEN: 9, HAZEL: 10, KIKI: 11, RUDY: 12 };
 const CAST_FACES = [
   { iris: '#1f7f86', brow: '#2a2140', freckles: true },                                   // Skye
   { iris: '#6a3a1a', brow: '#b02a6a', lash: true, lip: '#d42f6e', blush: true },           // Dee
@@ -338,6 +338,11 @@ const CAST_FACES = [
   { iris: '#3a2a1a', brow: '#1b1830', stache: '#1b1830' },                                  // Taps
   { iris: '#1f8f86', brow: '#178a82', lash: true, freckles: true, blush: true },            // Zizi Sparks
   { iris: '#3a1a0a', brow: '#22203a', lash: true, lip: '#e8235f', blush: true },            // Mimi
+  { iris: '#2f6f5a', brow: '#c0401a', lash: true, lip: '#e0304a', blush: true, freckles: true },  // Dot, the diner
+  { iris: '#2a1a10', brow: '#1b1410' },                                                     // Token, the arcade
+  { iris: '#4a6a8a', brow: '#b8a8c8', lash: true, lip: '#c85a7a', glasses: '#c0407a' },    // Hazel, the motel
+  { iris: '#3a2410', brow: '#3a2410', lash: true, lip: '#d0406a', blush: true },            // Kiki, the galleria
+  { iris: '#2a5a8a', brow: '#d8d8d8', thick: true, beard: '#e4e4e8' },                       // Rudy, the bait shop
 ];
 const CROWD_FACES = [
   { iris: '#4a2a14', brow: '#2a1a12' },

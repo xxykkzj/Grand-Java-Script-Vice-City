@@ -6,6 +6,10 @@ import { box, cyl, tint, merge, PI, rng, beatU, section, angleDelta, reducedMoti
 import { kit, rig, blockyMaterial, faceDriver, instExtras, castAtlas, crowdAtlas, mergeParts, CAST_ROW, CROWD_FACE_N } from '../actors/blocky.js';
 import { newPose, dancePose, cheerPose, sitPose, blendPose } from '../actors/moves.js';
 import { CLUB_CROWD, clubTier } from './story.js';
+import { shell, stool, bake, glow } from './dress.js';
+import { REDRESS } from './redress.js';
+import { VENUE_BUILD, VENUE_LOOKS } from './venuerooms.js';
+import { quality } from '../core/quality.js';
 
 export const OY = -90;
 const NEON = ['#ff2bd1', '#18f0ff', '#ffe14a', '#8dff5a', '#ff6a3d', '#b388ff'];
@@ -108,6 +112,7 @@ const LOOKS = {
         K.B(0.1, 0.1, 0.06, 0.12, 0.4, 0.07, '#ff2bd1'), K.B(0.04, 0.04, 0.02, 0.12, 0.4, 0.105, '#ffe14a'));
     } },
 };
+Object.assign(LOOKS, VENUE_LOOKS);
 const shade = (hex, k) => '#' + new THREE.Color(hex).multiplyScalar(k).getHexString();
 
 // Characters indoors are lit (Lambert) with a soft rim light so they stand out from light walls too.
@@ -171,26 +176,6 @@ function makeNPC(key) {
   };
   return n;
 }
-
-// ---- shared shell ---------------------------------------------------------------------------
-function shell(g, hx, hz, h, tileA, tileB, walls, ceil, doorNeon, gap = null) {
-  for (let x = -hx; x < hx; x += 1.5) for (let z = -hz; z < hz; z += 1.5) {
-    g.push(box(1.5, 0.1, 1.5, x + 0.75, -0.05, z + 0.75, (Math.round(x / 1.5) + Math.round(z / 1.5)) % 2 ? tileA : tileB));
-  }
-  g.push(box(hx * 2 + 0.4, h + 0.2, 0.2, 0, h / 2, -hz - 0.1, walls[0]), box(hx * 2 + 0.4, h + 0.2, 0.2, 0, h / 2, hz + 0.1, walls[1]),
-    box(0.2, h + 0.2, hz * 2, -hx - 0.1, h / 2, 0, walls[2]), box(hx * 2 + 0.4, 0.2, hz * 2 + 0.4, 0, h + 0.1, 0, ceil));
-  if (!gap) g.push(box(0.2, h + 0.2, hz * 2, hx + 0.1, h / 2, 0, walls[2]));
-  else {
-    // the right wall with a doorway (gap = [z0, z1], 2.8 m high) through to a side room
-    const [a, b] = gap;
-    g.push(box(0.2, h + 0.2, a + hz, hx + 0.1, h / 2, (a - hz) / 2, walls[2]), box(0.2, h + 0.2, hz - b, hx + 0.1, h / 2, (b + hz) / 2, walls[2]),
-      box(0.2, h - 2.8, b - a, hx + 0.1, (h + 2.8) / 2, (a + b) / 2, walls[2]));
-  }
-  // the way out: a doorway full of sunset with a neon frame
-  g.push(box(1.7, 2.7, 0.08, 0, 1.35, hz - 0.02, '#ffa64a'), box(1.7, 0.9, 0.09, 0, 0.45, hz - 0.02, '#ff6a8a'), box(1.9, 0.1, 0.1, 0, 2.75, hz - 0.06, doorNeon),
-    box(0.1, 2.8, 0.1, -0.9, 1.4, hz - 0.06, doorNeon), box(0.1, 2.8, 0.1, 0.9, 1.4, hz - 0.06, doorNeon), box(0.8, 0.22, 0.05, 0, 3.05, hz - 0.05, '#8dff5a'));
-}
-const stool = (g, x, z, hex) => g.push(cyl(0.27, 0.27, 0.09, 10, x, 0.78, z, hex), cyl(0.05, 0.09, 0.76, 6, x, 0.38, z, '#c9c0d8'), cyl(0.22, 0.24, 0.04, 8, x, 0.02, z, '#c9c0d8'));
 
 // ---- The Velvet Flamingo ----------------------------------------------------------------------
 function buildBar(room) {
@@ -754,16 +739,14 @@ function buildMart(room) {
   // fridge wall: glowing doors full of cans
   for (let i = 0; i < 6; i++) {
     const x = -4.9 + i * 1.5;
-    g.push(box(1.4, 2.6, 0.5, x, 1.3, -4.2, '#dff9ff'), box(1.3, 2.4, 0.06, x, 1.3, -3.93, '#9fe8ff'), box(0.06, 2.6, 0.56, x + 0.72, 1.3, -4.2, '#c9c0d8'), box(0.05, 0.5, 0.05, x + 0.5, 1.3, -3.88, '#6a7a8a'));
-    for (let s = 0; s < 4; s++) for (let k = 0; k < 5; k++) g.push(box(0.16, 0.3, 0.16, x - 0.48 + k * 0.24, 0.35 + s * 0.6, -3.86, NEON[Math.floor(r() * 6)]));
+    g.push(box(1.4, 2.6, 0.5, x, 1.3, -4.2, '#dff9ff'), box(1.3, 2.4, 0.06, x, 1.3, -3.93, '#9fe8ff'), box(0.06, 2.6, 0.56, x + 0.72, 1.3, -4.2, '#c9c0d8'), box(0.05, 0.5, 0.05, x + 0.5, 1.3, -3.86, '#6a7a8a'));
+    // the drinks behind the glass are painted (game/redress.js)
   }
   g.push(box(9.2, 0.3, 0.6, -1.15, 2.8, -4.15, '#27c9bf'));
   // two aisles of shelves
   for (const x of [-3.2, -0.4]) {
     g.push(box(0.9, 1.7, 3.6, x, 0.85, -0.3, '#fbf7f0'), box(1, 0.08, 3.7, x, 1.74, -0.3, '#ff8fc4'));
-    for (const sx of [-1, 1]) for (let s = 0; s < 3; s++) for (let k = 0; k < 9; k++) {
-      g.push(box(0.1, 0.28 + (k % 3) * 0.06, 0.3, x + sx * 0.47, 0.35 + s * 0.5, -1.9 + k * 0.4, NEON[Math.floor(r() * 6)]));
-    }
+    // the packs on the shelves are painted shelf fronts (game/redress.js)
   }
   // counter: till, hot-dog roller, slush machine. Gus stands behind it.
   g.push(box(1, 1, 3.4, 3.6, 0.5, 0.6, '#27c9bf'), box(1.2, 0.08, 3.6, 3.6, 1.04, 0.6, '#fff6ec'), box(0.06, 0.4, 3.4, 3.08, 0.5, 0.6, '#ff4fa3'),
@@ -839,15 +822,25 @@ function buildArms(room) {
   });
 }
 
-const BUILD = { bar: buildBar, club: buildClub, wear: buildWear, mart: buildMart, arms: buildArms };
+const BUILD = { bar: buildBar, club: buildClub, wear: buildWear, mart: buildMart, arms: buildArms, ...VENUE_BUILD };
 
 // Build a room for a place. `place` is { key, b: building } from the layout.
+// A room may also carry (see dress.js): lights (baked into the vertex colours), boards (one painted canvas
+// atlas), pools (additive light pools and shafts; shafts only on High graphics), ticks (animated pieces).
 export function buildRoom(place, scene, game) {
   const mat = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false });
-  const room = { key: place.key, mat, npc: {}, extras: [], ox: place.b.cx, oz: place.b.cz, game, idle() {} };
+  const room = { key: place.key, mat, npc: {}, extras: [], ox: place.b.cx, oz: place.b.cz, game, idle() {}, lights: null, pools: [], hiPools: [], ticks: [] };
   BUILD[place.key](room, scene);
+  if (REDRESS[place.key]) REDRESS[place.key](room);
   const group = room.group = new THREE.Group();
-  group.add(new THREE.Mesh(merge(room.geo), mat), ...room.extras);
+  const body = merge(room.geo);
+  if (room.lights) bake(body, room.lights, room.amb ?? 0.62, room.ambCol);
+  group.add(new THREE.Mesh(body, mat), ...room.extras);
+  if (room.boards) { const m = room.boards.mesh(); if (m) group.add(m); room.boards = null; }
+  const lo = glow(room.pools), hi = glow(room.hiPools);
+  for (const m of [lo, hi]) if (m) { group.add(m); room.ticks.push((t) => { m.userData.U.uT.value = t; }); }
+  if (hi) room.ticks.push(() => { hi.visible = quality.high; });
+  room.drawn = () => { let n = 0; group.traverseVisible((o) => { if (o.isMesh) n++; }); return n; };
   room.geo = null;
   for (const key in room.cast) {
     const [x, z, yaw, y = 0] = room.cast[key], n = room.npc[key] = makeNPC(key);
@@ -857,7 +850,7 @@ export function buildRoom(place, scene, game) {
   }
   // the cast blink, talk and react whenever the room ticks (walking about, shopping, in a scene)
   const idle0 = room.idle;
-  room.idle = (t, dt, still) => { idle0.call(room, t, dt, still); for (const k in room.npc) room.npc[k].tickFace(dt || 1 / 60); };
+  room.idle = (t, dt, still) => { idle0.call(room, t, dt, still); for (const f of room.ticks) f(t, dt, still); for (const k in room.npc) room.npc[k].tickFace(dt || 1 / 60); };
   group.position.set(room.ox, OY, room.oz);
   group.traverse((o) => o.layers.enable(1));
   if (!room.seats) room.seats = [];
