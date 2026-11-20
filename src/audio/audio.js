@@ -61,7 +61,7 @@ export function createAudio() {
         src.connect(f); f.connect(g); g.connect(sfx); src.start();
         return { f, g };
       };
-      skate = loop('bandpass', 1500, 0.6);
+      skate = loop('bandpass', 700, 0.8);
       rain = loop('highpass', 2600);
       spray = loop('bandpass', 1900, 0.5);
       // a burning car: low crackling noise, its level jittered every frame
@@ -127,6 +127,7 @@ export function createAudio() {
       return mus.on ? 'on' : 'off';
     },
     // automated checks: fire the auto-off after `sec` seconds of play; read the state
+    skateGain() { return skate ? +skate.g.gain.value.toFixed(3) : 0; },
     engineGain() { return eng ? +eng.g.gain.value.toFixed(3) : 0; },
     musicAuto(sec) { mus.until = (ctx ? ctx.currentTime : 0) + sec; mus.fired = false; },
     musicState() {
@@ -157,8 +158,17 @@ export function createAudio() {
       const f = ((s.heavy ? 34 : 50) + (0.35 + 0.65 * frac) * (s.heavy ? 40 : 95) + Math.floor(gx) * (s.heavy ? 6 : 10)) * wob;
       eng.o1.frequency.setTargetAtTime(f, t, 0.07); eng.o2.frequency.setTargetAtTime(f * 0.5, t, 0.07);
       eng.f.frequency.setTargetAtTime((220 + rev * 900) * (1 - 0.3 * eng.calm), t, 0.1);
-      skate.g.gain.setTargetAtTime(s.skate * 0.12, t, 0.08);
-      skate.f.frequency.setTargetAtTime(900 + s.skate * 1800, t, 0.1);
+      // skates: a softer, lower wheel roll with a gentle push-and-glide rhythm instead of a steady hiss; like the
+      // engine it eases down after a few seconds at a steady speed and sits under the music
+      const sk = s.skate || 0, pS = skate.s || 0;
+      skate.s = pS + (sk - pS) * Math.min(1, edt / 0.8);
+      const dSk = edt > 0 ? Math.abs(skate.s - pS) / edt : 0;
+      skate.calm = skate.calm == null ? 0 : dSk > 0.1 ? Math.max(0, skate.calm - edt * 3) : Math.min(1, skate.calm + edt / 4);
+      skate.ph = (skate.ph || 0) + edt * (0.9 + sk * 0.9) * Math.PI * 2;           // push cadence speeds up a little
+      const stride = 0.72 + 0.28 * Math.max(0, Math.sin(skate.ph)) ** 2;
+      const grain = 1 + 0.06 * Math.sin(t * 7.3) + 0.04 * Math.sin(t * 13.1);     // uneven pavement
+      skate.g.gain.setTargetAtTime(sk > 0 ? sk * 0.07 * stride * grain * (1 - 0.6 * skate.calm) * (1 - 0.35 * musicUp) : 0, t, 0.06);
+      skate.f.frequency.setTargetAtTime((420 + sk * 650) * (1 - 0.2 * skate.calm), t, 0.12);
       rotor.g.gain.setTargetAtTime(s.rotor * 0.55, t, 0.15);
       rotor.lfo.frequency.setTargetAtTime(3 + s.rotor * 11, t, 0.2);
       rain.g.gain.setTargetAtTime(s.rain * 0.09, t, 0.4);
