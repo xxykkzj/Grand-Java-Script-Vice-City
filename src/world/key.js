@@ -203,7 +203,7 @@ export function makeKey(props, solids, surf) {
     { id: 'sunbowl', name: 'SUNBOWL KICKER', x: -965, z: -100, yaw: Math.PI / 2, len: 9, w: 5, h: 2.4, land: { x0: -950, x1: -922, z0: -110, z1: -90 }, vmin: 16 },
     { id: 'fernwood', name: 'FERNWOOD HILL', x: -816, z: 2, yaw: Math.PI / 2, len: 20, w: 6, h: 3.4, kick: { len: 8, h: 1.6 }, land: { x0: -787, x1: -764, z0: -10, z1: 14 }, vmin: 15 },
     { id: 'container', name: 'CONTAINER LEAP', x: -975, z: 110, yaw: -Math.PI / 2, len: 9, w: 5, h: 2.4, land: { x0: -1010, x1: -991, z0: 101, z1: 119 }, vmin: 17 },
-    { id: 'overpass', name: 'OVERPASS GAP', x: -925, z: 76, yaw: 0, len: 20, w: 9, h: 4.2, deck: { z0: 86, z1: 98, lip: 6, lipH: 1.2 }, deck2: { z0: 108, z1: 120 }, down: { z0: 120, z1: 138 }, land: { x0: -929.5, x1: -920.5, z0: 108, z1: 138 }, vmin: 19 },
+    { id: 'overpass', name: 'OVERPASS GAP', x: -925, z: 76, yaw: 0, len: 20, w: 9, h: 4.2, deck: { z0: 86, z1: 98, lip: 6, lipH: 1.2 }, deck2: { z0: 104, z1: 120 }, w2: 15, down: { z0: 120, z1: 138 }, land: { x0: -932.5, x1: -917.5, z0: 104, z1: 138 }, vmin: 19 },
     { id: 'marina', name: 'MARINA SPLASH', x: -790, z: 226, yaw: 0, len: 9, w: 5, h: 2.2, land: { x0: -812, x1: -768, z0: 238, z1: 300 }, vmin: 15, sea: true },
     { id: 'galleria', name: 'GALLERIA HOP', x: -561, z: 76, yaw: 0, len: 9, w: 5, h: 2.4, land: { x0: -572, x1: -550, z0: 90, z1: 112 }, vmin: 15 },
   );

@@ -12,6 +12,8 @@ import { kitGeometry } from './kits.js';
 import { groundMaterial, palmMesh } from './city.js';
 import { createGlow } from './glow.js';
 import { rampParts } from './rampGeo.js';
+import { neonPools } from './neonpools.js';
+import { quality } from '../core/quality.js';
 import { LADDERS, LADDER_GAP } from './sea.js';
 
 const W = KEY.x1 - KEY.x0, H = KEY.z1 - KEY.z0;
@@ -111,15 +113,23 @@ function paintKeyGround(K) {
 function keyLampMap(K) {
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const g = c.getContext('2d');
-  g.fillStyle = '#000'; g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'lighter';
+  let neon = [];
   const pool = (x, z, rad, a, rgb = '255,196,128') => { const gr = g.createRadialGradient(x, z, 0, x, z, rad); gr.addColorStop(0, `rgba(${rgb},${a})`); gr.addColorStop(0.45, `rgba(${rgb},${a * 0.42})`); gr.addColorStop(1, `rgba(${rgb},0)`); g.fillStyle = gr; g.fillRect(x - rad, z - rad, rad * 2, rad * 2); };
-  for (const l of K.lamps) pool(l.x - KEY.x0 + Math.sin(l.yaw) * 1.2, l.z - KEY.z0 + Math.cos(l.yaw) * 1.2, 10, 0.85);
-  const st = K.stadium;
-  pool(st.cx - KEY.x0, st.cz - KEY.z0, 60, 0.75, '230,240,255');
-  for (const b of K.buildings) if (b.style !== 'warehouse') pool(b.cx - KEY.x0, (b.door ? b.door.out.z : b.z1 + 2) - KEY.z0, 7, 0.3, '255,214,160');
   const tex = new THREE.CanvasTexture(c);
   tex.flipY = false; tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter;
-  return tex;
+  const paint = () => {
+    g.globalCompositeOperation = 'source-over'; g.fillStyle = '#000'; g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'lighter';
+    for (const l of K.lamps) pool(l.x - KEY.x0 + Math.sin(l.yaw) * 1.2, l.z - KEY.z0 + Math.cos(l.yaw) * 1.2, 10, 0.85);
+    const st = K.stadium;
+    pool(st.cx - KEY.x0, st.cz - KEY.z0, 60, 0.75, '230,240,255');
+    for (const b of K.buildings) if (b.style !== 'warehouse') pool(b.cx - KEY.x0, (b.door ? b.door.out.z : b.z1 + 2) - KEY.z0, 7, 0.3, '255,214,160');
+    // the big neon signs throw a pool of their own colour (High quality)
+    if (quality.high) for (const n of neon) pool(n.x - KEY.x0, n.z - KEY.z0, n.r, n.a, n.rgb);
+    tex.needsUpdate = true;
+  };
+  paint();
+  // once the key's glow sprites are all placed: which of them are neon; and again when the quality changes
+  return { tex, repaint: paint, setNeon(list) { neon = list; paint(); } };
 }
 
 // ---------------------------------------------------------------- the key
@@ -471,7 +481,7 @@ export function buildKey(scene, L, renderer, adSigns) {
   gtex.colorSpace = THREE.SRGBColorSpace;
   gtex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   const gg = new THREE.PlaneGeometry(W, H); gg.rotateX(-PI / 2); gg.translate(KEY.x0 + W / 2, 0, KEY.z0 + H / 2);
-  const ground = new THREE.Mesh(gg, groundMaterial(gtex, keyLampMap(K), KEY.x0, KEY.z0, W, H, false));
+  const ground = new THREE.Mesh(gg, groundMaterial(gtex, (K.lampMap = keyLampMap(K)).tex, KEY.x0, KEY.z0, W, H, false));
   group.add(ground);
   const skirt = new THREE.Mesh(new THREE.BoxGeometry(W, 3, H), new THREE.MeshLambertMaterial({ color: '#c9a878' }));
   skirt.position.set(KEY.x0 + W / 2, -1.52, KEY.z0 + H / 2);
@@ -516,6 +526,7 @@ export function buildKey(scene, L, renderer, adSigns) {
   group.add(palms);
   const glow = createGlow(group, glows.length);
   for (const gw of glows) glow.add(gw[0], gw[1], gw[2], gw[3], gw[4], gw[5]);
+  K.lampMap.setNeon(neonPools(glows));
   glow.commit();
 
   return {

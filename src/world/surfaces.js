@@ -75,14 +75,20 @@ export function registerRamps(S, ramps, solids) {
     r.parts = [];
     if (r.deck) {
       // the overpass: up ramp, deck with a lip, a gap, a second deck and a ramp down (all along +z)
-      const D = r.deck, D2 = r.deck2, dn = r.down;
+      const D = r.deck, D2 = r.deck2, dn = r.down, w2 = r.w2 || r.w;
       r.parts.push(S.ramp(r.x, r.z, 0, r.len, r.w, 0, r.h, 'ramp', { stunt: r }));
       r.parts.push(S.rect(r.x - r.w / 2, r.x + r.w / 2, D.z0, D.z1 - D.lip, r.h, 'deck', { stunt: r }));
       r.parts.push(S.ramp(r.x, D.z1 - D.lip / 2, 0, D.lip, r.w, r.h, r.h + D.lipH, 'ramp', { stunt: r, kicker: true }));
-      r.parts.push(S.rect(r.x - r.w / 2, r.x + r.w / 2, D2.z0, D2.z1, r.h, 'deck'));
-      r.parts.push(S.ramp(r.x, (dn.z0 + dn.z1) / 2, 0, dn.z1 - dn.z0, r.w, r.h, 0, 'ramp'));
+      // the landing deck and the ramp down are wider than the run-up (w2), so a jump that lands a little off line still lands
+      r.parts.push(S.rect(r.x - w2 / 2, r.x + w2 / 2, D2.z0, D2.z1, r.h, 'deck'));
+      r.parts.push(S.ramp(r.x, (dn.z0 + dn.z1) / 2, 0, dn.z1 - dn.z0, w2, r.h, 0, 'ramp'));
       // (the solids stop a metre short of the deck top, so a car coming up the ramp is already above them)
-      solids.push({ x0: r.x - r.w / 2, x1: r.x + r.w / 2, z0: D.z0, z1: D.z1, h: r.h - 1, deck: true }, { x0: r.x - r.w / 2, x1: r.x + r.w / 2, z0: D2.z0, z1: D2.z1, h: r.h - 1, deck: true });
+      solids.push({ x0: r.x - r.w / 2, x1: r.x + r.w / 2, z0: D.z0, z1: D.z1, h: r.h - 1, deck: true }, { x0: r.x - w2 / 2, x1: r.x + w2 / 2, z0: D2.z0, z1: D2.z1, h: r.h - 1, deck: true });
+      // guard rails: the parapets along both decks are solid for anything driving on them (cars used to slide off the side)
+      for (const sx of [-1, 1]) {
+        solids.push({ x0: r.x + sx * r.w / 2 - (sx > 0 ? 0.35 : 0), x1: r.x + sx * r.w / 2 + (sx > 0 ? 0 : 0.35), z0: D.z0, z1: D.z1, h: r.h + D.lipH + 0.9, rail: true });
+        solids.push({ x0: r.x + sx * w2 / 2 - (sx > 0 ? 0.35 : 0), x1: r.x + sx * w2 / 2 + (sx > 0 ? 0 : 0.35), z0: D2.z0, z1: D2.z1, h: r.h + 0.9, rail: true });
+      }
       r.top = { x: r.x, z: D.z1, y: r.h + D.lipH, yaw: 0, slope: D.lipH / D.lip };
       continue;
     }

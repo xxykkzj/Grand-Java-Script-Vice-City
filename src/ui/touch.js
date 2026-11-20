@@ -2,6 +2,7 @@
 // Everything here feeds the existing input state (core/input.js): buttons press virtual keys, the stick
 // writes input.stick, the right half writes look-drags. No game logic is duplicated.
 import { MOVES } from '../actors/moves.js';
+import { quality } from '../core/quality.js';
 
 const $ = (id) => document.getElementById(id);
 const KEY = 'neon-controls';
@@ -185,6 +186,25 @@ export function createTouch(game) {
   try { subV = localStorage.getItem(SUBK) || 'n'; } catch (e) { subV = 'n'; }
   setSub(subV);
   for (const b of document.querySelectorAll('[data-sub]')) b.addEventListener('click', () => setSub(b.dataset.sub));
+  // graphics quality (Low / High: night bloom, neon pools, shoreline foam, moths and fireflies) and adaptive resolution
+  const syncGfx = () => { for (const b of document.querySelectorAll('[data-gfx]')) b.setAttribute('aria-pressed', String(b.dataset.gfx === quality.level)); };
+  for (const b of document.querySelectorAll('[data-gfx]')) b.addEventListener('click', () => { quality.set(b.dataset.gfx); syncGfx(); });
+  syncGfx();
+  const RESK = 'neon-coast-res';
+  const setRes = (v, persist = true) => {
+    for (const b of document.querySelectorAll('[data-res]')) b.setAttribute('aria-pressed', String(b.dataset.res === v));
+    if (game.adaptive) { game.adaptive.enabled = v === 'auto'; if (v === 'full') game.adaptive.set(1); else game.adaptive.reset(); }
+    if (persist) { try { localStorage.setItem(RESK, v); } catch (e) { /* private mode */ } }
+  };
+  let resV = 'auto';
+  try { resV = localStorage.getItem(RESK) === 'full' ? 'full' : 'auto'; } catch (e) { resV = 'auto'; }
+  setRes(resV, false);
+  for (const b of document.querySelectorAll('[data-res]')) b.addEventListener('click', () => setRes(b.dataset.res));
+  // cinematic camera: leave the pause panel and fly
+  $('scine').addEventListener('click', () => {
+    openSettings(false);
+    if (!game.cine.start()) hud.toast('CINEMATIC MODE UNAVAILABLE', 'NOT DURING A SCENE, A SHOP OR INDOORS');
+  });
   addEventListener('keydown', (e) => { if (!settings.hidden && e.code === 'Escape') { e.preventDefault(); openSettings(false); } });
 
   // ---------------------------------------------------------------- no page zoom / scroll / long-press menus

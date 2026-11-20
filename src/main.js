@@ -41,6 +41,11 @@ import { createUnderwater } from './world/underwater.js';
 import { createMarine } from './actors/marine.js';
 import { createSinking } from './vehicles/sinking.js';
 import { WL, bedAt, depthAt, islandDist } from './world/sea.js';
+import { quality } from './core/quality.js';
+import { createAdaptive } from './core/adaptive.js';
+import { createBloom } from './world/bloom.js';
+import { createMotes } from './world/motes.js';
+import { createCinematic } from './game/cinematic.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('gl');
@@ -59,6 +64,10 @@ async function boot() {
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   } catch (e) { noWebGL(); return; }
+  renderer.info.autoReset = false;            // reset once per frame (draw()), so the count includes the bloom passes
+  // adaptive resolution (core/adaptive.js): the pixel ratio follows the frame time
+  const adaptive = createAdaptive(() => fit(), 0.6);
+  const bloom = createBloom(renderer);
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(62, 1, 0.12, 2600);
   const cockpit = createCockpit(scene);     // first-person dashboards, fixed to the vehicle
@@ -69,8 +78,9 @@ async function boot() {
   const fit = () => {
     fitQueued = 0;
     const w = Math.max(1, canvas.clientWidth || innerWidth), h = Math.max(1, canvas.clientHeight || innerHeight);
-    const pr = Math.min(window.devicePixelRatio || 1, coarse() ? 1.5 : 2);
-    const key = w + 'x' + h + '@' + pr;
+    adaptive.setBase(Math.min(window.devicePixelRatio || 1, coarse() ? 1.5 : 2));
+    const pr = adaptive.ratio();
+    const key = w + 'x' + h + '@' + pr.toFixed(3);
     if (key === fitKey) return;
     fitKey = key;
     renderer.setPixelRatio(pr);
@@ -117,6 +127,14 @@ async function boot() {
   const env = createEnvironment(scene, sky, ocean, city, camera, audio);
   const input = createInput(canvas);
   const hud = createHud(L, groundCanvas, renderer, keyCity.groundCanvas);
+  const motes = createMotes(scene, L, camera, env);
+  // graphics quality: the bloom, the neon pools on the street, the shoreline foam, the moths and fireflies
+  const applyQuality = () => {
+    bloom.set(quality.high);
+    ocean.uniforms.uFoam.value = quality.high ? 1 : 0;
+    L.lampMap.repaint(); L.key.lampMap.repaint();
+  };
+  quality.on(applyQuality); applyQuality();
   const R = makeRoads();
   const signals = buildSignals(scene, R, city.bodyMat, L.props);
   L.props.build();
@@ -126,7 +144,7 @@ async function boot() {
 
   game = {
     mode: 'foot', paused: false, vehicle: null, started: false,
-    input, hud, audio, env, vehicles, player, L, cam, camera, renderer, scene, fx, R, grid, wanted: 0, busy: null, districts,
+    input, hud, audio, env, vehicles, player, L, cam, camera, renderer, scene, fx, R, grid, wanted: 0, busy: null, districts, adaptive, bloom, motes, quality,
     focus: () => (game.vehicle ? game.vehicle : player.pos),
     heading: () => (game.vehicle ? game.vehicle.yaw : player.yaw),
   };
@@ -153,6 +171,7 @@ async function boot() {
   const events = game.events = createEvents(game, scene);
   const roofs = game.roofs = createRooftops(game);
   const stunts = game.stunts = createStunts(game);
+  const cine = game.cine = createCinematic(game);
   // a second helicopter waits on the Glasswater Tower helipad downtown
   const padT = L.key.buildings.find((b) => b.name === 'Glasswater Tower');
   vehicles.spawnHeli(padT.pad.x, padT.pad.z, Math.PI / 2, 1, padT.roofY);
@@ -222,6 +241,12 @@ async function boot() {
     // ground lamp-light term under a lamp head at full night, and the night ambient
     nightLight: (x, z) => ({ lampTerm: L.lampMap.sample(x, z) * LAMP_GAIN * nightU.value, mapValue: L.lampMap.sample(x, z), night: nightU.value, hemi: env.hemi.intensity }),
     drawCalls: () => renderer.info.render.calls,
+    // ---- graphics (automated checks)
+    gfx: (l) => { if (l) quality.set(l, false); return { level: quality.level, bloom: bloom.on, bloomPasses: bloom.stats.passes, foam: ocean.uniforms.uFoam.value, pools: quality.high && L.neonPools.length, calls: renderer.info.render.calls }; },
+    adaptive: () => ({ scale: +adaptive.scale.toFixed(3), ratio: +adaptive.ratio().toFixed(3), drops: adaptive.drops, rises: adaptive.rises, avg: +adaptive.avg.toFixed(1), enabled: adaptive.enabled, base: adaptive.base, dpr: renderer.getPixelRatio() }),
+    motes: () => motes.stats(),
+    cine: () => ({ active: cine.active, hud: getComputedStyle($('hud')).display, bars: $('cine').classList.contains('cm') }),
+    pools: () => ({ old: L.neonPools.length, key: L.key.lampMap && true }),
     // ---- damage, weapons, patrol lasers (automated checks set velocities directly: software GL is slow)
     cheat: (code) => cheats.exec(code),
     parked: (i = 0) => vehicles.cars.filter((k) => k.kind === 'car' && !k.traffic && !k.police && !k.off)[i],
@@ -326,6 +351,7 @@ async function boot() {
       case 'KeyN': hud.toast('TIME SKIP', 'FAST-FORWARDING TO ' + env.cycle().replace('GOLDEN', 'GOLDEN HOUR')); break;
       case 'KeyM': hud.toast(audio.toggleMute() ? 'SOUND OFF' : 'SOUND ON'); break;
       case 'KeyP': hud.togglePerf(); break;
+      case 'KeyK': if (game.started && !game.busy && !cheats.open && !cine.start()) hud.toast('CINEMATIC MODE', 'NOT AVAILABLE INDOORS OR IN A SCENE'); break;
       case 'KeyV': hud.toast('CAMERA', cam.cycleView().name); break;
       case 'KeyQ': if (game.started && !game.busy && !cheats.open) combat.cycle(1); break;
     }
@@ -337,9 +363,16 @@ async function boot() {
   let last = performance.now(), raf = 0, frameN = 0, turnT = 0;
 
   const hudState = { env, game, vehicles, counts: [0, peds.count], blips: [], focus: null, heading: 0, camYaw: 0, inVehicle: null };
+  // one frame's drawing: the scene, then (High) the bloom over it
+  function draw() {
+    renderer.info.reset();
+    renderer.render(scene, camera);
+    if (bloom.on) bloom.render(nightU.value);
+  }
   function frame(now) {
     raf = requestAnimationFrame(frame);
-    if (game.paused) { last = now; renderer.render(scene, camera); input.endFrame(); return; }
+    if (game.paused) { last = now; draw(); input.endFrame(); return; }
+    adaptive.tick(now - last);
     const raw = Math.min(Math.max((now - last) / 1000, 0), 0.5);
     last = now;
     stunts.update(Math.min(raw, 0.05));
@@ -353,7 +386,7 @@ async function boot() {
       beatU.t = now / 1000;
     }
 
-    const live = game.started && !cheats.open && !game.busy;
+    const live = game.started && !cheats.open && !game.busy && !cine.active;
     frameN++;
     ctl.move = live ? input.axis(['KeyS', 'ArrowDown'], ['KeyW', 'ArrowUp']) : 0;
     ctl.strafe = live ? input.axis(['KeyA', 'ArrowLeft'], ['KeyD', 'ArrowRight']) : 0;
@@ -408,6 +441,7 @@ async function boot() {
     if (cut.active) cut.update(dt);
     else if (game.inside) { /* places.update owns the camera indoors */ }
     else if (stunts.cam) stunts.camUpdate(dt);
+    else if (cine.active) cine.update(dt);
     else cam.update(dt, input, game.mode, game.focus(), game.heading(), speed, fx, player.phase);
     // in first person on foot the courier's own body would sit inside the camera
     cockpit.update(dt, v, cam.first && !cut.active && !game.inside && !!v, ctl.steer);
@@ -442,6 +476,8 @@ async function boot() {
       hudState.focus = game.focus(); hudState.heading = game.heading(); hudState.camYaw = cam.yaw; hudState.inVehicle = v;
       hudState.counts[0] = traffic.count(); hudState.counts[1] = peds.active; hudState.blips = rules.blips;
       hudState.counts[2] = traffic.target; hudState.counts[3] = peds.target; hudState.counts[4] = animals.count();
+      hudState.res = adaptive.scale.toFixed(2) + 'x (' + adaptive.ratio().toFixed(2) + ' px)' + (adaptive.enabled ? '' : ' FIXED');
+      hudState.gfx = quality.level.toUpperCase() + (bloom.on ? ' + BLOOM' : '');
       hudState.districts = (districts.showA ? 'OLD TOWN ' : '') + (districts.showB ? 'SOLANO KEY' : '');
       hud.update(dt, hudState);
       touch.update();
@@ -463,7 +499,8 @@ async function boot() {
 
     districts.update(camera);
     keyCity.update(camera);
-    renderer.render(scene, camera);
+    motes.update(dt);
+    draw();
     input.endFrame();
   }
 
@@ -477,12 +514,14 @@ async function boot() {
   renderer.compile(scene, camera);
   sea.warm(false); marine.warm(false);
   districts.update(camera);
+  draw();                                   // warms the bloom shaders too
+  adaptive.reset();
   await progress(1, 'READY');
   raf = requestAnimationFrame(frame);
 
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { cancelAnimationFrame(raf); raf = 0; audio.suspend(); input.clearKeys(); }
-    else if (!raf) { last = performance.now(); raf = requestAnimationFrame(frame); if (game.started && !game.paused) audio.resume(); }
+    else if (!raf) { last = performance.now(); adaptive.reset(); raf = requestAnimationFrame(frame); if (game.started && !game.paused) audio.resume(); }
   });
 
   const title = $('title'), go = $('go');

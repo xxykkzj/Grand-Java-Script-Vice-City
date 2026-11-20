@@ -2,7 +2,7 @@
 
 A pocket-sized 80s sunset coast you can skate, ride, drive and fly around, in **one self-contained HTML file**: the old town on Lumina Boulevard and, across the reopened Halcyon Causeway, Solano Key with its glass towers, a stadium, a marina and the docks.
 Pastel art-deco hotels, palms, neon signs, live traffic and pedestrians, a patrol with roof lasers that chases you when you misbehave, a four-job story with cutscenes, a bar, a nightclub with a booth lounge, a clothes shop, a corner store and a neon blaster shop you can walk into, vehicles that smoke, burn and blow up in cartoon style, random street events that reward good deeds, a sport bike, weather, a full day/night cycle, a synthwave soundtrack and a retro cheat console.
-Almost everything is generated in code at load time: the town, every texture and every sound. A handful of licensed low-poly models (Kenney and Quaternius, CC0, see [Credits](#credits)) are baked into the same file at build time: there are still **0 asset files** next to it.
+Almost everything is generated in code at load time: the town, every texture and every sound. A handful of licensed low-poly models (Kenney and Quaternius, CC0, see [Credits](#credits)) are baked into the same file at build time, so the game is still one file with nothing to load next to it.
 
 An original homage to 80s open-world games. Not affiliated with or using assets from any existing game.
 
@@ -193,6 +193,8 @@ Eight ramps, painted in hazard stripes with neon edges and chevrons on the run-u
 | Marina Splash | Off the end of the marina pier into the sea |
 | Galleria Hop | Over the mall's fountain plaza |
 
+The **Overpass Gap** is forgiving now: the landing deck and the ramp down are 15 m wide (the run-up is 9), the gap is 6 m instead of 10, the landing zone covers the whole of it, and the parapets along both decks are solid guard rails, so a car that lands a little off line stays on the deck instead of sliding off the side.
+
 Cars and bikes now have vertical physics: they follow ramps and decks, fly on with the speed the ramp gave them and land on whatever is below (a bad landing dents the car a little; the side of a ramp or a deck is a wall). Hit a ramp fast enough and land in its zone for a clean jump: a moment of slow motion with the camera off to the side (no camera move with reduced motion), the **AIRTIME!** card with the distance, height and flips (steer hard as you leave a kicker for a barrel roll), and cash (more the first time). The pause panel shows **stunts found x/8**; found jumps are kept with your save.
 
 ## Controls
@@ -223,7 +225,8 @@ Anywhere:
 | `X` or `Esc` | skip the scene |
 | `Enter` / `Esc` | on the JOB BLOWN card: retry from the checkpoint / drop the job |
 | `M` | mute |
-| `P` | perf panel (FPS, draw calls, triangles, AI cars and pedestrians with the target for the hour, animals, page size) |
+| `P` | perf panel (FPS, draw calls, triangles, the current render resolution scale and graphics level, AI cars and pedestrians with the target for the hour, animals, page size) |
+| `K` | **cinematic camera** (see [Graphics and cinematic mode](#graphics-and-cinematic-mode)); any key, click, tap or scroll ends it |
 | `V` | switch camera: third person, close third person, first person (remembered between visits). In first person, vehicles get a cockpit: pillars and a dashboard with live gauges in cars, handlebars and a speedo on the bike, canopy frame and altimeter in the helicopter, a vision slit and reticle in the tank |
 
 Tip: in the helicopter prefer `C` to descend. `Ctrl` works too, but `Ctrl+W` is still the browser's "close tab" shortcut. For the same reason the blasters fire with a click or `R`, not `Ctrl`: you would be holding `W` at the same time.
@@ -265,10 +268,25 @@ Press `~` or `T`, type a code (not case-sensitive), press Enter.
 
 A forced weather holds for about four game hours before the sky starts making its own mind up again.
 
+## Graphics and cinematic mode
+
+The pause / settings panel (gear button, top right) has a **Graphics** choice, **Low** or **High**, remembered on the device. It defaults to High on desktop and Low on phones and tablets.
+
+| Effect | High | Low |
+| --- | --- | --- |
+| **Night bloom** | A half-resolution bloom (bright pixels, a two-pass blur, added over the frame): neon signs, lamps, headlights and lasers glow. It is strong at night and a faint sheen by day. Three full-screen passes, only while it is on. | off |
+| **Neon pools** | The big neon signs (hotel names, shopfront blades, the stadium, the marina gate and so on) throw a pool of light in their own colour on the street at night, painted into the same canvas as the street-lamp pools, so it costs nothing per frame. | lamp pools only |
+| **Shoreline foam** | Swells that roll in with a sharp crest and a lacy tail, a wash that runs up the waterline and back (on the beach and along both seawalls), and foam rings round the pier posts, all inside the ocean shader (no extra draw call). | the plain surf line |
+| **Night ambience** | Moths fluttering round the street lamps near you; fireflies blinking over Fernwood Park and in nearby palms. One instanced `Points` draw, only at night, not in rain, not indoors. | off |
+
+**Resolution** (also in the panel): *Auto* watches the frame time. If frames stay slow for a couple of seconds the render pixel ratio steps down (about 15 % at a time, never below 0.6 pixels per CSS pixel); when there is headroom for a good while it creeps back up, waiting longer each time a climb was followed by another drop. *Full* keeps the full pixel ratio. The `P` panel shows the current scale and the graphics level.
+
+**Cinematic mode.** Press `K`, or choose *Start cinematic mode* in the pause panel (that is the touch button too). The HUD and touch controls hide, letterbox bars slide in and the camera flies a slow orbit round Skye (or the vehicle), drifting in and out and up and down. It pulls in or lifts over buildings that would block the view. Any key, click, tap or scroll ends it (that input is not passed on to the game). It is not available during a scene, in a shop or indoors. With reduced motion the orbit is much slower and level.
+
 ## Hardware notes
 
-- Built for integrated laptop graphics: a typical street frame is about 52 to 56 draw calls in the old town and 40 to 52 in Solano Key (57 on the causeway, where both districts are in view) with all traffic, pedestrians, beach animals, loose props, planters and the horizon on screen. The new effects add at most a handful while something is happening: smoke and debris, beams, shockwave rings, projectiles, the blaster in your hand and an event's bag and ring are each one pooled or instanced draw call, drawn only while in use. Indoors the camera only renders the room's layer (the room, the cast, the courier, the rings), so Club Prism with its whole crowd, lasers, lights and lounge is about 28 draw calls. No shadow maps, no post-processing. Interiors are built the first time you walk in and hidden when you leave. Each district keeps its detailed meshes in one group; from more than about 240 m away the group is hidden and a one-draw-call silhouette (hazed boxes with night windows) stands in for it. The key's walls all take their windows from one shader (punched, curtain glass or ribbon windows from the world position, lit at random at night), so its whole skyline is one draw call; its detailed street lights are drawn only within about 190 m (their glow sprites carry them further at night).
-- The pixel ratio is capped at 2 (1.5 on phones and tablets), and it is checked again whenever the window, the zoom or the screen changes. If it still struggles on a high-DPI screen, zoom the page in (`Ctrl` / `Cmd` + `+`) or shrink the window: fewer pixels is the big lever.
+- Built for integrated laptop graphics: a typical street frame is about 52 to 56 draw calls in the old town and 40 to 52 in Solano Key (57 on the causeway, where both districts are in view) with all traffic, pedestrians, beach animals, loose props, planters and the horizon on screen. The new effects add at most a handful while something is happening: smoke and debris, beams, shockwave rings, projectiles, the blaster in your hand and an event's bag and ring are each one pooled or instanced draw call, drawn only while in use. Indoors the camera only renders the room's layer (the room, the cast, the courier, the rings), so Club Prism with its whole crowd, lasers, lights and lounge is about 28 draw calls. No shadow maps. The only post-processing is the High-quality bloom (three full-screen passes at half and quarter resolution, only while it is on; the frame is copied once, the scene is not re-rendered). The other new effects add at most one draw call (the night ambience points, only at night). Interiors are built the first time you walk in and hidden when you leave. Each district keeps its detailed meshes in one group; from more than about 240 m away the group is hidden and a one-draw-call silhouette (hazed boxes with night windows) stands in for it. The key's walls all take their windows from one shader (punched, curtain glass or ribbon windows from the world position, lit at random at night), so its whole skyline is one draw call; its detailed street lights are drawn only within about 190 m (their glow sprites carry them further at night).
+- The pixel ratio is capped at 2 (1.5 on phones and tablets), and it is checked again whenever the window, the zoom or the screen changes. On top of that the adaptive resolution (above) lowers it by itself when the frame rate suffers. You can also pick **Low** graphics, zoom the page in (`Ctrl` / `Cmd` + `+`) or shrink the window: fewer pixels is the big lever.
 - Needs WebGL 2. Without it you get a plain explanatory message instead of a black page. Make sure hardware acceleration is switched on in the browser.
 - Rendering and audio pause while the tab is hidden.
 - With `prefers-reduced-motion` there are no lightning flashes, no camera bob or shake, no wheelies, steady patrol lights, static cutscene cameras and subtitles that appear whole instead of being typed; explosions flash much less, and the laser aim lines, the GET OUT! warning and the event blips are steady instead of flickering.
@@ -341,18 +359,19 @@ The `assets/` folder (about 19 MB, 149 models with their licences and a gallery)
 src/
   index.html        page template, HUD markup and CSS
   main.js           boot, loading bar, main loop
-  core/             input, shared helpers, spatial grid
+  core/             input, shared helpers, spatial grid, quality (Low / High), adaptive (resolution scaling)
   world/            layout, roads + traffic lights, canvas textures, sky + ocean, city builder, details (rooftops, props,
                     billboards, boats, gulls), edges (seawall, causeway), horizon (distant scenery + silhouettes),
                     key + keyCity (Solano Key), districts (culling), ads (billboard atlas), surfaces (roofs, ramps),
                     rampGeo, kits (the embedded models),
                     glow sprites, day/night + weather, props (solid street furniture + seats, spatial grid),
-                    loose (knock-over physics, lamps / hydrants / palms, vending machines)
+                    loose (knock-over physics, lamps / hydrants / palms, vending machines),
+                    bloom (post effect), motes (moths + fireflies), neonpools (street light pools of the neon signs)
   actors/           AI traffic + Coast Patrol, pedestrians + drivers, beach animals, dance moves (shared by courier and crowd)
   game/             story.js (all dialogue + mission data), missions (story engine), cutscene (director), activity (sitting, dancing + rhythm),
                     interiors (the five rooms + cast), places (doors, walking indoors, shops),
                     rules (heat, cash, health, pickups, carjack), damage (vehicle condition, fire, explosions),
-                    combat (blasters, fireworks, patrol lasers), events (random street events), rooftops, stunts
+                    combat (blasters, fireworks, patrol lasers), events (random street events), rooftops, stunts, cinematic (orbit camera mode)
   player/           the courier model + skating controller, follow camera
   vehicles/         car / bike / tank / helicopter models and physics, effect pools (sparks, smoke, beams, rings)
   cheats/           cheat console and codes

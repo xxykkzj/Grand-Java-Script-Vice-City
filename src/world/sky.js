@@ -1,7 +1,7 @@
 // Sky dome (gradient, striped synthwave sun, stars, moon) and the animated ocean.
 import * as THREE from 'three';
 import { timeU, fogU, FOG_PARS } from '../core/util.js';
-import { HX, HZ } from './layout.js';
+import { HX, HZ, KEY } from './layout.js';
 
 export function createSky(scene) {
   const C = () => ({ value: new THREE.Color() });
@@ -87,6 +87,8 @@ export function createOcean(scene) {
     uDeep: C(), uShallow: C(), uSky: C(), uSunCol: C(),
     uSunDir: { value: new THREE.Vector3(1, 0.1, 0.2).normalize() },
     uIsle: { value: new THREE.Vector2(HX, HZ) },
+    uKey: { value: new THREE.Vector4((KEY.x0 + KEY.x1) / 2, 0, (KEY.x1 - KEY.x0) / 2, (KEY.z1 - KEY.z0) / 2) },
+    uFoam: { value: 1 },
     uTime: timeU, ...fogU,
   };
   const mat = new THREE.ShaderMaterial({
@@ -100,10 +102,25 @@ export function createOcean(scene) {
       }`,
     fragmentShader: /* glsl */`
       uniform vec3 uDeep, uShallow, uSky, uSunCol, uSunDir;
-      uniform vec2 uIsle;
-      uniform float uTime;
+      uniform vec2 uIsle; uniform vec4 uKey;
+      const float HZ_ = ${HZ.toFixed(1)}, HX_ = ${HX.toFixed(1)};
+      uniform float uTime, uFoam;
       ${FOG_PARS}
       varying vec3 vW;
+      float hh(vec2 q){ return fract(sin(dot(q, vec2(127.1, 311.7))) * 43758.5453); }
+      float vnz(vec2 q){ vec2 i = floor(q), f = fract(q); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hh(i), hh(i + vec2(1.0, 0.0)), f.x), mix(hh(i + vec2(0.0, 1.0)), hh(i + vec2(1.0, 1.0)), f.x), f.y); }
+      // foam skirt and an expanding ripple round the posts under a pier: posts stand in two rows, 12.5 m apart
+      float postFoam(vec2 p, float cx, float z0, float n, float rad, float t){
+        vec2 a = p - vec2(cx, 0.0);
+        if (abs(a.x) > 9.0 || p.y < z0 - 8.0 || p.y > z0 + n * 12.5 + 4.0) return 0.0;
+        float k = clamp(floor((p.y - z0) / 12.5 + 0.5), 0.0, n - 1.0);
+        float r = length(vec2(abs(a.x) - 5.85, p.y - (z0 + k * 12.5)));
+        float skirt = 1.0 - smoothstep(rad + 0.1, rad + 0.8 + 0.25 * sin(t * 2.3 + k * 1.7), r);
+        float f = fract(t * 0.3 + k * 0.37);
+        float ring = (1.0 - smoothstep(0.0, 0.18, abs(r - (rad + 0.3 + f * 1.8)))) * (1.0 - f);
+        return clamp(skirt * 0.9 + ring * 0.7, 0.0, 1.0) * (0.7 + 0.3 * vnz(p * 4.0 + t));
+      }
       void main(){
         vec2 p = vW.xz;
         float t = uTime;
@@ -113,6 +130,8 @@ export function createOcean(scene) {
         vec3 V = normalize(cameraPosition - vW);
         vec2 q = abs(p) - uIsle;
         float dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
+        vec2 qk = abs(p - uKey.xy) - uKey.zw;
+        float distK = length(max(qk, 0.0)) + min(max(qk.x, qk.y), 0.0);
         // seen from below (the camera is under the surface): a bright Snell's window of sky straight above,
         // the wavy surface rippling across it, and the murk of total internal reflection beyond its rim
         if (cameraPosition.y < vW.y) {
@@ -136,9 +155,34 @@ export function createOcean(scene) {
         vec3 R = reflect(-V, N);
         col += uSunCol * (pow(max(dot(R, uSunDir), 0.0), 90.0) * 1.4 + pow(max(dot(R, uSunDir), 0.0), 12.0) * 0.18);
         // surf rolling up the sand
-        float foam = smoothstep(0.55, 1.0, sin(dist * 0.8 - t * 1.6 + n * 1.5) * 0.5 + 0.5) * smoothstep(16.0, 0.0, dist);
-        foam += smoothstep(1.6, 0.0, dist);
-        col = mix(col, vec3(1.0), clamp(foam, 0.0, 1.0) * 0.55);
+        float foam;
+        if (uFoam > 0.5) {
+          // High: swells that arrive at the shore with a sharp crest and a ragged lace behind it, a wash that runs
+          // up the waterline and back, and foam round the pier posts. The beach (south of the old town) starts
+          // its waterline 5 m out where the sand slips under; the seawalls start at the wall.
+          float wb = smoothstep(HZ_ - 40.0, HZ_, p.y) * (1.0 - smoothstep(HX_ + 2.0, HX_ + 12.0, abs(p.x)));
+          float sd = min(dist - 5.0 * wb, distK);
+          foam = 0.0;
+          if (sd < 40.0) {
+            float lace = vnz(p * 1.15 + vec2(t * 0.25, -t * 0.18)), lace2 = vnz(p * 3.1 + vec2(-t * 0.4, t * 0.3));
+            float cyc = fract(sd / 14.0 + t * 0.07 + n * 0.03);
+            float crest = smoothstep(0.0, 0.05, cyc) * (1.0 - smoothstep(0.05, 0.3, cyc));
+            float amp = mix(0.4, 1.0, 1.0 - smoothstep(3.0, 22.0, sd)) * (1.0 - smoothstep(14.0, 38.0, sd));
+            foam = crest * amp * smoothstep(0.36, 0.62, lace * 0.7 + lace2 * 0.3 + crest * 0.45);
+            float swash = 1.6 + 1.6 * (0.5 + 0.5 * sin(t * 0.9 + p.x * 0.03 + n));
+            float wash = (1.0 - smoothstep(0.0, swash, sd)) * (0.55 + 0.45 * smoothstep(0.35, 0.7, lace2));
+            float edge = (1.0 - smoothstep(0.0, 0.4, abs(sd - swash))) * smoothstep(0.3, 0.6, lace) * 0.8;
+            foam = max(foam, max(wash * 0.9, edge));
+          }
+          foam = max(foam, max(postFoam(p, 40.0, 156.0, 8.0, 0.32, t), postFoam(p, -790.0, 156.0, 7.0, 0.3, t)));
+          // lit by what is above it: bright by day, a dim moonlit grey at night
+          float lit = clamp(dot(uShallow, vec3(0.333)) * 1.6 + 0.12, 0.1, 1.0);
+          col = mix(col, mix(uSky, vec3(1.0), 0.6) * lit, clamp(foam, 0.0, 1.0) * 0.85);
+        } else {
+          foam = smoothstep(0.55, 1.0, sin(dist * 0.8 - t * 1.6 + n * 1.5) * 0.5 + 0.5) * smoothstep(16.0, 0.0, dist);
+          foam += smoothstep(1.6, 0.0, dist);
+          col = mix(col, vec3(1.0), clamp(foam, 0.0, 1.0) * 0.55);
+        }
         float fogF = smoothstep(uFogNear, uFogFar, length(cameraPosition - vW));
         col = mix(col, uFogColor, fogF);
         gl_FragColor = vec4(col, 1.0);

@@ -148,6 +148,7 @@ export function createHud(L, groundCanvas, renderer, keyCanvas) {
           const i = renderer.info.render;
           el.perf.textContent =
             `FPS         ${fps.toFixed(0)}\nDRAW CALLS  ${i.calls}\nTRIANGLES   ${(i.triangles / 1000).toFixed(1)}k\n` +
+            `RES SCALE   ${st.res || ''}\nGRAPHICS    ${st.gfx || ''}\n` +
             `AI CARS     ${st.counts[0]} (TARGET ${st.counts[2]})\nPEDESTRIANS ${st.counts[1]} (TARGET ${st.counts[3]})\nANIMALS     ${st.counts[4]}\n` +
             `GEOMETRIES  ${renderer.info.memory.geometries}\nTEXTURES    ${renderer.info.memory.textures}\nPAGE SIZE   ${pageKB.toFixed(0)} KB (1 file)\nDISTRICTS   ${st.districts || ''}`;
         }

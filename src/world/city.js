@@ -10,6 +10,8 @@ import { paintGround, paintSigns, SIGN_ROWS } from './textures.js';
 import { addDetails, buildLife } from './details.js';
 import { createGlow } from './glow.js';
 import { rampParts } from './rampGeo.js';
+import { neonPools } from './neonpools.js';
+import { quality } from '../core/quality.js';
 
 function roundedShape(w, d, r) {
   const s = new THREE.Shape();
@@ -55,6 +57,8 @@ function createLampMap(L) {
       ctx.fillStyle = g; ctx.fillRect(sx - sw / 2 - 0.5, z, sw + 1, 4.5);
     }
     for (const k in L.places) { const p = L.places[k]; pool(p.x + HX, p.z - 3 + HZ, 5, 0.35, '255,150,220'); }
+    // the big neon signs throw a pool of their own colour (High quality)
+    if (quality.high && L.neonPools) for (const n of L.neonPools) pool(n.x + HX, n.z + HZ, n.r, n.a, n.rgb);
     data = ctx.getImageData(0, 0, W, H).data;
   };
   paint();
@@ -381,6 +385,8 @@ export function buildCity(scene0, L) {
   const glow = createGlow(scene, glows.length);
   for (const g of glows) glow.add(g[0], g[1], g[2], g[3], g[4], g[5]);
   glow.commit();
+  L.neonPools = neonPools(glows);
+  L.lampMap.repaint();
 
   const life = buildLife(scene, bodyMat);
   // knocked-down lamps and (tank-)felled palms: tip the instance over about its base towards `dir`

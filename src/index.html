@@ -196,6 +196,12 @@ body.touch #sub{left:calc(16px + var(--sal));transform:none;max-width:min(62ch,c
 @media (max-width:520px),(max-height:420px){#sub{font-size:max(15px,calc(20 * var(--u) * var(--subk)));padding:9px 12px 8px}}
 #skip{position:absolute;right:calc(18px + var(--sar));bottom:calc(6vh - 8px);font-size:calc(11 * var(--u));letter-spacing:.14em;color:rgba(255,246,236,.75);opacity:0;transition:opacity .4s}
 #cine.on #skip{opacity:1}
+#cine.cm::before,#cine.cm::after{transform:none}
+body.cinemode #hud,body.cinemode #tzone,body.cinemode #tctl,body.cinemode #sub{display:none !important}
+#cinetag{position:fixed;left:50%;bottom:calc(3vh);transform:translateX(-50%);z-index:2;pointer-events:none;opacity:0;transition:opacity .6s;
+  font:700 calc(11 * var(--u))/1.2 var(--mono);letter-spacing:.2em;color:rgba(255,246,236,.85);text-align:center;width:max-content;max-width:92vw}
+#cinetag.on{opacity:1}
+#scine small{display:inline;margin:0 0 0 8px;font:700 11px var(--mono);color:var(--cyan)}
 #fade{position:fixed;inset:0;z-index:5;background:#000;opacity:0;pointer-events:none;transition:opacity .35s}
 #fade.on{opacity:1}
 #card{position:fixed;inset:0;z-index:4;display:grid;place-items:center;text-align:center;pointer-events:none;padding:0 4vw;
@@ -335,7 +341,7 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
     <div class="dbar" id="drivalw" hidden><span>CHIP</span><i><i id="drival"></i></i></div>
     <div id="dmoves"></div>
   </div>
-  <div id="note" class="kbonly">Generated in code, plus a few CC0 models baked in — <b>one file, 0 asset files</b></div>
+  <div id="note" class="kbonly">Built in code, with a few CC0 models — <b>one file</b></div>
 </div>
 
 <div id="tzone" hidden><div id="tzl"></div><div id="tzr"></div><div id="stick" class="idle"><i></i></div></div>
@@ -346,6 +352,7 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
 <div id="fade"></div>
 <div id="tctl" hidden><div id="tbtns"></div><div id="tdance" hidden></div></div>
 
+<div id="cinetag" role="status">CINEMATIC MODE · PRESS ANY KEY OR TAP TO EXIT</div>
 <div id="settings" hidden role="dialog" aria-label="Paused">
   <div class="panel">
     <h3>PAUSED</h3>
@@ -353,6 +360,12 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
     <div class="pick"><button type="button" data-mode="keys" aria-pressed="false">KEYBOARD &amp; MOUSE</button><button type="button" data-mode="touch" aria-pressed="false">TOUCH CONTROLS</button></div>
     <p>SUBTITLES</p>
     <div class="pick" id="subpick"><button type="button" data-sub="n" aria-pressed="true">NORMAL</button><button type="button" data-sub="l" aria-pressed="false">LARGE</button></div>
+    <p>GRAPHICS</p>
+    <div class="pick" id="gfxpick"><button type="button" data-gfx="low" aria-pressed="false">LOW</button><button type="button" data-gfx="high" aria-pressed="true">HIGH</button></div>
+    <p>RESOLUTION</p>
+    <div class="pick" id="respick"><button type="button" data-res="auto" aria-pressed="true">AUTO</button><button type="button" data-res="full" aria-pressed="false">FULL</button></div>
+    <p>CINEMATIC CAMERA</p>
+    <div class="pick"><button type="button" id="scine">START CINEMATIC MODE <small>K</small></button></div>
     <p>STUNT JUMPS</p>
     <div id="stuntc" class="stuntc">STUNTS FOUND 0/8</div>
     <button id="sresume" class="pbtn" type="button">RESUME</button>
@@ -391,7 +404,7 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
     <p id="keys" class="kbonly" hidden>
       <kbd>W A S D</kbd> move &nbsp; <kbd>Shift</kbd> sprint &nbsp; <kbd>Space</kbd> jump &nbsp; <kbd>Drag</kbd> look &nbsp; <kbd>V</kbd> camera view &nbsp; <kbd>E</kbd> vehicles, bikes, counters<br>
       Skate into a glowing ring to walk into a place &nbsp;·&nbsp; the pulsing blip on the map is your next job<br>
-      <kbd>~</kbd> / <kbd>T</kbd> cheat console &nbsp; <kbd>N</kbd> time of day &nbsp; <kbd>[</kbd> <kbd>]</kbd> time speed &nbsp; <kbd>M</kbd> mute &nbsp; <kbd>P</kbd> perf panel
+      <kbd>~</kbd> / <kbd>T</kbd> cheat console &nbsp; <kbd>N</kbd> time of day &nbsp; <kbd>[</kbd> <kbd>]</kbd> time speed &nbsp; <kbd>M</kbd> mute &nbsp; <kbd>P</kbd> perf panel &nbsp; <kbd>K</kbd> cinematic camera
     </p>
   </div>
 </div>
