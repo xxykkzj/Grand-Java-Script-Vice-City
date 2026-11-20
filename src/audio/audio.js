@@ -127,6 +127,7 @@ export function createAudio() {
       return mus.on ? 'on' : 'off';
     },
     // automated checks: fire the auto-off after `sec` seconds of play; read the state
+    engineGain() { return eng ? +eng.g.gain.value.toFixed(3) : 0; },
     musicAuto(sec) { mus.until = (ctx ? ctx.currentTime : 0) + sec; mus.fired = false; },
     musicState() {
       const cur = players.find((p) => !p.out);
@@ -140,10 +141,22 @@ export function createAudio() {
     update(s) {
       if (!ctx) return;
       const t = ctx.currentTime;
-      eng.g.gain.setTargetAtTime(s.engine > 0 ? 0.1 + s.engineRev * 0.08 : 0, t, 0.08);
-      const f = (s.heavy ? 34 : 52) + s.engineRev * (s.heavy ? 50 : 150);
-      eng.o1.frequency.setTargetAtTime(f, t, 0.06); eng.o2.frequency.setTargetAtTime(f * 0.5, t, 0.06);
-      eng.f.frequency.setTargetAtTime(280 + s.engineRev * 1400, t, 0.08);
+      // engine: loud only while the revs are changing (pulling away, braking, shifting); at a steady cruise the
+      // ear tunes it out, so it settles to a soft hum after a few seconds and sits under the music. Pitch climbs
+      // through four gears instead of one endless drone.
+      const edt = Math.min(0.1, Math.max(0, t - (eng.lastT || t))); eng.lastT = t;
+      const rev = s.engineRev || 0, prevS = eng.sRev || 0;
+      eng.sRev = prevS + (rev - prevS) * Math.min(1, edt / 0.8);           // smoothed revs: ignore small wobbles
+      const dRev = edt > 0 ? Math.abs(eng.sRev - prevS) / edt : 0;
+      eng.calm = eng.calm == null ? 0 : dRev > 0.1 ? Math.max(0, eng.calm - edt * 3) : Math.min(1, eng.calm + edt / 4);
+      const musicUp = mus.on && players.some((p) => !p.out) ? 1 : 0;
+      const eGain = s.engine > 0 ? (0.035 + rev * 0.06) * (1 - 0.65 * eng.calm) * (1 - 0.35 * musicUp) : 0;
+      eng.g.gain.setTargetAtTime(eGain, t, 0.12);
+      const gears = s.heavy ? 2 : 4, gx = Math.min(rev, 0.999) * gears, frac = gx - Math.floor(gx);
+      const wob = 1 + 0.012 * Math.sin(t * 2.3) + 0.008 * Math.sin(t * 5.1);
+      const f = ((s.heavy ? 34 : 50) + (0.35 + 0.65 * frac) * (s.heavy ? 40 : 95) + Math.floor(gx) * (s.heavy ? 6 : 10)) * wob;
+      eng.o1.frequency.setTargetAtTime(f, t, 0.07); eng.o2.frequency.setTargetAtTime(f * 0.5, t, 0.07);
+      eng.f.frequency.setTargetAtTime((220 + rev * 900) * (1 - 0.3 * eng.calm), t, 0.1);
       skate.g.gain.setTargetAtTime(s.skate * 0.12, t, 0.08);
       skate.f.frequency.setTargetAtTime(900 + s.skate * 1800, t, 0.1);
       rotor.g.gain.setTargetAtTime(s.rotor * 0.55, t, 0.15);

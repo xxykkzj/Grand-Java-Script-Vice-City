@@ -204,6 +204,7 @@ async function boot() {
   game.debug = {
     warp: (key) => places.warp(key),
     camYaw: (y) => { cam.yaw = y; cam.pitch = 0.12; },
+    engine: () => audio.engineGain(),
     skip: () => cut.skip(),
     bike: () => { const b = vehicles.cars.find((c) => c.kind === 'bike' && !c.ai); player.pos.set(b.x + 1.6, 0, b.z); return b; },
     to: (x, z) => { if (game.vehicle) { game.vehicle.x = x; game.vehicle.z = z; } else player.pos.set(x, player.floor, z); },
