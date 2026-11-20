@@ -15,6 +15,7 @@ import { rampParts } from './rampGeo.js';
 import { neonPools } from './neonpools.js';
 import { quality } from '../core/quality.js';
 import { LADDERS, LADDER_GAP } from './sea.js';
+import { footprint } from './layout.js';
 
 const W = KEY.x1 - KEY.x0, H = KEY.z1 - KEY.z0;
 const INK = '#1d1630', CREAM = '#fbf7f0', STEEL = '#b9bcc8', ASPH = '#3b3548', WALL_C = '#e9d8c4', COPING = '#27c9bf';
@@ -170,6 +171,7 @@ export function buildKey(scene, L, renderer, adSigns) {
     S.push(bx(w + 0.5, h + 0.4, 0.22, x, y, z, INK, 0, 0, yaw));
     for (const o of [-w * 0.32, w * 0.32]) {
       S.push(bx(0.22, y - y0, 0.22, x + c * o - sx * 0.2, y0 + (y - y0) / 2, z - sn * o - sz * 0.2, '#3b3350'));
+      if (y0 < 1) footprint('billboard leg: ' + name, x + c * o - sx * 0.2, z - sn * o - sz * 0.2, 0.11);
       S.push(bx(0.08, 0.08, 1.2, x + c * o + sx * 0.5, y + h / 2 + 0.4, z - sn * o + sz * 0.5, '#3b3350', 0, yaw), bx(0.4, 0.14, 0.3, x + c * o + sx * 1.05, y + h / 2 + 0.35, z - sn * o + sz * 1.05, '#fff2c8', 0, yaw));
       glows.push([x + c * o + sx * 1.0, y + h / 2 + 0.2, z - sn * o + sz * 1.0, '#ffe7b0', 4.5, 0]);
     }
@@ -447,9 +449,10 @@ export function buildKey(scene, L, renderer, adSigns) {
     wall(true, N0, KEY.x0, KEY.x1);
     wall(true, S0, KEY.x0, MPIER.x0 - 0.2); wall(true, S0, MPIER.x1 + 0.2, KEY.x1);
     // the causeway lands in a pair of pastel gate towers with the key's name
-    for (const z of [C.z0 - 1.6, C.z1 + 1.6]) { S.push(bx(3, 12, 3, KEY.x1 + 1.5, 6, z, '#a5e6cf'), bx(3.6, 1, 3.6, KEY.x1 + 1.5, 12.4, z, '#ff4fa3')); N.push(bx(3.7, 0.14, 3.7, KEY.x1 + 1.5, 11.8, z, '#18f0ff')); glows.push([KEY.x1 + 1.5, 13.5, z, '#ff2bd1', 8, 0.1]); }
+    for (const z of [C.z0 - 1.6, C.z1 + 1.6]) { footprint('causeway gate pylon', KEY.x1 + 1.5, z, 1.5); S.push(bx(3, 12, 3, KEY.x1 + 1.5, 6, z, '#a5e6cf'), bx(3.6, 1, 3.6, KEY.x1 + 1.5, 12.4, z, '#ff4fa3')); N.push(bx(3.7, 0.14, 3.7, KEY.x1 + 1.5, 11.8, z, '#18f0ff')); glows.push([KEY.x1 + 1.5, 13.5, z, '#ff2bd1', 8, 0.1]); }
     S.push(bx(2.4, 2.2, C.z1 - C.z0 + 6, KEY.x1 + 1.5, 10.6, (C.z0 + C.z1) / 2, '#f6f1e7'));
     S.push(bx(0.2, 4.4, 0.2, -1013.5, 2.2, 38.6, '#3b3350'), bx(0.2, 4.4, 0.2, -1007.5, 2.2, 38.6, '#3b3350'));
+    footprint('sign leg: Mango Grove', -1013.5, 38.6, 0.1); footprint('sign leg: Mango Grove', -1007.5, 38.6, 0.1);
     sign('Mango Grove', -1010.5, 4.6, 38.6, 0, 6.6);
   }
 

@@ -176,7 +176,7 @@ export function createCockpit(scene) {
       if (k !== active) { if (active) active.g.visible = false; active = k; if (k) k.g.visible = true; }
       anchor.visible = !!k;
       if (!k) return;
-      const [eh, ef] = EYE[vehicle.kind];
+      const [eh, ef] = (vehicle.spec && vehicle.spec.eye) || EYE[vehicle.kind];
       anchor.position.set(vehicle.x, vehicle.y || 0, vehicle.z);
       anchor.rotation.y = vehicle.yaw;
       root.position.set(0, eh, ef);

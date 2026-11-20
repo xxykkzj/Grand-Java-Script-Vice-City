@@ -251,6 +251,8 @@ body.dead #hud{visibility:hidden}
 #shop{position:fixed;z-index:4;left:calc(24 * var(--u) + var(--sal));top:50%;transform:translateY(-50%);width:min(calc(430 * var(--u)),86vw);max-height:calc(100% - 24px - var(--sat) - var(--sab));overflow-y:auto;
   padding:calc(16 * var(--u)) calc(18 * var(--u)) calc(14 * var(--u));background:rgba(10,5,24,.86);font-size:calc(12 * var(--u));
   border:1px solid var(--pink);box-shadow:0 0 22px rgba(255,63,180,.35);clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px)}
+/* portrait: the menu sits across the bottom so the room (and Skye trying things on) stays visible above it */
+@media (orientation:portrait) and (max-aspect-ratio:9/10){#shop{left:50%;top:auto;bottom:calc(10px + var(--sab));transform:translateX(-50%);width:min(560px,94vw);max-height:min(50vh,calc(100% - 24px - var(--sat) - var(--sab)))}}
 #shop h3{margin:0 0 10px;font:italic 900 calc(28 * var(--u)) var(--disp);letter-spacing:.06em;color:var(--sun);text-shadow:3px 3px 0 #2a0b5a}
 #shop ul{list-style:none;margin:0;padding:0}
 #shop li{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:calc(7 * var(--u)) 10px;border-left:3px solid transparent;cursor:pointer}

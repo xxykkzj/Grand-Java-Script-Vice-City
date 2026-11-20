@@ -28,6 +28,7 @@ export const MODELS = [
   // Kenney Car Kit (CC0): traffic variety
   ['taxi', 'kenney-car-kit/taxi'], ['van', 'kenney-car-kit/van'], ['delivery', 'kenney-car-kit/delivery'],
   ['truck', 'kenney-car-kit/truck'], ['garbage', 'kenney-car-kit/garbage-truck'], ['ambulance', 'kenney-car-kit/ambulance'],
+  ['hatch', 'kenney-car-kit/hatchback-sports'], ['suv', 'kenney-car-kit/suv'],
   // Kenney City Kit Suburban (CC0): the suburban street
   ['house1', 'kenney-city-suburban/house_type01'], ['house3', 'kenney-city-suburban/house_type03'], ['house5', 'kenney-city-suburban/house_type05'],
   ['house7', 'kenney-city-suburban/house_type07'], ['house9', 'kenney-city-suburban/house_type09'], ['house12', 'kenney-city-suburban/house_type12'],

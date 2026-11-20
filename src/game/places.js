@@ -1,5 +1,6 @@
 // Places you can walk into: the glowing ring at each door, the entry scene, walking around
 // inside, the way back out, and the two shops (outfits at Zigzag Threads, snacks at Pelican Pantry 24).
+import * as THREE from 'three';
 import { clamp, lerp, damp, angleDelta, pushOut, timeU, PI, reducedMotion } from '../core/util.js';
 import { makeMarker, ease } from './cutscene.js';
 import { buildRoom, OY, rimU } from './interiors.js';
@@ -175,6 +176,25 @@ export function createPlaces(game, scene, camera) {
     shop = null; shopUse = null; game.busy = null; el.box.hidden = true;
     player.model.setOutfit(worn());
   }
+  // The try-on view: Skye on the fitting platform is framed in the part of the screen the menu leaves free
+  // (to the right of it on a landscape screen, above it when it sits at the bottom of a portrait one). The
+  // camera keeps its three-quarter angle, backs off far enough for her to fit that area, then turns so she
+  // lands in its middle.
+  const FIT_DIR = new THREE.Vector3(1.5, 0.45, 2.9).normalize();
+  function frameFitting(x, y, z) {
+    const W = innerWidth, H = innerHeight, rc = el.box.getBoundingClientRect();
+    const bottom = !el.box.hidden && rc.top > H * 0.3 && rc.width > W * 0.6;      // the menu across the bottom
+    const fx0 = bottom ? 0 : el.box.hidden ? 0 : Math.min(W * 0.7, rc.right), fy1 = bottom ? rc.top : H;
+    const cx = (fx0 + W) / 2, cy = fy1 / 2, fw = W - fx0, fh = fy1;
+    const fov = 42, tv = Math.tan(fov * Math.PI / 360), th = tv * camera.aspect;
+    // she is about 1.9 m tall standing on the platform (and 0.9 m wide as she turns): fit 78 % of the free area
+    const dist = Math.max(2.6, 2.1 / (2 * tv * 0.78 * fh / H), 1.1 / (2 * th * 0.78 * fw / W));
+    const sy = y + 0.9;
+    camera.position.set(x + FIT_DIR.x * dist, sy + FIT_DIR.y * dist, z + FIT_DIR.z * dist);
+    camera.lookAt(x, sy, z);
+    const nx = cx / W * 2 - 1, ny = 1 - cy / H * 2;
+    camera.rotateY(Math.atan(nx * th)); camera.rotateX(-Math.atan(ny * tv));
+  }
   function buy() {
     const v = prov();
     if (v) { const m = v.pick(items()[sel], sel); if (!shop) return; msg = m || ''; return render(); }
@@ -277,7 +297,7 @@ export function createPlaces(game, scene, camera) {
         const u = shopUse || r.use;
         if (shop === 'wear') {
           player.pos.set(r.ox + u.x, OY + 0.22, r.oz + u.z - 0.4); player.yaw += angleDelta(player.yaw, 0.25 + (reducedMotion ? 0 : Math.sin(timeU.value * 0.9) * 0.5)) * (1 - Math.exp(-5 * dt));
-          camera.position.set(r.ox + u.x + 1.5, OY + 1.5, r.oz + u.z + 2.5); camera.lookAt(r.ox + u.x + 0.75, OY + 1.12, r.oz + u.z - 0.4);
+          frameFitting(r.ox + u.x, OY + 0.22, r.oz + u.z - 0.4);
         } else {
           const g = u.look ? { x: u.look[0], z: u.look[1] } : r.npc[u.clerk || r.clerk || 'GUS'], cs = u.cam || [-1.3, 2, 2.1];
           player.pos.set(r.ox + u.x, OY, r.oz + u.z); player.yaw += angleDelta(player.yaw, Math.atan2(g.x - u.x, g.z - u.z)) * (1 - Math.exp(-8 * dt));

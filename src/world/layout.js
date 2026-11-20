@@ -17,6 +17,11 @@ export const ROADS = {
   sideW: 12, sideZ0: -140, sideZ1: 44,
 };
 
+const BLOCK_PAL = [
+  ['#f7b3c6', '#ffc7a0', '#ffd6e0', '#f9b8a8', '#fde2c8'], ['#a5e6cf', '#8fe3d9', '#c9f2e3', '#b8e8f0', '#e0f7ec'],
+  ['#fff0b3', '#ffe5a0', '#fdf6d0', '#ffd9a8', '#f6f1e7'], ['#d8c0f2', '#e6d4fa', '#c9c3f5', '#f2d0ec', '#b3d9f7'],
+  ['#b3d9f7', '#a8e0f0', '#d0e8fb', '#9fd6e8', '#f6f1e7'], ['#ffc7a0', '#ffb8a8', '#ffe0c4', '#f7b3c6', '#fff0b3'],
+];
 const PASTEL = ['#f7b3c6', '#a5e6cf', '#fff0b3', '#b3d9f7', '#ffc7a0', '#d8c0f2', '#f6f1e7', '#8fe3d9'];
 const ACCENT = ['#ff4fa3', '#19c9bd', '#ffc93f', '#7a5cff', '#ff8a3d', '#ffffff'];
 const NEON = ['#ff2bd1', '#18f0ff', '#ffe14a', '#8dff5a', '#ff6a3d', '#b388ff'];
@@ -90,6 +95,31 @@ export function makeLayout() {
   const front = buildings.filter((b) => b.row === 0).sort((p, q) => Math.abs(p.cx) - Math.abs(q.cx));
   const rest = buildings.filter((b) => b.row === 1).sort((p, q) => Math.abs(p.cx) - Math.abs(q.cx));
   [...front, ...rest].slice(0, SIGN_NAMES.length - 1).forEach((b, i) => { b.name = SIGN_NAMES[i]; });
+  // Each block has its own pastel palette (corals, mints, lemons, lilacs, skies, peaches) and neighbours never
+  // share a colour, so a street reads as a row of different buildings. Separate random stream: everything
+  // else keeps its place.
+  { const pr = rng(2186);
+    blocks.forEach(([a, b], bi) => {
+      for (const ri of [0, 1, 2]) {
+        const pal = BLOCK_PAL[(bi * 2 + ri * 3) % BLOCK_PAL.length];
+        let prev = null;
+        for (const k of buildings.filter((q) => q.row === ri && q.cx > a && q.cx < b).sort((p, q) => p.cx - q.cx)) {
+          let c = pal[Math.floor(pr() * pal.length)];
+          if (c === prev) c = pal[(pal.indexOf(c) + 1 + Math.floor(pr() * (pal.length - 1))) % pal.length];
+          k.color = c; prev = c;
+          if (k.accent === c) k.accent = ACCENT[(ACCENT.indexOf(k.accent) + 1) % ACCENT.length];
+        }
+      }
+    }); }
+  // the 4 m gaps between neighbouring buildings in a block: the alleys (world/streetscape.js dresses them)
+  const alleys = [];
+  for (const ri of [0, 1, 2]) {
+    const row = buildings.filter((q) => q.row === ri).sort((p, q) => p.x0 - q.x0);
+    for (let i = 1; i < row.length; i++) {
+      const a = row[i - 1], b = row[i];
+      if (b.x0 - a.x1 > 3.5 && b.x0 - a.x1 < 4.5) alleys.push({ x0: a.x1, x1: b.x0, x: (a.x1 + b.x0) / 2, z0: Math.max(a.z0, b.z0), z1: Math.min(a.z1, b.z1), row: ri, a, b });
+    }
+  }
 
   const nearSide = (x, m) => SIDE_X.some((s) => Math.abs(x - s) < m);
   // Street lamps: { x, z, yaw } where yaw points the arm at the road.
@@ -130,7 +160,7 @@ export function makeLayout() {
   for (let x = -265; x <= 270; x += 13) if (!nearSide(x, 14)) spots.push({ x, z: 59.2, yaw: Math.PI / 2 });
   for (let x = -270; x <= 270; x += 17) if (!nearSide(x, 16)) spots.push({ x, z: 0.8, yaw: Math.PI / 2 });
   for (const s of SIDE_X) spots.push({ x: s - 4.8, z: 22, yaw: 0 }, { x: s + 4.8, z: -38, yaw: Math.PI });
-  parking.push({ x: 6, z: 59.2, yaw: Math.PI / 2 });         // one right next to the spawn
+  parking.push({ x: 6, z: 59.2, yaw: Math.PI / 2, spawn: true });         // one right next to the spawn
   const taken = new Set();
   let guard = 0;
   while (parking.length < 18 && guard++ < 400) {
@@ -147,6 +177,17 @@ export function makeLayout() {
   for (let i = umbrellas.length - 1; i >= 0; i--) if (inRun(umbrellas[i].x, umbrellas[i].z, 2.5)) umbrellas.splice(i, 1);
   for (let i = palms.length - 1; i >= 0; i--) if (inRun(palms[i].x, palms[i].z, 0.8)) palms.splice(i, 1);
   huts.push({ x: -120, z: 100, color: '#ffd447', accent: '#ff4fa3' }, { x: 150, z: 104, color: '#8fe3d9', accent: '#ff8a3d' });
+  // street trees in pits on the back avenues' wide sidewalks (between the lamps, never in a junction or on a
+  // road, clear of the palms)
+  const streetTrees = [];
+  { const tr = rng(3131);
+    const tree = (x, z) => {
+      if (onRoad(x, z, 0.9) || inJunction(x, z, 2.5) || lamps.some((l) => Math.hypot(l.x - x, l.z - z) < 3) || palms.some((p) => Math.hypot(p.x - x, p.z - z) < 3)) return;
+      streetTrees.push({ x, z, s: 0.85 + tr() * 0.35, yaw: tr() * 6.28, kind: tr() < 0.5 ? 0 : 1 });
+    };
+    for (let x = -260; x <= 280; x += 40) tree(x, 4.7);
+    for (let x = -260; x <= 280; x += 50) tree(x, -76.7);
+  }
 
   // Small solid props (spatial grid, see props.js) and the seats around town.
   const props = createProps();
@@ -155,6 +196,7 @@ export function makeLayout() {
   for (const p of beach.palms) palms.push(p);
   for (const u of beach.umbrellas) umbrellas.push(u);
   palms.forEach((p, i) => { p.col = props.circle(p.x, p.z, 0.3 * p.s, 8); p.col.tag = 'palm'; p.col.i = i; });
+  for (const t of streetTrees) props.circle(t.x, t.z, 0.28, 6).tag = 'tree';
   lamps.forEach((l, i) => { l.col = props.circle(l.x, l.z, 0.2, 6.4); l.col.tag = 'lamp'; l.col.i = i; });
   const rot = (u, lx, lz) => [u.x + lx * Math.cos(u.yaw) + lz * Math.sin(u.yaw), u.z - lx * Math.sin(u.yaw) + lz * Math.cos(u.yaw)];
   for (const u of umbrellas) {
@@ -215,11 +257,16 @@ export function makeLayout() {
     { x: places.club.x - 4.6, z: 43.2, yaw: -Math.PI / 2 },
     { x: -16, z: 64.6, yaw: Math.PI / 2 },
     { x: 31, z: 146, yaw: 0 },
+    // scooters parked at the kerb of the back avenues (rideable: vehicles/types.js)
+    { x: -215, z: 2.9, yaw: Math.PI / 2, type: 'scooter' }, { x: -45, z: 2.9, yaw: Math.PI / 2, type: 'scooter' },
+    { x: 115, z: -73.2, yaw: Math.PI / 2, type: 'scooter' }, { x: 225, z: 2.9, yaw: Math.PI / 2, type: 'scooter' },
   ];
   // phone booths stand on the Deco Row sidewalk and are solid
   const booths = [];
   for (const s of SIDE_X) booths.push({ x: s + 13.5, z: 38.2 });
   booths.push({ x: -60, z: 76.4 }, { x: 80, z: 76.4 });
+  // and three more on the inner streets
+  booths.push({ x: -150, z: -12.2 }, { x: 150, z: -12.2 }, { x: -30, z: -76.6 });
   for (const b of booths) solids.push({ x0: b.x - 0.6, x1: b.x + 0.6, z0: b.z - 0.6, z1: b.z + 0.6, h: 2.8 });
 
   // the edge: sawhorses in front of the causeway closure, bollards where the side streets stop
@@ -239,7 +286,7 @@ export function makeLayout() {
     const fx = nx ? (nx > 0 ? b.x1 : b.x0) : b.cx + d.along, fz = nz ? (nz > 0 ? b.z1 : b.z0) : b.cz + d.along;
     venues[k] = { key: k, ...d, b, x: fx + nx * d.out, z: fz + nz * d.out, nx, nz, venue: true };
   }
-  return { buildings, lamps, palms, parking, umbrellas, huts, beach, solids, bar, station, clinic, places, venues, bikes, booths, props, cafe, loose: [], planters: [], key, ramps, surf };
+  return { alleys, streetTrees, buildings, lamps, palms, parking, umbrellas, huts, beach, solids, bar, station, clinic, places, venues, bikes, booths, props, cafe, loose: [], planters: [], key, ramps, surf };
 }
 
 // The two stunt ramps in the old town (the key's are in world/key.js): off the promenade across the
@@ -277,9 +324,29 @@ export function offRoad(x, z, r = 0, m = 0.3) {
   for (const o of opts) if (!onRoad(o[0], o[1], r)) return [o[0], o[1]];
   return null;
 }
+// Footprints of what is built straight into the merged town meshes and stands on the ground: sign and
+// billboard legs, gantry pylons, bus shelters, booths, café parasols, street furniture without a collider.
+// Filled while the districts are built (city.js, details.js, edges.js, keyCity.js, streetscape.js) and
+// checked against the carriageways (lanes, parking lanes, crossings, the causeway deck) like the props.
+export const FOOTPRINTS = [];
+export const footprint = (what, x, z, r = 0.15) => { FOOTPRINTS.push({ what, x, z, r }); };
+// nothing on wheels gets within ~3 m of the old town's seawall (vehicles keep their noses off it), so the
+// dead-end boards at the very ends of the avenues stand beyond the lanes
+const pastLanes = (x) => Math.abs(x) > HX - 2.6 && Math.abs(x) < HX + 1;
+export function footprintsOnRoad() {
+  const bad = [];
+  for (const f of FOOTPRINTS) {
+    if (pastLanes(f.x)) continue;
+    // the causeway: its lanes run between the two parapets (the parapets themselves are wall, not lane)
+    const b = f.x < -HX && f.x > KEY.x1 ? (f.z + f.r > CAUSEWAY.z0 + 0.5 && f.z - f.r < CAUSEWAY.z1 - 0.5 ? { name: 'Halcyon Causeway deck' } : null) : onRoad(f.x, f.z, f.r);
+    if (b) bad.push({ what: f.what, x: +f.x.toFixed(2), z: +f.z.toFixed(2), road: b.name });
+    else if (inJunction(f.x, f.z, 0) && !/mast|signal/.test(f.what)) bad.push({ what: f.what, x: +f.x.toFixed(2), z: +f.z.toFixed(2), road: 'junction' });
+  }
+  return bad;
+}
 // Startup check: every prop, seat, lamp, palm, planter and loose prop must stand off the carriageways.
 export function propsOnRoad(L) {
-  const bad = [];
+  const bad = footprintsOnRoad();
   const t = (what, x, z, r) => { const b = onRoad(x, z, r); if (b) bad.push({ what, x: +x.toFixed(2), z: +z.toFixed(2), road: b.name }); };
   for (const o of L.props.cols) {
     if (o.tag === 'mast') continue;                  // signal masts stand at the kerb on purpose

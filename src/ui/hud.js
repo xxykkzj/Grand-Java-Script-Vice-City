@@ -173,7 +173,7 @@ export function createHud(L, groundCanvas, renderer, keyCanvas) {
         if (v.police) dots.police++; else if (v.ai) dots.traffic++; else dots.other++;
         let s = 4;
         if (v.police) { g.fillStyle = v.ai && v.ai.siren ? (flash ? '#ff2a3a' : '#3a7aff') : '#9fd8ff'; s = 6; }
-        else if (v.kind === 'car') { g.fillStyle = v.ai ? 'rgba(255,225,74,.6)' : '#ffe14a'; s = v.ai ? 3 : 4; }
+        else if (v.kind === 'car') { g.fillStyle = v.ai ? 'rgba(255,225,74,.6)' : '#ffe14a'; s = (v.ai ? 3 : 4) * (v.len > 6 ? 1.6 : v.len > 4.6 ? 1.25 : 1); }
         else if (v.kind === 'bike') { g.fillStyle = v.ai ? 'rgba(255,140,220,.7)' : '#ff8ad0'; s = 3; }
         else { g.fillStyle = v.kind === 'tank' ? '#8dff5a' : '#27e8ff'; s = 7; }
         g.fillRect(v.x + OX - s / 2, v.z + OZ - s / 2, s, s);

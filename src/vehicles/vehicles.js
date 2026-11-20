@@ -1,17 +1,19 @@
 // Cars (one InstancedMesh for the whole fleet), the tank, the helicopter and tank shells.
 import * as THREE from 'three';
-import { clamp, damp, angleDelta, pushOut, PI, reducedMotion, nightU, wetU } from '../core/util.js';
+import { clamp, damp, angleDelta, pushOut, PI, reducedMotion, nightU, wetU, rng } from '../core/util.js';
 import { clampToWorld, seaPull } from '../world/layout.js';
 import { carGeometry, carGlassGeometry, patrolKitGeometry, tankGeometry, heliGeometry, bikeGeometry } from './models.js';
 import { kitGeometry, kitPaint } from '../world/kits.js';
 import { createGlow } from '../world/glow.js';
+import { VTYPES, BATCHED, shapeOf, pickWeighted, PARKED_WEIGHTS, proxyGeometry } from './types.js';
+import { quality } from '../core/quality.js';
 
-export const CAP = 104;
-const POLICE = 6, BIKES = 12, HELIS = 2;
+export const CAP = 110;
+const POLICE = 6, BIKES = 16, HELIS = 2;
 // Vehicle condition (see game/damage.js for the stages, smoke, fire and explosions)
 export const MAXHP = { car: 100, bike: 60, tank: 420, heli: 140 };
 export function resetDamage(v) {
-  v.maxHp = MAXHP[v.kind] || 100; v.hp = v.maxHp;
+  v.maxHp = (v.spec && v.spec.hp) || MAXHP[v.kind] || 100; v.hp = v.maxHp;
   Object.assign(v, { burn: 0, wreck: false, char: 0, dent: 0, perf: 1, cut: false, dead: false, landed: false, wreckT: 0, bailed: false, blame: -99, smokeT: 0, sputT: 1, stage: 0, sink: null });
 }
 const SOOT = new THREE.Color('#1c1517');
@@ -32,11 +34,11 @@ const SHAPES = {
   heli: [[0.4, 1.6], [-3.6, 0.6]],
 };
 const REACH = { car: 2.3, truck: 2.75, bike: 1.17, tank: 3.35, heli: 4.2 };
-// Kenney Car Kit vehicles in the traffic (world/kits.js): scale to our street, label, collision shape
-export const KIT_CARS = {
-  taxi: { label: 'taxi', s: 1.5 }, van: { label: 'van', s: 1.55, paint: true }, delivery: { label: 'delivery van', s: 1.45, shape: 'truck', paint: true },
-  truck: { label: 'pickup truck', s: 1.5, paint: true }, garbage: { label: 'garbage truck', s: 1.45, shape: 'truck' }, ambulance: { label: 'ambulance', s: 1.45, shape: 'truck' },
-};
+// every vehicle type (vehicles/types.js) gets circles sized to its body; the sedan and the Comet keep theirs
+for (const id in VTYPES) {
+  if (id === 'sedan' || id === 'comet') { SHAPES[id] = SHAPES[VTYPES[id].kind]; REACH[id] = REACH[VTYPES[id].kind]; continue; }
+  SHAPES[id] = shapeOf(VTYPES[id]); REACH[id] = Math.max(...SHAPES[id].map(([o, r]) => Math.abs(o) + r)) + 0.05;
+}
 export function circlesOf(v, out = []) {
   const sh = SHAPES[v.shape || v.kind] || SHAPES.car, fx = Math.sin(v.yaw), fz = Math.cos(v.yaw);
   for (let i = 0; i < sh.length; i++) { const o = out[i] || (out[i] = [0, 0, 0]); o[0] = v.x + fx * sh[i][0]; o[1] = v.z + fz * sh[i][0]; o[2] = sh[i][1]; }
@@ -88,12 +90,17 @@ export function createVehicles(scene, L, fx, audio) {
   kit.frustumCulled = false;
   for (let i = 0; i < POLICE; i++) kit.setColorAt(i, new THREE.Color(1, 1, 1));
   scene.add(kit);
-  // Kenney Car Kit traffic (taxis, vans, trucks, a garbage truck, an ambulance): one BatchedMesh, one draw
-  // call for all of them. The body paint takes the instance colour (aFlag bit 1); the instance alpha
-  // darkens the whole vehicle as it gets damaged (the procedural cars dent instead)
-  const kitIds = Object.keys(KIT_CARS), kitGeo = {};
+  // Every type but the sedan and the Comet (vehicles/types.js: Kenney Car Kit models and the original
+  // convertible, muscle car, ice-cream truck, bus and scooter): one BatchedMesh, one draw call for all of
+  // them. The body paint takes the instance colour (aFlag bit 1); the instance alpha darkens the whole
+  // vehicle as it gets damaged (the procedural sedan dents instead)
+  const kitIds = BATCHED, kitGeo = {};
   let kv = 0;
-  for (const id of kitIds) { kitGeo[id] = kitGeometry(id, { scale: KIT_CARS[id].s, flags: true }); kv += kitGeo[id].attributes.position.count; }
+  const loGeo = {};
+  for (const id of kitIds) {
+    const T = VTYPES[id]; kitGeo[id] = T.geo ? T.geo() : kitGeometry(T.kit, { scale: T.s, flags: true }); kv += kitGeo[id].attributes.position.count;
+    if (T.kind === 'car') { loGeo[id] = proxyGeometry(id, kitGeo[id]); kv += loGeo[id].attributes.position.count; }
+  }
   const kitMat = new THREE.MeshLambertMaterial({ vertexColors: true });
   kitMat.onBeforeCompile = (sh) => {
     sh.vertexShader = 'attribute float aFlag;\n' + sh.vertexShader.replace('#include <color_vertex>', `#include <color_vertex>
@@ -102,9 +109,13 @@ export function createVehicles(scene, L, fx, audio) {
         vColor.rgb = mix(color.rgb, bc.rgb, step(0.5, mod(aFlag, 2.0))) * bc.a;
       #endif`);
   };
-  const kitMesh = new THREE.BatchedMesh(24, kv + 16, 0, kitMat);
+  const kitMesh = new THREE.BatchedMesh(CAP + BIKES, kv + 16, 0, kitMat);
   const kitGid = {};
   for (const id of kitIds) kitGid[id] = kitMesh.addGeometry(kitGeo[id]);
+  // far away a batched car is drawn as its simple stand-in (types.js proxyGeometry): LOD_LOW / LOD_HIGH metres
+  const kitLo = {};
+  for (const id in loGeo) kitLo[id] = kitMesh.addGeometry(loGeo[id]);
+  const LOD_LOW = 55, LOD_HIGH = 90;
   kitMesh.sortObjects = false;
   // The object-level frustum test uses BatchedMesh.boundingSphere, which three.js computes ONCE (on the
   // first render, when every instance still sat at the origin) and never refreshes when instances move.
@@ -164,21 +175,32 @@ export function createVehicles(scene, L, fx, audio) {
     if (cars.length >= CAP) return null;
     const c = {
       kind: 'car', label: 'car', x, y: 0, z, yaw, vx: 0, vy: 0, vz: 0, spin: 0, tx: 0, tz: 0, tvx: 0, tvz: 0,
-      radius: 1.5, mass: 1, driven: false, color, slip: 0, idx: cars.length, park: { x, z, yaw },
+      radius: 1.5, mass: 1, driven: false, color, slip: 0, idx: cars.length, park: { x, z, yaw }, ki: null,
     };
     Object.assign(c, extra);
-    resetDamage(c);
-    if (c.model) {
-      const K = KIT_CARS[c.model];
-      Object.assign(c, { label: K.label, shape: K.shape, ki: kitMesh.addInstance(kitGid[c.model]) });
-      if (!K.paint) c.color = kitPaint(c.model);
-    }
     if (c.kind === 'bike') {
       if (nBikes >= BIKES) return null;
-      Object.assign(c, { label: 'Comet', radius: 0.95, mass: 0.45, bi: nBikes++ });
+      Object.assign(c, { bi: nBikes++ });
       bikeMesh.count = nBikes;
     }
     cars.push(c);
+    setType(c, c.type || (c.kind === 'bike' ? 'comet' : 'sedan'), c.color);
+    return c;
+  }
+  // give a vehicle a type (vehicles/types.js): its body, handling, size, sound and condition. Cars only
+  // become other cars and two-wheelers other two-wheelers. A batched type takes (or reuses) an instance in
+  // the BatchedMesh; the sedan and the Comet hide it and draw from their own instanced meshes.
+  function setType(c, id, color) {
+    let T = VTYPES[id];
+    if (!T || T.kind !== c.kind) { id = c.kind === 'bike' ? 'comet' : 'sedan'; T = VTYPES[id]; }
+    const batched = BATCHED.includes(id);
+    Object.assign(c, { type: id, spec: T, label: c.police ? 'patrol car' : T.label, shape: id, mass: T.mass, len: T.len,
+      radius: c.kind === 'bike' ? 0.95 : id === 'sedan' ? 1.5 : Math.max(1.5, T.w / 2 + 0.55), model: batched ? id : null });
+    if (batched) { if (c.ki === null) c.ki = kitMesh.addInstance(kitGid[id]); else kitMesh.setGeometryIdAt(c.ki, kitGid[id]); c.lod = false; }
+    else if (c.ki !== null) kitMesh.setVisibleAt(c.ki, false);
+    if (T.kit && !T.paint) c.color = kitPaint(T.kit);
+    else if (color) c.color = color;
+    resetDamage(c);
     tintOf(c);
     return c;
   }
@@ -196,8 +218,10 @@ export function createVehicles(scene, L, fx, audio) {
     m.instanceColor.needsUpdate = true;
     if (c.kind !== 'bike') { glass.setColorAt(c.idx, col.setScalar(c.wreck ? 0.12 : 1 - (c.char || 0) * 0.5)); glass.instanceColor.needsUpdate = true; }
   }
-  L.parking.forEach((p, i) => addCar(p.x, p.z, p.yaw, PAINT[i % PAINT.length], p.model ? { model: p.model } : undefined));
-  L.bikes.forEach((p, i) => addCar(p.x, p.z, p.yaw, BIKE_PAINT[i % BIKE_PAINT.length], { kind: 'bike', home: p.home, hx: p.x, hz: p.z, hyaw: p.yaw }));
+  // parked at the kerb: a seeded mix of the everyday types (the key's car park asks for vans, pickups and taxis)
+  const pr = rng(1312), FROM_KIT = { truck: 'pickup' };
+  L.parking.forEach((p, i) => addCar(p.x, p.z, p.yaw, PAINT[i % PAINT.length], { type: p.spawn ? 'sedan' : p.model ? FROM_KIT[p.model] || p.model : pickWeighted(PARKED_WEIGHTS, pr), spawnCar: !!p.spawn }));
+  L.bikes.forEach((p, i) => addCar(p.x, p.z, p.yaw, BIKE_PAINT[i % BIKE_PAINT.length], { kind: 'bike', type: p.type, home: p.home, hx: p.x, hz: p.z, hyaw: p.yaw }));
   const PAINTS = PAINT;
 
   let tank = null;
@@ -315,24 +339,24 @@ export function createVehicles(scene, L, fx, audio) {
     if (!c.driven && !c.ai && !c.air && c.vx * c.vx + c.vz * c.vz < 0.0004 && !c.vy && Math.abs(c.spin) < 0.01 && Math.abs(c.tx) < 0.01 && Math.abs(c.tz - (c.kind === 'bike' ? 0.2 : 0)) < 0.01) { c.vx = c.vz = 0; c.impact = 0; return; }
     const inp = c.wreck ? null : c.driven ? user : c.ai && c.ai.pursuit && !(c.ai.stun > 0) ? c.ai.inp : null;
     const perf = c.perf || 1;
-    const B = c.kind === 'bike';
+    const B = c.kind === 'bike', T = c.spec || VTYPES.sedan;
     if (!c.air && c.vy > 0.5) c.air = true;                 // thrown by a blast
     if (inp && !c.air) {
       let fx_ = Math.sin(c.yaw), fz = Math.cos(c.yaw);
       let vf = c.vx * fx_ + c.vz * fz;
       const sf = clamp(Math.abs(vf) / 6, 0, 1) * (vf >= 0 ? 1 : -1);
-      c.yaw += inp.steer * sf * ((B ? 3 : 2.5) / (1 + Math.abs(vf) * 0.03)) * (inp.hand ? 1.4 : 1) * dt;
+      c.yaw += inp.steer * sf * (T.steer / (1 + Math.abs(vf) * 0.03)) * (inp.hand ? 1.4 : 1) * dt;
       c.steerLast = inp.steer;
       fx_ = Math.sin(c.yaw); fz = Math.cos(c.yaw);
       const rx = -fz, rz = fx_;
       vf = c.vx * fx_ + c.vz * fz;
       let vl = c.vx * rx + c.vz * rz;
-      if (inp.throttle > 0) { if (!c.cut) vf += (B ? 38 : 26) * perf * (1 - clamp(vf / ((B ? 58 : 44) * (0.55 + 0.45 * perf)), 0, 1)) * dt; }
-      else if (inp.throttle < 0) { vf -= (vf > 0.5 ? 40 : 14) * dt; if (vf < -14) vf = -14; }
+      if (inp.throttle > 0) { if (!c.cut) vf += T.acc * perf * (1 - clamp(vf / (T.top * (0.55 + 0.45 * perf)), 0, 1)) * dt; }
+      else if (inp.throttle < 0) { vf -= (vf > 0.5 ? T.brake : 14 * Math.min(1, T.acc / 20)) * dt; if (vf < -14) vf = -14; }
       else vf -= Math.sign(vf) * Math.min(Math.abs(vf), 2.5 * dt);
       vf *= Math.exp(-(inp.hand ? 1.3 : 0.3) * dt);
       // lateral grip: lose it under handbrake or once already sliding => drift
-      const grip = B ? 9 : inp.hand ? 1.1 : Math.abs(vl) > 7 ? 3 : 7.5;
+      const grip = B ? T.grip : inp.hand ? 1.1 : Math.abs(vl) > 7 ? T.grip * 0.4 : T.grip;
       vl *= Math.exp(-grip * dt);
       c.vx = fx_ * vf + rx * vl; c.vz = fz * vf + rz * vl;
       c.slip = Math.abs(vl);
@@ -496,6 +520,7 @@ export function createVehicles(scene, L, fx, audio) {
   const api = {
     cars, glowU, addCar, PAINTS, BIKE_PAINT, onCollide: null, onBoom: null, onShot: null, onThrow: null, onImpact: null, onBlast: null, onCrash: null, circlesOf, bodyDist,
     paint(c, color) { c.color = color; tintOf(c); },
+    setType, VTYPES, eye: null,            // eye: the camera position (main.js), for the far-away stand-ins
     retint(c) { if (c.kind === 'car' || c.kind === 'bike') tintOf(c); else if (c.mat) c.mat.color.setScalar(1 - Math.min(1, c.char || 0) * 0.8); },
     removeTank() { if (tank) { tank.group.visible = false; scene.remove(tank.group); tank = null; } },
     get tank() { return tank; }, get heli() { return heliNow(); }, helis,
@@ -504,7 +529,8 @@ export function createVehicles(scene, L, fx, audio) {
       let best = null, bd = 1e9;
       for (const v of api.all()) {
         if (Math.abs(v.y - pos.y) > 2.5 || v.wreck || v.sink) continue;
-        const d = Math.hypot(v.x - pos.x, v.z - pos.z) - v.radius;
+        let d = Math.hypot(v.x - pos.x, v.z - pos.z) - v.radius;
+        if (v.len > 5) d = Math.min(d, bodyDist(v, pos.x, pos.z) - 0.4);       // a bus or a truck: from its side, anywhere along it
         if (d < reach && d < bd) { bd = d; best = v; }
       }
       return best;
@@ -612,6 +638,7 @@ export function createVehicles(scene, L, fx, audio) {
           // pivot the wheelie on the rear axle
           const up = Math.sin(-Math.min(c.tx, 0));
           m4.compose(p3.set(c.x - fx_ * up * 0.3, c.y + up * 0.72, c.z - fz * up * 0.3), q.setFromEuler(e), s3);
+          if (c.model) { kitMesh.setMatrixAt(c.ki, m4); kitMesh.setVisibleAt(c.ki, true); m4.makeScale(0, 0, 0); }
           bikeMesh.setMatrixAt(c.bi, m4);
           m4.makeScale(0, 0, 0); carMesh.setMatrixAt(c.idx, m4);
           q.setFromEuler(e.set(0, c.yaw, 0));
@@ -630,7 +657,13 @@ export function createVehicles(scene, L, fx, audio) {
           continue;
         }
         m4.compose(p3.set(c.x, c.y, c.z), q.setFromEuler(e), s3);
-        if (c.model) { kitMesh.setMatrixAt(c.ki, m4); kitMesh.setVisibleAt(c.ki, true); m4.makeScale(0, 0, 0); }
+        if (c.model) {
+          kitMesh.setMatrixAt(c.ki, m4); kitMesh.setVisibleAt(c.ki, true); m4.makeScale(0, 0, 0);
+          if (kitLo[c.model] !== undefined && api.eye) {
+            const lod = (c.x - api.eye.x) ** 2 + (c.z - api.eye.z) ** 2 > (quality.high ? LOD_HIGH * LOD_HIGH : LOD_LOW * LOD_LOW) && !c.driven;
+            if (lod !== c.lod) { c.lod = lod; kitMesh.setGeometryIdAt(c.ki, lod ? kitLo[c.model] : kitGid[c.model]); }
+          }
+        }
         carMesh.setMatrixAt(c.idx, m4);
         if (c.model) m4.compose(p3, q, s3);
         if (c.sink) { m4.makeScale(0, 0, 0); shadows.setMatrixAt(c.idx, m4); pools.setMatrixAt(c.idx, m4); for (let k = 0; k < 5; k++) glow.hide(g + k); continue; }
@@ -645,18 +678,19 @@ export function createVehicles(scene, L, fx, audio) {
         e.set(0, c.yaw, 0);
         const gy = c.gy || 0, sk = 1 / (1 + (c.y - gy) * 0.25), on = (c.driven || !!c.ai) && !c.wreck;
         q.setFromEuler(e);
-        m4.compose(p3.set(c.x, gy + 0.03, c.z), q, s3.set(sk, 1, sk));
+        const T = c.spec || VTYPES.sedan, hl = T.len / 2 + 0.05, hw = T.w * 0.33;
+        m4.compose(p3.set(c.x, gy + 0.03, c.z), q, s3.set(sk * T.w / 1.9, 1, sk * T.len / 4.4));
         shadows.setMatrixAt(c.idx, m4); s3.set(1, 1, 1);
         if (on && c.y - gy < 0.5) m4.compose(p3.set(c.x, gy, c.z), q, c.driven ? s3.set(1.15, 1, 1.35) : s3); else m4.makeScale(0, 0, 0);
         pools.setMatrixAt(c.idx, m4); s3.set(1, 1, 1);
         pools.setColorAt(c.idx, col.setScalar(c.driven ? 0.8 : 0.55));
         const braking = c.driven ? inp.throttle < 0 : !!c.ai && c.ai.braking;
         const ts = braking ? 2.6 : on ? 1.7 : 1.1, tb = braking ? 1 : on ? 0.3 : 0;
-        glow.set(g, c.x - fx_ * 2.25 + fz * 0.62, y, c.z - fz * 2.25 - fx_ * 0.62, '#ff1830', ts, tb);
-        glow.set(g + 1, c.x - fx_ * 2.25 - fz * 0.62, y, c.z - fz * 2.25 + fx_ * 0.62, '#ff1830', ts, tb);
-        glow.set(g + 2, c.x + fx_ * 2.25 + fz * 0.62, y - 0.28, c.z + fz * 2.25 - fx_ * 0.62, '#fff0c0', on ? 2.6 : 0, 0.12);
-        glow.set(g + 3, c.x + fx_ * 2.25 - fz * 0.62, y - 0.28, c.z + fz * 2.25 + fx_ * 0.62, '#fff0c0', on ? 2.6 : 0, 0.12);
-        if (burning) glow.set(g + 4, c.x + fx_ * 1.5, c.y + 1.3, c.z + fz * 1.5, '#ff8a3d', 6 + Math.random() * 2.5, 0.7);
+        glow.set(g, c.x - fx_ * hl + fz * hw, y, c.z - fz * hl - fx_ * hw, '#ff1830', ts, tb);
+        glow.set(g + 1, c.x - fx_ * hl - fz * hw, y, c.z - fz * hl + fx_ * hw, '#ff1830', ts, tb);
+        glow.set(g + 2, c.x + fx_ * hl + fz * hw, y - 0.28, c.z + fz * hl - fx_ * hw, '#fff0c0', on ? 2.6 : 0, 0.12);
+        glow.set(g + 3, c.x + fx_ * hl - fz * hw, y - 0.28, c.z + fz * hl + fx_ * hw, '#fff0c0', on ? 2.6 : 0, 0.12);
+        if (burning) glow.set(g + 4, c.x + fx_ * (hl - 0.7), c.y + 1.3, c.z + fz * (hl - 0.7), '#ff8a3d', 6 + Math.random() * 2.5, 0.7);
         else if (neon) glow.set(g + 4, c.x, c.y + 0.5, c.z, HOT_PINK, 9, 0.35); else glow.hide(g + 4);
       }
       glass.count = pools.count = cars.length; pools.instanceColor.needsUpdate = true;

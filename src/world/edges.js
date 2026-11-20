@@ -5,7 +5,7 @@
 // the other streets stop. Everything is pushed into the city's merged meshes: no extra draw calls.
 import * as THREE from 'three';
 import { box, cyl, tint, rng, PI } from '../core/util.js';
-import { HX, HZ, SIDE_X, ROADS, CAUSEWAY, EDGE_SIGNS } from './layout.js';
+import { HX, HZ, SIDE_X, ROADS, CAUSEWAY, EDGE_SIGNS, footprint } from './layout.js';
 
 const WALL_C = '#e9d8c4', COPING = '#27c9bf', RAIL = '#fbf7f0', INK = '#1d1630', ASPH = '#3b3548';
 const ROCK = ['#9a8f86', '#b0a497', '#857a72', '#a89a88'];
@@ -63,6 +63,7 @@ export function addEdges(S, N, glows, signs) {
       for (const d of [-1, 1]) S.push(box(0.12, 0.5, 0.1, x + c * k + s * 0.02, 1.25 + d * 0.13, z - s * k + c * 0.02, INK, 0, yaw, d * 0.6));
     }
     S.push(box(0.1, 0.8, 0.1, x - c * (w / 2 - 0.3), 0.4, z + s * (w / 2 - 0.3), '#3b3350', 0, yaw), box(0.1, 0.8, 0.1, x + c * (w / 2 - 0.3), 0.4, z - s * (w / 2 - 0.3), '#3b3350', 0, yaw));
+    footprint('dead-end board', x - c * (w / 2 - 0.3), z + s * (w / 2 - 0.3), 0.07); footprint('dead-end board', x + c * (w / 2 - 0.3), z - s * (w / 2 - 0.3), 0.07);
   }
   const bollards = (x0, z0, x1, z1, n) => {
     for (let i = 0; i < n; i++) {
@@ -74,14 +75,21 @@ export function addEdges(S, N, glows, signs) {
   for (const s of SIDE_X) { bollards(s - 5, ROADS.sideZ0 - 0.6, s + 5, ROADS.sideZ0 - 0.6, 6); chevrons(s, -HZ + 1.6, 0, 4.2); }
   // east end of the boulevard: a turnaround at the wall, with a sign
   chevrons(HX - 1.4, BZ - 4.5, -PI / 2, 4.2); chevrons(HX - 1.4, BZ + 4.5, -PI / 2, 4.2);
-  const sign = (name, x, y, z, yaw, w, color) => {
+  // a sign board on two legs; with `hang` (the underside of a beam, y) it hangs from it on two short rods
+  // instead, so nothing stands on the road under it
+  const sign = (name, x, y, z, yaw, w, color, hang = 0) => {
     const h = w / 4, s = Math.sin(yaw), c = Math.cos(yaw);
     signs.push({ name, color, x: x + s * 0.13, y, z: z + c * 0.13, yaw, w, h });
     S.push(box(w + 0.4, h + 0.3, 0.2, x, y, z, INK, 0, yaw));
-    for (const o of [-w * 0.38, w * 0.38]) S.push(box(0.2, y, 0.2, x + c * o - s * 0.15, y / 2, z - s * o - c * 0.15, '#3b3350'));
+    for (const o of [-w * 0.38, w * 0.38]) {
+      const lx = x + c * o - s * 0.15, lz = z - s * o - c * 0.15;
+      if (hang) { const top = y + h / 2 + 0.15; S.push(box(0.12, hang - top, 0.12, lx, (hang + top) / 2, lz, '#3b3350')); }
+      else { S.push(box(0.2, y, 0.2, lx, y / 2, lz, '#3b3350')); footprint('sign leg: ' + name, lx, lz, 0.1); }
+    }
     glows.push([x + s * 0.8, y, z + c * 0.8, color, w * 1.1, 0.1]);
   };
   sign(EDGE_SIGNS[1], HX - 0.9, 3.4, BZ, -PI / 2, 9, '#18f0ff');
+  for (const s of SIDE_X) for (let k = 0; k < 6; k++) footprint('bollard', s - 5 + k * 2, ROADS.sideZ0 - 0.6, 0.18);
 
   // ---- the Halcyon Causeway to Solano Key: reopened after the storm repairs (the new span is a fresher grey)
   const len = -HX - C.x0, cx = (-HX + C.x0) / 2, wz = C.z1 - C.z0;
@@ -93,6 +101,7 @@ export function addEdges(S, N, glows, signs) {
     S.push(box(len, 0.9, 0.5, cx, 0.45, z, WALL_C), box(len, 0.08, 0.6, cx, 0.92, z, COPING), box(len, 0.07, 0.08, cx, 1.5, z, RAIL));
     for (let x = -HX - 1; x > C.x0; x -= 2.5) S.push(box(0.09, 0.6, 0.09, x, 1.2, z, RAIL));
     for (let x = -HX - 14; x > C.x0 + 2; x -= 24) {
+      footprint('causeway lamp', x, z, 0.08);
       S.push(cyl(0.08, 0.12, 6, 6, x, 3.4, z, '#3b3350'), box(0.1, 0.1, 1.4, x, 6.3, z + (z < BZ ? 0.6 : -0.6), '#3b3350'));
       glows.push([x, 6.1, z + (z < BZ ? 1.2 : -1.2), '#ffcf8a', 6.5, 0]);
     }
@@ -102,13 +111,17 @@ export function addEdges(S, N, glows, signs) {
   const mx = (-HX + C.x0) / 2;
   for (const z of [C.z0 - 0.6, C.z1 + 0.6]) {
     S.push(box(1.4, 14, 1.4, mx, 6, z, '#e9d8c4'), box(1.8, 0.6, 1.8, mx, 13.2, z, '#27c9bf'));
+    footprint('causeway pylon', mx, z, 0.7);
     N.push(box(0.5, 0.5, 0.5, mx, 13.8, z, '#ff2bd1'));
     glows.push([mx, 14, z, '#ff2bd1', 6, 0.1]);
   }
   S.push(box(1, 0.8, wz + 2.4, mx, 13.6, BZ, '#e9d8c4'));
   N.push(box(0.14, 0.14, wz + 2.4, mx - 0.55, 13.2, BZ, '#18f0ff'));
-  // a welcome sign over the old closure line, facing traffic heading out to the key
-  sign(EDGE_SIGNS[0], mx + 0.8, 10.4, BZ, PI / 2, 12, '#ffb000');
+  // a welcome sign over the old closure line, facing traffic heading out to the key. It hangs from the
+  // pylons' crossbeam (it used to stand on two legs in the middle of the lanes): a short bracket out from
+  // the beam on each side carries the rods
+  S.push(box(1.1, 0.16, 0.16, mx + 0.4, 13.3, BZ - 4.56, '#3b3350'), box(1.1, 0.16, 0.16, mx + 0.4, 13.3, BZ + 4.56, '#3b3350'));
+  sign(EDGE_SIGNS[0], mx + 0.8, 10.4, BZ, PI / 2, 12, '#ffb000', 13.3);
   // a couple of amber lamps where the barrier used to be, left as a memento (they blink slowly)
   for (const z of [C.z0 + 0.25, C.z1 - 0.25]) { N.push(box(0.22, 0.22, 0.22, -338, 1.1, z, '#ffb000')); blink.push([-338, 1.16, z]); }
   return blink;

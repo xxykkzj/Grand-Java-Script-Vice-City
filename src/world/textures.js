@@ -86,6 +86,18 @@ export function paintGround(L) {
     g.fillStyle = '#2a2533'; g.beginPath(); g.arc(X(x), Z(z), 0.55 * S, 0, 6.3); g.fill();
     g.strokeStyle = '#5a5468'; g.lineWidth = 1; g.stroke();
   }
+  // the inner streets: alley paving with a drain down the middle, utility covers and hairline cracks on the
+  // sidewalks (own random stream, so everything painted after keeps its place)
+  { const q = rng(4545);
+    for (const a of (L && L.alleys) || []) { rect(a.x0, a.z0, a.x1, a.z1, '#bba6b4'); rect(a.x - 0.12, a.z0, a.x + 0.12, a.z1, '#8f8298'); for (let z = a.z0 + 1.5; z < a.z1; z += 3) rect(a.x0, z, a.x1, z + 0.08, '#a8949f'); }
+    const walks = [[-14, -10.4], [2.4, 6.8], [-78.8, -74.4], [-61.6, -57], [36.4, 43.6]];
+    for (let i = 0; i < 70; i++) {
+      const [z0, z1] = walks[i % walks.length], x = -285 + q() * 570, z = z0 + 0.6 + q() * (z1 - z0 - 1.2);
+      if (SIDE_X.some((sx) => Math.abs(x - sx) < 12)) continue;
+      if (i % 2) { g.fillStyle = '#9a90a6'; g.beginPath(); g.arc(X(x), Z(z), 0.42 * S, 0, 6.3); g.fill(); g.strokeStyle = '#7a7088'; g.lineWidth = 1; g.stroke(); }
+      else { g.strokeStyle = 'rgba(110,96,120,0.45)'; g.lineWidth = 1; g.beginPath(); g.moveTo(X(x), Z(z)); let cx = x, cz = z; for (let k = 0; k < 4; k++) { cx += 0.4 + q() * 0.8; cz += (q() - 0.5) * 0.8; g.lineTo(X(cx), Z(Math.min(z1, Math.max(z0, cz)))); } g.stroke(); }
+    }
+  }
   dashX(71.6, -HX, HX, 2, 2, '#27c9bf', 0.3);                               // skate lane along the promenade
   g.strokeStyle = '#fffaf0'; g.lineWidth = 2; g.strokeRect(X(-49), Z(98), 18 * S, 9 * S);   // volleyball court
   // (the 60 painted towels are gone: real towels, loungers and rental clusters stand on the sand now, world/beach.js)

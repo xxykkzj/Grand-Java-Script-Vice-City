@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { box, cyl, tint, merge, PI } from '../core/util.js';
 
 // A box whose vertices are reshaped by fn(x, y, z) -> [x, y, z] before placement.
-function shaped(w, h, d, x, y, z, hex, fn) {
+export function shaped(w, h, d, x, y, z, hex, fn) {
   const g = new THREE.BoxGeometry(w, h, d);
   const p = g.attributes.position;
   for (let i = 0; i < p.count; i++) { const o = fn(p.getX(i), p.getY(i), p.getZ(i)); p.setXYZ(i, o[0], o[1], o[2]); }

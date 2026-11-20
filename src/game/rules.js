@@ -146,7 +146,8 @@ export function createRules(game, scene) {
   function stepJack(dt) {
     const c = jack.c, fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), lx = fz, lz = -fx;
     jack.t += dt;
-    const t = jack.t, dx = c.x + lx * 1.75 - fx * 0.35, dz = c.z + lz * 1.75 - fz * 0.35;
+    const ow = c.spec ? c.spec.w / 2 + 0.8 : 1.75, of = c.spec && c.spec.seat ? c.spec.seat[2] + 0.2 : -0.35;
+    const t = jack.t, dx = c.x + lx * ow + fx * of, dz = c.z + lz * ow + fz * of;
     c.vx = c.vz = 0;
     if (t < 0.45) {
       const k = t / 0.45;
@@ -154,13 +155,15 @@ export function createRules(game, scene) {
     } else if (t < 0.95) { player.pos.set(dx, 0, dz); player.speed = 0; }
     else {
       const k = clamp((t - 0.95) / 0.4, 0, 1);
-      player.pos.set(lerp(dx, c.x + lx * 0.5, k), 0.25 * Math.sin(k * PI), lerp(dz, c.z + lz * 0.5, k)); player.speed = 3;
+      player.pos.set(lerp(dx, c.x + lx * 0.5 + fx * (of + 0.35), k), 0.25 * Math.sin(k * PI), lerp(dz, c.z + lz * 0.5 + fz * (of + 0.35), k)); player.speed = 3;
     }
     player.yaw += angleDelta(player.yaw, Math.atan2(c.x - player.pos.x, c.z - player.pos.z)) * (1 - Math.exp(-14 * dt));
     player.animate(dt, 0, null);
     const open = clamp((t - 0.3) / 0.25, 0, 1) * (1 - clamp((t - 1.2) / 0.15, 0, 1));
+    // the door swings open beside the driver's seat (wider cars, cabs further forward: vehicles/types.js)
+    const sw = c.spec ? c.spec.w / 2 + 0.02 : 0.97, sz = c.spec && c.spec.seat ? c.spec.seat[2] + 0.85 : 0.3, sy = c.spec && c.spec.seat ? c.spec.seat[1] + 0.06 : 0.72;
     door.visible = c.kind === 'car';
-    door.position.set(c.x + lx * 0.97 + fx * 0.3, c.y + 0.72, c.z + lz * 0.97 + fz * 0.3);
+    door.position.set(c.x + lx * sw + fx * sz, c.y + sy, c.z + lz * sw + fz * sz);
     door.rotation.y = c.yaw - open * 1.15;
     if (t > 0.4 && t < 0.95) { player.model.armR.rotation.x = -1.5; player.model.armL.rotation.x = -1.3; }
     if (t >= 0.62 && !jack.out) {

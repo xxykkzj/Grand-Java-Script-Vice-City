@@ -9,7 +9,8 @@ import { KH, KV, KEY_JUNCTIONS } from '../world/key.js';
 import { H_ROADS, walkOK } from '../world/roads.js';
 import { createBeachgoers, BEACH_N } from './beachgoers.js';
 
-const N = 52, DRIVERS = 90, BN = BEACH_N;      // BN: the beach crowd (actors/beachgoers.js) shares the meshes
+// BN: the beach crowd (actors/beachgoers.js) shares the meshes; DRIVERS: one per vehicle slot (vehicles.js CAP)
+const N = 52, DRIVERS = 110, BN = BEACH_N;
 const WALK_Z = [65, 41.4, 4, -12, -60, -76], DX = 8.8;
 const SHIRT = ['#ff5fa8', '#27d8cf', '#ffd447', '#f6f1e7', '#ff8a4c', '#9b7bff', '#7fe0ff', '#ff3f6a', '#8dff9a', '#f7b3c6', '#2a2140', '#ffb000'];
 const LEGS = ['#f6f1e7', '#3b5a9a', '#c9b38a', '#22203a', '#ff8fb0', '#5a7ac8', '#e8e0d0', '#2f8f86'];
@@ -19,6 +20,7 @@ const WALK = 0, WAIT = 1, DOWN = 2, FIST = 3, LIE = 4, SIT = 5, FLINCH = 6, ACT 
 // Share of the crowd out and about by hour: rush hours busiest, nightlife on the boulevard, empty small hours.
 export const CROWD_CURVE = [[0, 0.62], [1, 0.3], [2, 0.12], [5, 0.1], [6.5, 0.45], [7.4, 1], [9, 1], [10.2, 0.72], [16, 0.75], [17, 1], [19, 1], [20.2, 0.85], [23, 0.75], [24, 0.62]];
 
+const SEAT0 = [0.42, 0.66, -0.55];          // the sedan's driver seat (other types: vehicles/types.js seat)
 export function createPeds(scene, R, grid, game) {
   // ---- sidewalk graph
   const xs = [-286];
@@ -560,8 +562,9 @@ export function createPeds(scene, R, grid, game) {
         if (c.off || !c.hasDriver || !(c.ai || c.jacking)) { torso.setMatrixAt(i, ZERO); head.setMatrixAt(i, ZERO); continue; }
         B.compose(v.set(c.x, c.y, c.z), q.setFromEuler(eu.set(c.tx, c.yaw, c.tz)), sc.set(1, 1, 1));
         if (c.kind === 'bike') { part(torso, i, 0, 0.92, -0.42, 0.5, 0, 0.9, 0.9); part(head, i, 0, 1.42, -0.1, 0.1, 0, 1, 1); continue; }
-        part(torso, i, 0.42, 0.66, -0.55, -0.12, 0, 0.9, 0.9);
-        part(head, i, 0.42, 1.24, -0.6, 0, 0, 1, 1);
+        const st = (c.spec && c.spec.seat) || SEAT0;
+        part(torso, i, st[0], st[1], st[2], -0.12, 0, 0.9, 0.9);
+        part(head, i, st[0], st[1] + 0.58, st[2] - 0.05, 0, 0, 1, 1);
       }
       for (const m of [torso, head, limb, hat, shadow]) m.instanceMatrix.needsUpdate = true;
     },

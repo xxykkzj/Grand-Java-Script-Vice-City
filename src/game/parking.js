@@ -8,7 +8,9 @@ import { KH, KV, KV_W, inKey } from '../world/key.js';
 import { unseen } from '../core/util.js';
 import { resetDamage } from '../vehicles/vehicles.js';
 
-const POOL_CARS = 8, POOL_BIKES = 4;
+const POOL_CARS = 10, POOL_BIKES = 4;
+// the spare cars come in all sizes; a long one only goes where its whole body fits (see fits())
+const POOL_TYPES = ['sedan', 'hatch', 'muscle', 'coupe', 'suv', 'pickup', 'van', 'delivery', 'icecream', 'bus'];
 const TRIGGER = 48, MIN_D = 16, MAX_D = 58, PLAN = 60;
 
 export function createParking(game) {
@@ -55,8 +57,8 @@ export function createParking(game) {
 
   // ---- the spare pool (parked off-screen until needed)
   const pool = [];
-  for (let i = 0; i < POOL_CARS; i++) { const c = vehicles.addCar(0, 0, 0, PAINTS[(i * 3 + 2) % PAINTS.length], { off: true, spare: true }); if (c) pool.push(c); }
-  for (let i = 0; i < POOL_BIKES; i++) { const c = vehicles.addCar(0, 0, 0, BIKE_PAINT[(i * 3 + 1) % BIKE_PAINT.length], { off: true, spare: true, kind: 'bike' }); if (c) pool.push(c); }
+  for (let i = 0; i < POOL_CARS; i++) { const c = vehicles.addCar(0, 0, 0, PAINTS[(i * 3 + 2) % PAINTS.length], { off: true, spare: true, type: POOL_TYPES[i % POOL_TYPES.length] }); if (c) pool.push(c); }
+  for (let i = 0; i < POOL_BIKES; i++) { const c = vehicles.addCar(0, 0, 0, BIKE_PAINT[(i * 3 + 1) % BIKE_PAINT.length], { off: true, spare: true, kind: 'bike', type: i % 2 ? 'scooter' : 'comet' }); if (c) pool.push(c); }
   const stats = { moves: 0, pool: pool.length, slots: slots.length, rejected: raw.length - slots.length };
 
   const vacant = (v) => !v.off && !v.ai && !v.driven && !v.wreck && !v.sink && !v.police && !(v.burn > 0) && !v.jacking && (v.kind === 'car' || v.kind === 'bike') && (v.y || 0) < 2;
@@ -66,6 +68,16 @@ export function createParking(game) {
     return { v: best, d: bd };
   }
   const taken = (s) => vehicles.all().some((v) => !v.off && Math.hypot(v.x - s.x, v.z - s.z) < (s.bike ? 2.4 : 4.6));
+  // Does a vehicle of length len fit in slot s? The slot itself was checked when the list was made; a long
+  // body also needs both of its ends clear (on the parking lane, out of junctions, doorways, buildings and
+  // street furniture) and no other vehicle along its length.
+  function fits(s, len, me = null) {
+    const fx = Math.sin(s.yaw), fz = Math.cos(s.yaw), h = len / 2 - 0.6;
+    const pts = len > 4.7 ? [[s.x + fx * h, s.z + fz * h], [s.x - fx * h, s.z - fz * h]] : [];
+    for (const [x, z] of pts) if (problem({ x, z, lot: s.lot, bike: false })) return false;
+    for (const [x, z] of [[s.x, s.z], ...pts]) if (vehicles.all().some((v) => v !== me && !v.off && vehicles.bodyDist(v, x, z) < 1.4)) return false;
+    return true;
+  }
   // move a spare into the best free slot near (x, z)
   function topUp(x, z, force = false) {
     let best = null, bd = 1e9;
@@ -78,13 +90,15 @@ export function createParking(game) {
     }
     if (!best) return false;
     const want = best.bike ? 'bike' : 'car';
-    let c = pool.find((p) => p.off && p.kind === want);
+    // a spare that fits this slot, any size (in a random order, so buses and vans turn up too)
+    const free = pool.filter((p) => p.off && p.kind === want).sort(() => Math.random() - 0.5);
+    let c = free.find((p) => p.kind === 'bike' || fits(best, p.len, p)) || null;
     if (!c) {
       // the farthest spare nobody is using and nobody can see
       let far = -1;
       for (const p of pool) { if (p.kind !== want || !vacant(p)) continue; const d = Math.hypot(p.x - x, p.z - z); if (d > 140 && d > far && unseen(camera, p.x, p.z, 40)) { far = d; c = p; } }
     }
-    if (!c) return false;
+    if (!c || (c.kind === 'car' && !fits(best, c.len, c))) return false;
     Object.assign(c, { off: false, x: best.x, z: best.z, y: 0, yaw: best.yaw, vx: 0, vy: 0, vz: 0, spin: 0, tvx: 0, tvz: 0, park: { x: best.x, z: best.z, yaw: best.yaw }, wreck: false, burn: 0 });
     resetDamage(c); vehicles.retint(c);
     stats.moves++;
@@ -117,7 +131,25 @@ export function createParking(game) {
     nearest() { const f = player.pos, n = nearestVacant(f.x, f.z); return { d: +n.d.toFixed(1), kind: n.v && n.v.kind, spare: !!(n.v && n.v.spare), x: +f.x.toFixed(1), z: +f.z.toFixed(1) }; },
     // every slot re-checked against the forbidden zones (should be an empty list), and the counts
     check() { const bad = slots.map((s) => [s, problem(s)]).filter(([, p]) => p).map(([s, p]) => ({ x: s.x, z: s.z, p })); return { ...stats, bike: slots.filter((s) => s.bike).length, bad, cars: vehicles.cars.length }; },
-    samples,
+    samples, fits,
     plan: PLAN,
+    // every parked vehicle (not moving, not driven) checked against where it stands: both ends of its body on
+    // land, off the junctions, clear of the buildings and of the other parked vehicles (should be [])
+    parkedCheck() {
+      const bad = [], parked = vehicles.cars.filter((v) => !v.off && !v.ai && !v.driven && !v.sink && !v.wreck && v.kind === 'car' && Math.hypot(v.vx, v.vz) < 0.2 && (v.y || 0) < 0.5);
+      const types = {};
+      for (const v of parked) {
+        types[v.type] = (types[v.type] || 0) + 1;
+        const fx = Math.sin(v.yaw), fz = Math.cos(v.yaw), h = v.len / 2 - 0.5;
+        for (const [x, z] of [[v.x + fx * h, v.z + fz * h], [v.x - fx * h, v.z - fz * h]]) {
+          // (the sedan by the start stands on the boulevard's south kerb, inside the junction box of the T where
+          // no street crosses: hand-placed, and left there)
+          const p = !onLand(x, z) ? 'water' : inJunction(x, z, 0.5) && !v.spawnCar ? 'junction' : inSolid(x, z, 0.3) ? 'building' : null;
+          if (p) bad.push({ type: v.type, x: +v.x.toFixed(1), z: +v.z.toFixed(1), p });
+        }
+        for (const o of parked) if (o !== v && o.idx > v.idx) { const d = Math.min(...vehicles.circlesOf(v).map((c) => vehicles.bodyDist(o, c[0], c[1]) - c[2])); if (d < -0.25) bad.push({ type: v.type + '/' + o.type, x: +v.x.toFixed(1), z: +v.z.toFixed(1), p: 'overlap ' + d.toFixed(2) }); }
+      }
+      return { parked: parked.length, types, bad };
+    },
   };
 }

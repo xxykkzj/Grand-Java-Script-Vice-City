@@ -4,7 +4,7 @@
 // Gulls and boats move, so they get one draw call each.
 import * as THREE from 'three';
 import { box, cyl, tint, merge, rng, PI, timeU } from '../core/util.js';
-import { PIER, ADS, SIDE_X, offRoad, inJunction } from './layout.js';
+import { PIER, ADS, SIDE_X, offRoad, inJunction, footprint } from './layout.js';
 import { KEY_ADS } from './key.js';
 import { beachGeometry } from './beach.js';
 
@@ -25,7 +25,7 @@ export function addDetails(L, S, N, glows, addWin, signs) {
     S.push(box(w + 0.5, h + 0.4, 0.22, x, y, z, INK, 0, yaw));
     for (const o of [-w * 0.32, w * 0.32]) {
       S.push(box(0.22, y, 0.22, x + c * o - s * 0.2, y / 2, z - s * o - c * 0.2, '#3b3350'));
-      if (y < 8) P.circle(x + c * o - s * 0.2, z - s * o - c * 0.2, 0.2, y + h / 2);   // stilts on the ground (not the rooftop ones)
+      if (y < 8) { P.circle(x + c * o - s * 0.2, z - s * o - c * 0.2, 0.2, y + h / 2); footprint('billboard leg: ' + name, x + c * o - s * 0.2, z - s * o - c * 0.2, 0.11); }   // stilts on the ground (not the rooftop ones)
     }
     N.push(box(w + 0.5, 0.1, 0.1, x + s * 0.16, y + h / 2 + 0.2, z + c * 0.16, color, 0, yaw));
     glows.push([x + s, y, z + c, color, w * 1.3, 0]);
@@ -38,7 +38,7 @@ export function addDetails(L, S, N, glows, addWin, signs) {
     const spot = () => {
       for (let i = 0; i < 8; i++) {
         const x = cx + (r() - 0.5) * (w - 8), z = cz + (r() - 0.5) * (d - 8) - (b.hotel ? 2 : 0);
-        if (Math.hypot(x - (cx + w * 0.18), z - cz) > 3.6 && Math.hypot(x - b.door.x, z - b.door.z) > 3.4) return [x, z];
+        if (Math.hypot(x - (cx + w * 0.18), z - cz) > 3.6 && Math.hypot(x - b.door.x, z - b.door.z) > 3.4 && !(b.keep || []).some((k) => Math.hypot(x - k.x, z - k.z) < k.r + 1.2)) return [x, z];
       }
       return [cx - w * 0.3, cz - d * 0.25];
     };
@@ -91,8 +91,20 @@ export function addDetails(L, S, N, glows, addWin, signs) {
     // --- shopfront: striped awning over a wide lit window, a blade sign beside the door
     const fz = b.z1, sw = Math.min(w * 0.42, 8), sx = cx + w * 0.17;
     addWin(sx, 1.55, fz + 0.05, 0, sw, 2.1, 0.02);
-    S.push(box(sw + 0.8, 0.1, 1.7, sx, 2.95, fz + 0.8, b.accent, 0.3));
-    for (let k = 0, n = Math.floor((sw + 0.8) / 1.2); k < n; k += 2) S.push(box(0.6, 0.11, 1.72, sx - (sw + 0.8) / 2 + 0.3 + k * 1.2 + 0.6, 2.955, fz + 0.8, CREAM, 0.3));
+    // the awning differs from shop to shop (world/streetscape.js planFacades): striped, a rounded hood with a
+    // scalloped valance, a dark box canopy with a neon edge, or steep candy stripes
+    const aw = b.awn || 0, aW = sw + 0.8;
+    if (aw === 1) {
+      S.push(tint(new THREE.CylinderGeometry(0.75, 0.75, aW, 6, 1, false, 0, PI).rotateZ(PI / 2).rotateX(-PI / 2).translate(sx, 2.75, fz + 0.05), b.accent));
+      for (let x = -aW / 2 + 0.25; x < aW / 2; x += 0.5) S.push(cyl(0.2, 0.2, 0.04, 6, sx + x, 2.68, fz + 0.78, CREAM, PI / 2));
+    } else if (aw === 2) {
+      S.push(box(aW, 0.24, 1.5, sx, 3.0, fz + 0.75, INK));
+      N.push(box(aW + 0.04, 0.07, 0.07, sx, 2.9, fz + 1.5, b.neon));
+    } else {
+      const [ca, cb, tilt] = aw === 3 ? [['#ff5fa8', '#19c9bd', '#ffd447'][Math.floor(Math.abs(b.cx)) % 3], '#ffffff', 0.45] : [b.accent, CREAM, 0.3];
+      S.push(box(aW, 0.1, 1.7, sx, 2.95, fz + 0.8, ca, tilt));
+      for (let k = 0, n = Math.floor(aW / 1.2); k < n; k += 2) S.push(box(0.6, 0.11, 1.72, sx - aW / 2 + 0.3 + k * 1.2 + 0.6, 2.955, fz + 0.8, cb, tilt));
+    }
     S.push(box(sw + 0.4, 0.5, 0.25, sx, 0.25, fz + 0.14, b.accent));
     glows.push([sx, 1.6, fz + 1.2, '#ffd9a0', sw * 1.1, 0]);
     if (b.row === 1 && !b.name && ad < 5 && w > 20 && r() < 0.55) {
@@ -168,6 +180,7 @@ export function addDetails(L, S, N, glows, addWin, signs) {
   for (const it of L.beach.items) mark(it.x, it.z, it.r);
   for (const u of L.umbrellas) mark(u.x, u.z, 1.4);
   for (const k in L.places) mark(L.places[k].x, L.places[k].z, 2.4);
+  for (const t of L.streetTrees || []) mark(t.x, t.z, 0.7);
   const runs = L.ramps.filter((k) => k.clear).map((k) => k.clear);
   const spot = (x, z, rr) => { const a = offRoad(x, z, rr); if (!a || inJunction(a[0], a[1], rr) || !free(a[0], a[1], rr) || runs.some((c) => a[0] > c.x0 - rr && a[0] < c.x1 + rr && a[1] > c.z0 - rr && a[1] < c.z1 + rr)) return null; mark(a[0], a[1], rr); return a; };
   const loose = (kind, x, z, yaw = 0, rr = 0.4, extra = {}) => {
@@ -199,6 +212,7 @@ export function addDetails(L, S, N, glows, addWin, signs) {
   for (let x = -265; x <= 285; x += 60) { bench(x, 37.4, 0); hydrant(x + 22, 43.3); bin(x - 8, 43.2, '#ff8fc4'); }
   for (let x = -250; x <= 285; x += 50) { hydrant(x + 9, -10.9); bin(x + 20, -11.2, '#ffd447'); }
   for (const b of L.booths) {
+    footprint('phone booth', b.x, b.z, 0.55);
     S.push(box(1.1, 0.2, 1.1, b.x, 0.1, b.z, '#3b3350'), box(1.1, 0.35, 1.1, b.x, 2.5, b.z, '#19c9bd'), box(1.0, 2.2, 0.06, b.x, 1.25, b.z - 0.5, '#9fd8e8'),
       box(0.06, 2.2, 1.0, b.x - 0.5, 1.25, b.z, '#9fd8e8'), box(0.06, 2.2, 1.0, b.x + 0.5, 1.25, b.z, '#9fd8e8'), box(0.3, 0.5, 0.2, b.x, 1.4, b.z - 0.36, '#22203a'));
     N.push(box(1.12, 0.1, 1.12, b.x, 2.72, b.z, '#ffe14a'));

@@ -18,6 +18,7 @@ export function createFollowCamera(camera, solids) {
   const target = new THREE.Vector3(-10, 1.5, 67), look = new THREE.Vector3();
   const cam = {
     yaw: Math.PI / 2, pitch: 0.2, dist: 7.5, view: VIEWS[saved % VIEWS.length],
+    spec: null,                  // the vehicle type being driven (main.js), for its eye and chase distance
     minY: 0.5, maxY: 1e9, minPitch: -0.12, floorAt: null,   // underwater (player/swim.js): go below the surface, look up, stay above the sand
     shoulder: 0,                 // 0..1: over the right shoulder while a blaster is out on foot (game/combat.js)
     cycleView() {
@@ -41,10 +42,12 @@ export function createFollowCamera(camera, solids) {
       }
       target.x = damp(target.x, focus.x, 12, dt);
       target.z = damp(target.z, focus.z, 12, dt);
-      target.y = damp(target.y, focus.y + LIFT[mode], 8, dt);
+      // a vehicle type can set its own eye ([height, ahead]) and chase distance (vehicles/types.js)
+      const vs = mode === 'car' || mode === 'bike' ? cam.spec : null, dk = (vs && vs.cam) || 1;
+      target.y = damp(target.y, focus.y + LIFT[mode] * (dk > 1.2 ? dk * 0.85 : 1), 8, dt);
       if (cam.first) {
         // eyes in the head (or the driver's seat), looking where the mouse points
-        const [eh, ef] = EYE[mode], fy = Math.sin(heading), fz = Math.cos(heading);
+        const [eh, ef] = (vs && vs.eye) || EYE[mode], fy = Math.sin(heading), fz = Math.cos(heading);
         camera.position.set(focus.x + fy * ef, focus.y + eh, focus.z + fz * ef);
         const lp = clamp(cam.pitch - 0.2, -0.9, 0.9), c = Math.cos(lp);
         look.set(camera.position.x + Math.sin(cam.yaw) * c, camera.position.y - Math.sin(lp), camera.position.z + Math.cos(cam.yaw) * c);
@@ -56,7 +59,7 @@ export function createFollowCamera(camera, solids) {
         if (Math.abs(camera.fov - fovF) > 0.05) { camera.fov = damp(camera.fov, fovF, 4, dt); camera.updateProjectionMatrix(); }
         return;
       }
-      let want = DIST[mode] * cam.view.dist + (mode === 'car' || mode === 'bike' ? Math.min(Math.abs(speed) * 0.06, 3) * cam.view.dist : 0);
+      let want = DIST[mode] * dk * cam.view.dist + (mode === 'car' || mode === 'bike' ? Math.min(Math.abs(speed) * 0.06, 3) * cam.view.dist : 0);
       const sh = mode === 'foot' ? cam.shoulder : 0;
       want *= 1 - 0.3 * sh;
       // aiming: the camera slides over the right shoulder so the crosshair sits beside the courier

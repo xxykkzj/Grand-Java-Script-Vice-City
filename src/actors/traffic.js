@@ -7,8 +7,9 @@ import { clamp, angleDelta, segBlocked, dailyCurve, outOfSight } from '../core/u
 import { connector, signal } from '../world/roads.js';
 import { onRails, PATROL_TEAL, resetDamage } from '../vehicles/vehicles.js';
 import { disabled } from '../game/damage.js';
+import { CAPS, trafficWeights, pickWeighted } from '../vehicles/types.js';
 
-const TRAFFIC = 26, POLICE = 6;
+const TRAFFIC = 36, POLICE = 6, TBIKES = 4;
 // Share of the traffic fleet on the road by hour: dead quiet 01:00-05:00, rush hours at 07-09 and 17-19,
 // a moderate middle of the day, and a busy evening on the boulevard (nightlife) that tails off after midnight.
 export const TRAFFIC_CURVE = [[0, 0.42], [1, 0.2], [2, 0.12], [5, 0.12], [6.5, 0.55], [7.4, 1], [9, 1], [10.2, 0.6], [16, 0.65], [17, 1], [19, 1], [20.2, 0.7], [23, 0.6], [24, 0.42]];
@@ -35,7 +36,7 @@ export function createTraffic(R, vehicles, grid, game) {
   function rail(c, e, s) {
     const ai = c.ai || (c.ai = { inp: { throttle: 0, steer: 0, hand: false } });
     Object.assign(ai, { edge: e, next: null, inConn: false, s, speed: 0, stun: 0, recover: false, pursuit: false, wait: 0, ghost: 0, hold: false, braking: false, stuck: 0, rev: 0, siren: false, honk: 0 });
-    ai.cruise = ai.cruise || 8.5 + Math.random() * 3.5;
+    ai.cruise = (8.5 + Math.random() * 3.5) * ((c.spec && c.spec.cruise) || 1);
     setPath(ai, lane(e));
     c.yaw = posAt(ai, s); c.x = P.x; c.z = P.z; c.y = 0; c.vx = c.vy = c.vz = 0; c.tx = c.tz = c.spin = 0;
     c.hasDriver = true; c.driven = false; c.off = false;
@@ -53,6 +54,7 @@ export function createTraffic(R, vehicles, grid, game) {
       if (d < far || (d > NEAR && i < 75)) continue;
       if (hide && !outOfSight(game.camera, x, z, solids)) continue;
       if (cars.some((o) => o !== c && !o.off && Math.hypot(o.x - x, o.z - z) < 11)) continue;
+      if (c.traffic && !c.police) retype(c, x);
       rail(c, e, s);
       resetDamage(c); vehicles.retint(c); c.evtCar = false; c.ai.chase = null; c.ai.getaway = false;
       return true;
@@ -72,19 +74,24 @@ export function createTraffic(R, vehicles, grid, game) {
     c.x = x; c.z = z; c.yaw = yaw; c.ai.recover = true;
   }
 
+  // Every time a traffic vehicle is put on the road (out of sight) it is given a type for where and when that
+  // is (vehicles/types.js trafficWeights): taxis downtown at night, delivery vans by day, the garbage truck in
+  // the early morning, the ice-cream truck on old-town afternoons, a bus or two. The big ones are capped.
+  function retype(c, x) {
+    if (c.kind === 'bike') { vehicles.setType(c, Math.random() < (x < -470 ? 0.3 : 0.5) ? 'scooter' : 'comet', vehicles.BIKE_PAINT[Math.floor(Math.random() * vehicles.BIKE_PAINT.length)]); return; }
+    const w = trafficWeights(x < -470, game.env ? game.env.tod : 12);
+    for (const k in CAPS) if (cars.filter((o) => o !== c && !o.off && o.ai && o.type === k).length >= CAPS[k]) w[k] = 0;
+    const id = pickWeighted(w);
+    vehicles.setType(c, id, vehicles.PAINTS[Math.floor(Math.random() * vehicles.PAINTS.length)]);
+  }
   for (let i = 0; i < TRAFFIC; i++) {
     const c = vehicles.addCar(0, 0, 0, vehicles.PAINTS[(i * 4 + 1) % vehicles.PAINTS.length], { traffic: true });
     if (c) place(c, 30);
   }
-  // taxis, vans, trucks, a garbage truck and an ambulance from the Kenney Car Kit (vehicles.js KIT_CARS)
-  for (const [m, cruise] of [['taxi', 0], ['taxi', 0], ['taxi', 0], ['van', 0], ['van', 0], ['delivery', 8], ['truck', 0], ['truck', 0], ['garbage', 6.5], ['ambulance', 11]]) {
-    const c = vehicles.addCar(0, 0, 0, vehicles.PAINTS[Math.floor(Math.random() * vehicles.PAINTS.length)], { traffic: true, model: m });
-    if (c && place(c, 30) && cruise) c.ai.cruise = cruise;
-  }
-  // a couple of Comets ride with the traffic
-  for (let i = 0; i < 2; i++) {
+  // a few two-wheelers ride with the traffic: Comets and scooters
+  for (let i = 0; i < TBIKES; i++) {
     const c = vehicles.addCar(0, 0, 0, vehicles.BIKE_PAINT[(i * 2 + 4) % vehicles.BIKE_PAINT.length], { traffic: true, kind: 'bike' });
-    if (c) { place(c, 30); c.ai.cruise = 11.5 + i * 2; }
+    if (c) place(c, 30);
   }
   const police = [];
   for (let i = 0; i < POLICE; i++) {
@@ -169,7 +176,7 @@ export function createTraffic(R, vehicles, grid, game) {
       if (d > -1.5 && (sg === 2 || (sg === 1 && d > 5))) { vmax = Math.min(vmax, d < 0.4 ? 0 : Math.sqrt(d * 9)); red = true; }
     }
     // anything in the way? other cars ahead in lane, pedestrians, the player
-    const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), reach = 7 + ai.speed * 1.1;
+    const hl = (c.len || 4.4) / 2, fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), reach = 7 + ai.speed * 1.1 + Math.max(0, hl - 2.2) * 2;
     let gap = 99, byPlayer = false;
     grid.query(c.x + fx * reach * 0.5, c.z + fz * reach * 0.5, reach * 0.5 + 2, (o) => {
       if (o === c) return;
@@ -177,12 +184,12 @@ export function createTraffic(R, vehicles, grid, game) {
       if (fw < 0.5 || fw > reach + 3) return;
       const lat = Math.abs(ox * fz - oz * fx);
       let g;
-      if (o.isPed) { if (lat > 1.7 || (chase && !o.isPlayer)) return; g = fw - 3.4; }
+      if (o.isPed) { if (lat > 1.7 || (chase && !o.isPlayer)) return; g = fw - hl - 1.2; }
       else {
         if (lat > 1.9) return;
         if (onRails(o) && (ai.ghost > 0 || Math.sin(o.yaw) * fx + Math.cos(o.yaw) * fz < 0.2)) return;
         if (ai.ghost > 0 && !o.driven) return;
-        g = fw - 5.4;
+        g = fw - hl - (o.len || 4.4) / 2 - 1;
       }
       if (g < gap) { gap = g; byPlayer = !!o.isPlayer || !!o.driven; }
     });

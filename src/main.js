@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { timeU, pointScaleU, pushOut, pause, reducedMotion, createGrid, beatU, beatNow, BEAT_LEN, nightU } from './core/util.js';
 import { createInput } from './core/input.js';
-import { makeLayout, clampToWorld, onLand, propsOnRoad, zoneName } from './world/layout.js';
+import { makeLayout, clampToWorld, onLand, propsOnRoad, zoneName, FOOTPRINTS, footprintsOnRoad } from './world/layout.js';
 import { checkBeach, BEACH_ZONES } from './world/beach.js';
 import { createEat } from './game/eat.js';
 import { buildKey } from './world/keyCity.js';
@@ -203,11 +203,14 @@ async function boot() {
   const touch = game.touch = createTouch(game);
   const me = { x: 0, z: 0, isPed: true, isPlayer: true };
   window.__neon = game;                       // handy for poking around in devtools
+  game.scene = scene;
+  vehicles.eye = camera.position;
   // debug helpers (devtools / automated checks): __neon.debug.warp('club'), .skip(), .bike()
   game.debug = {
     warp: (key) => places.warp(key),
     camYaw: (y) => { cam.yaw = y; cam.pitch = 0.12; },
     engine: () => audio.engineGain(),
+    engineState: () => audio.engineState(),
     skate: () => audio.skateGain(),
     pool: (i) => L.neonPools[i],
     skip: () => cut.skip(),
@@ -243,6 +246,8 @@ async function boot() {
     sittingPeds: () => peds.peds.filter((p) => !p.off && p.hang && p.hang.kind === 'seat').length,
     // ---- checks for the new systems
     propsOnRoad: () => propsOnRoad(L),
+    // everything built into the town meshes that stands on the ground (sign legs, shelters, booths...): none on a lane
+    footprints: () => { const by = {}; for (const f of FOOTPRINTS) { const k = f.what.split(':')[0]; by[k] = (by[k] || 0) + 1; } return { n: FOOTPRINTS.length, by, bad: footprintsOnRoad(), list: FOOTPRINTS.filter((f) => /sign leg/.test(f.what)).map((f) => [f.what, +f.x.toFixed(1), +f.z.toFixed(1)]) }; },
     // ---- the beach: what stands in the exclusion zones (should be []), palms on the sand, the beach crowd
     beachCheck: () => checkBeach(L),
     eat: () => eat.state(),
@@ -333,6 +338,19 @@ async function boot() {
     mapDots: () => ({ ...hud.dots }),
     star: () => story.starState(),
     parking: () => parking.check(),
+    // ---- vehicle types (vehicles/types.js): what's in the traffic and parked, and a vehicle of any type to try
+    vtypes: () => { const t = {}, all = {}; for (const c of vehicles.cars) { if (c.off || c.police) continue; all[c.type] = (all[c.type] || 0) + 1; if (c.ai && c.traffic) t[c.type] = (t[c.type] || 0) + 1; } return { traffic: t, all, total: vehicles.cars.length }; },
+    parkedCheck: () => parking.parkedCheck(),
+    // how many car slots a vehicle of each type fits right now (a long one needs both ends clear)
+    parkFits: () => { const o = {}; for (const id of ['sedan', 'muscle', 'delivery', 'icecream', 'bus']) o[id] = parking.slots.filter((s) => !s.bike && parking.fits(s, vehicles.VTYPES[id].len)).length; return o; },
+    street: () => L.streetStats,
+    asType: (id, x, z, yaw = 0) => {
+      const T = vehicles.VTYPES[id]; if (!T) return null;
+      const c = vehicles.cars.find((k) => k.spare && k.kind === T.kind && k.type === id && !k.driven) || vehicles.cars.find((k) => k.spare && k.kind === T.kind && !k.driven);
+      vehicles.setType(c, id); Object.assign(c, { off: false, x, z, yaw, y: 0, vx: 0, vy: 0, vz: 0, spin: 0, park: { x, z, yaw } }); vehicles.retint(c);
+      return c.idx;
+    },
+    car: (i) => vehicles.cars[i],
     nearestVacant: () => parking.nearest(),
     footSpots: (n) => parking.samples(n),
     // music: which theme plays, the auto-off and the M switch
@@ -356,10 +374,10 @@ async function boot() {
       if (v.kind === 'heli' && !dry) { hud.toast('NOWHERE TO STAND', 'FLY BACK OVER LAND FIRST'); return; }
       v.driven = false;
       // step out beside it, on whatever it stands on (a roof, a deck); if that side is off the edge, try the other
-      const side = v.radius + 1.1;
+      const side = (v.spec && v.kind === 'car' ? Math.max(v.radius, v.spec.w / 2 + 0.55) : v.radius) + 1.1;
       let px = v.x + Math.cos(v.yaw) * side, pz = v.z - Math.sin(v.yaw) * side;
       if (floor > 0.3 && Math.abs(L.surf.at(px, pz, floor + 0.5) - floor) > 0.4) { px = v.x - Math.cos(v.yaw) * side; pz = v.z + Math.sin(v.yaw) * side; }
-      if (floor > 0.3 && Math.abs(L.surf.at(px, pz, floor + 0.5) - floor) > 0.4) { px = v.x - Math.sin(v.yaw) * (v.radius + 1.6); pz = v.z - Math.cos(v.yaw) * (v.radius + 1.6); }
+      if (floor > 0.3 && Math.abs(L.surf.at(px, pz, floor + 0.5) - floor) > 0.4) { const bk = Math.max(v.radius, (v.len || 0) / 2) + 1.6; px = v.x - Math.sin(v.yaw) * bk; pz = v.z - Math.cos(v.yaw) * bk; }
       player.pos.set(px, floor > 0.3 ? L.surf.at(px, pz, floor + 0.5) : 0, pz);
       if (player.pos.y < 0.3) for (let i = 0; i < 2; i++) for (const b of L.solids) pushOut(player.pos, 0.6, b);
       clampToWorld(player.pos, 0.6);
@@ -511,7 +529,7 @@ async function boot() {
     else if (game.inside) { /* places.update owns the camera indoors */ }
     else if (stunts.cam) stunts.camUpdate(dt);
     else if (cine.active) cine.update(dt);
-    else cam.update(dt, input, game.mode, game.focus(), game.heading(), speed, fx, player.phase);
+    else { cam.spec = v && v.spec || null; cam.update(dt, input, game.mode, game.focus(), game.heading(), speed, fx, player.phase); }
     // in first person on foot the courier's own body would sit inside the camera
     cockpit.update(dt, v, cam.first && !cut.active && !game.inside && !!v, ctl.steer);
     const hideBody = cam.first && !cut.active && !game.inside && game.mode === 'foot';
@@ -537,9 +555,9 @@ async function boot() {
       else if (!v && act.mode) hud.setHint(act.hint());
       else if (!v) {
         const n = vehicles.nearest(player.pos), f = act.fHint(), wh = combat.hints();
-        hud.setHint(n ? [['E', n.ai ? `take the ${n.label} (heat!)` : n.kind === 'bike' ? 'ride the Comet' : `enter ${n.label}`], ...(f ? [f] : []), ...wh, ['V', 'camera view'], ['~ / T', 'cheat console']]
+        hud.setHint(n ? [['E', n.ai ? `take the ${n.label} (heat!)` : n.kind === 'bike' ? `ride the ${n.label}` : `enter the ${n.label}`], ...(f ? [f] : []), ...wh, ['V', 'camera view'], ['~ / T', 'cheat console']]
           : [...(f ? [f] : []), ...wh, ['WASD', 'skate'], ['Shift', 'sprint'], ['Space', 'jump'], ['Drag', 'look'], ['V', 'camera view'], ['~ / T', 'cheat console']]);
-      } else if (v.kind === 'car') hud.setHint([['E', 'exit car'], ['WASD', 'drive'], ['Space', 'handbrake'], ...combat.hints(), ['V', 'camera view']]);
+      } else if (v.kind === 'car') hud.setHint([['E', 'exit ' + (v.label || 'car')], ['WASD', 'drive'], ['Space', 'handbrake'], ...combat.hints(), ['V', 'camera view']]);
       else if (v.kind === 'bike') hud.setHint([['E', 'get off'], ['W', 'throttle (wheelie from low speed)'], ['A D', 'lean'], ['S', 'brake'], ...combat.hints(), ['V', 'camera view']]);
       else if (v.kind === 'tank') hud.setHint([['E', 'exit tank'], ['WASD', 'drive'], ['Drag', 'aim turret'], ['Click / F', 'fire'], ['V', 'camera view']]);
       else hud.setHint([['W S', 'forward / back'], ['A D', 'yaw'], ['Space', 'up'], ['C / Ctrl', 'down'], ['E', v.y - (v.floor || 0) > 0.6 ? 'land to exit' : 'exit helicopter'], ['V', 'camera view']]);
@@ -555,7 +573,9 @@ async function boot() {
 
     sound.engine = v && v.kind !== 'heli' ? 1 : 0;
     sound.heavy = !!v && v.kind === 'tank';
-    sound.engineRev = v ? Math.min(Math.abs(speed) / (v.kind === 'tank' ? 13 : v.kind === 'bike' ? 40 : 44), 1) * (v.kind === 'bike' ? 1.5 : 1) : 0;
+    // each type has its own engine (audio/audio.js ENGINES); the revs run up to its own top speed
+    sound.engineProfile = !v ? null : v.kind === 'tank' ? 'tank' : (v.spec && v.spec.sound) || (v.kind === 'bike' ? 'comet' : 'sedan');
+    sound.engineRev = v ? Math.min(Math.abs(speed) / (v.kind === 'tank' ? 13 : v.spec ? v.spec.top * (v.kind === 'bike' ? 0.69 : 1) : v.kind === 'bike' ? 40 : 44), 1) * (v.kind === 'bike' ? 1.5 : 1) : 0;
     sound.under = sea.under;
     sound.skate = !v && player.onGround && !player.swimming && !cut.active && !act.mode ? Math.min(player.speed / 13.5, 1) : 0;
     sound.rotor = vehicles.heli ? vehicles.heli.spool * (v === vehicles.heli ? 1 : 0.35) : 0;

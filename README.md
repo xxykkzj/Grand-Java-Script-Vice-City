@@ -35,7 +35,7 @@ Each has its own coloured ring at the door (and a square blip on the minimap), a
 | --- | --- | --- |
 | **The Velvet Flamingo** | pink | Dee's bar. Story scenes, and `E` at the counter for a timed delivery. |
 | **Club Prism** | violet | A big room on one shared beat: DJ Kilowatt on a raised booth (decks, a mixer of blinking LEDs, speaker stacks that thump with the kick), a light-tile floor whose pattern changes every bar, a mirror ball throwing moving spots, lasers through the haze, a bar with a bartender, a roped-off VIP corner and a coat check. Through a wide opening in the right wall is the **booth lounge**: four open lounge booths (low-backed curved sofas round low tables with drinks and candle lamps, pendant lights) in two rows, all facing the dance floor, with aisles of 2.2 m and more between them and a neon strip along the main aisle; a softer and duller mix of the music. Each booth is one simple collision box (sofa and table together, run to the wall where it stands against one), so there are no thin walls or pockets to get stuck in; sit on either end of a booth with `F`. `E` at the bar: **Taps** pours the drinks on the board over it (Laser Lemonade $3, Floor Filler $4, Ultraviolet $5, Mirrorball $6, The Kilowatt $7). The crowd follows the story: before Paper Trail it is nearly empty (7 people, the DJ warming up, quieter music, dimmer lights), after it 29, and 45 for the Dance-Off. Its own club track. **You can dance here** (see below). Hosts two story jobs, including the dance-off finale; its conversations are played seated in the lounge's front far booth. |
-| **Zigzag Threads** | orange | Step onto the podium and press `E` to try on eleven looks: Courier Classic, Sunset Stripe, Midnight Arcade, Mint Condition, Cherry Bomb, the Neon Slip dress, the Tie-Break pleated skirt with a cropped jacket, the sequinned Mirrorball party dress, the Boardwalk Sundress, Sea Breeze Slacks and Flamingo Royale. Skirts and dresses swing with the legs while skating, sitting and dancing. They cost cash once and are yours for good. Putting on a different outfit while wanted knocks one star off (once every 45 seconds). |
+| **Zigzag Threads** | orange | Step onto the podium and press `E` to try on eleven looks: Courier Classic, Sunset Stripe, Midnight Arcade, Mint Condition, Cherry Bomb, the Neon Slip dress, the Tie-Break pleated skirt with a cropped jacket, the sequinned Mirrorball party dress, the Boardwalk Sundress, Sea Breeze Slacks and Flamingo Royale. Skirts and dresses swing with the legs while skating, sitting and dancing. They cost cash once and are yours for good. While you try things on, the camera frames Skye in the part of the screen the menu leaves free (to its right, or above it on a portrait phone, where the menu sits along the bottom). Putting on a different outfit while wanted knocks one star off (once every 45 seconds). |
 | **Pelican Pantry 24** | green | Gus's corner store. `E` at the counter: Pelican Pop ($5, +15 health), Boardwalk Hot Dog ($12, +35), Turbo Crunch Bar ($20, +60). You eat it there and then (see [Eating and drinking](#eating-and-drinking)). Behind the counter is a teal wall of products and a dark back counter, so Gus in his maroon Pantry polo and cap stands out. |
 | **Volt & Spark Supply** | blue | Zizi Sparks's neon blaster and firework shop, east of the start on the boulevard (a lightning bolt and a firework burst in neon by the door). Small and brightly lit: a pale checked floor, a violet counter with a case of firework bangs, and behind Zizi (tangerine overalls, teal hair, goggles) a dark display wall of glowing blasters; crates of fireworks along the left wall, a practice target on the right. The first visit plays her safety talk. `E` at the counter: buy the five weapons below, or more ammo for the ones you own. Weapons and ammo are kept with your save. |
 
@@ -174,7 +174,7 @@ Walk off the beach and the sand shelves away: ankle-deep wading (slower, no skat
 
 ## What's in town
 
-- **Traffic.** Up to 26 AI cars plus Coast Patrol cars follow a lane graph built from the road layout: they keep right, turn at junctions, queue behind each other, and brake for you, for pedestrians and for red lights. You can see the drivers through the glass; headlights, tail lights and light pools on the road come on at dusk: every car with its lights on (traffic, the taxis and trucks, the patrol, the Comets) throws a soft ellipse of light on the road ahead, and yours throws a longer, brighter one. Empty parked cars are still there for the taking, and there are more of them: besides the parked cars and Comets, a small pool of spare cars and bikes is parked in the nearest free slot out of view whenever you are on foot with nothing to drive within about 50 m (kerbside parking lanes along the avenues and side streets, the stadium car park, footpath edges for the bikes; never in junctions, doorways, on the sand, in the stadium, in water, on roofs or against props).
+- **Traffic.** Up to 36 AI cars and 4 two-wheelers of [many types](#vehicle-types) plus Coast Patrol cars follow a lane graph built from the road layout: they keep right, turn at junctions, queue behind each other, and brake for you, for pedestrians and for red lights. You can see the drivers through the glass; headlights, tail lights and light pools on the road come on at dusk: every car with its lights on (traffic, the taxis and trucks, the patrol, the Comets) throws a soft ellipse of light on the road ahead, and yours throws a longer, brighter one. Empty parked cars are still there for the taking, and there are more of them: besides the parked cars and Comets, a small pool of spare cars and bikes is parked in the nearest free slot out of view whenever you are on foot with nothing to drive within about 50 m (kerbside parking lanes along the avenues and side streets, the stadium car park, footpath edges for the bikes; never in junctions, doorways, on the sand, in the stadium, in water, on roofs or against props).
 - **Pedestrians.** Up to 52 people in assorted outfits stroll the sidewalks and wait for the walk light at crossings. Bump them and they tumble (cartoon style) and get back up; explosions, tank fire and sirens send them running; they shout "hey!". Blaster shots and firework bangs never hurt them: they flinch, shout and run.
 - **Rush hour and nightlife.** Traffic and crowds follow the clock: busiest in the 07:00-09:00 and 17:00-19:00 rush, moderate through the day, a lively evening on the boulevard, and nearly empty streets between about 01:00 and 05:00 (a handful of cars, a few late walkers). Cars and people are parked or brought back only out of sight (far away, behind you or behind a building), so nobody pops in or out in view. At night a crowd hangs around outside Club Prism and the Velvet Flamingo; the beach has a crowd of its own on a timetable (see [Coral Beach](#coral-beach)). The `P` panel shows the live counts next to the target for the hour.
 - **Carjacking.** Press `E` next to an occupied car: Skye opens the door and hauls the driver out, who stumbles, shakes a fist and legs it. Costs one star of heat.
@@ -192,13 +192,28 @@ Walk off the beach and the sand shelves away: ankle-deep wading (slower, no skat
 - **Solid street furniture.** Palms, street lamps, signal masts, hydrants, phone booths, planting beds, bike racks, umbrella poles, lifeguard huts and chairs, volleyball posts, billboard stilts, surfboards, the Coconut Shack, the rental stand, beach showers, bins, the fire pit and its logs, sandcastles, kayaks and the pier rail all block you, and cars stop against them (a thud and a small bounce, never any heat; a hard hit on the Comet still throws you). Cars collide with a row of circles along the body (bike, tank and helicopter too), so the bonnet stops at the wall instead of sinking into it. The helicopter only minds the tall ones, and only when low. You can still jump over the low ones on skates. Traffic and pedestrians follow their own lanes and sidewalks, so they never snag on them.
 - **HUD.** Top right: cash, health bar, the condition of the vehicle you are in, the weapon chip (icon, name, ammo), heat stars and the clock. Top left: a round minimap that turns with the camera (a little bigger than it used to be on desktop and touch, back to the old size on narrow or short screens: roads, buildings, moving traffic, patrol cars and the patrol helicopter and tank (vacant parked cars and bikes aren't drawn), pickups, the five doors as coloured squares, the next job as a star, the current target as a yellow diamond, street events as a blinking blip, a north marker), the district name and the current objective. Context hints sit bottom left; a crosshair in the middle while a blaster is out on foot.
 
+### The old town's streets
+
+The old town's lots are varied from a seed per lot (`src/world/streetscape.js`), so neighbours rarely look alike:
+
+- **Colour.** Each block has its own pastel palette (corals, mints, lemons, lilacs, skies, peaches) and neighbouring buildings never share a colour. Eyebrow ledges come in cream, white, blush or the building's accent.
+- **Silhouettes.** Rounded corner turrets (from the first floor to above the roof, with eyebrow rings, wrap-round windows and a dome or a stepped cap with a mast), stepped crowns over the front with fluting and a neon edge, vertical fins with a neon strip and a spire, roof terraces with a pergola, planters and loungers, rooftop neon pictograms on a frame (a palm, a cocktail, a star, waves). The hotels' towers end in one of four tops (the stepped spire, a drum with a mast, a triple step with a neon ball, twin pylons with a crossbar) and carry two to four neon fins.
+- **Façades.** Balconies with coloured railings, porthole columns, glass-block strips over the entrance, and murals on rear walls (the windows behind them are left out).
+- **Shops.** 24 invented names on lit fascias over the awnings (Seashell Café, Lido Laundromat, Vinyl Lagoon, Gelato Galaxy, Wavelength TV Repair, Pink Palm Pawn, Moonbeam Video...), glowing a little more as the neon comes on.
+- **Murals.** Six original paintings (a striped sunset with "Greetings from Lumina", flamingos with confetti, layered waves, a neon grid horizon, monstera and hibiscus, an art-deco sunburst) on the backs of the beachfront hotels and the midtown blocks.
+- **The inner streets.** Street trees in pits with grates along the back avenues, café terraces (tables with parasols and chairs, all loose props you can knock about and sit at) outside the cafés and behind the hotels, six bus shelters (roof, glass back, bench, an ad panel, a stop pole), more bike racks, planters and newspaper boxes, three more phone booths, scooters at the kerb, utility covers and hairline cracks painted on the sidewalks.
+- **The alleys** (the 4 m gaps between buildings): paved with a drain down the middle; dumpsters with bin bags, fire escapes (landings, rails, flights, a drop ladder), laundry lines with pastel washing, and string lights zigzagging overhead in some.
+- **Rules.** Nothing goes in a junction, on a carriageway, in a doorway, on a venue or story ring or on top of what is already there; colliders are added for everything solid; the new pieces add one draw call (the fascia and mural atlas) and about 40,000 triangles to the merged town.
+
+**Nothing stands on a road.** Everything that is built straight into the town meshes and stands on the ground (sign and billboard legs, the causeway's pylons and lamps, bus shelters and stop poles, phone booths, trees, racks, planters, dumpsters, bollards, dead-end boards) is registered as a footprint and checked against every carriageway and the causeway lanes in both districts, together with the props (`debug.footprints()`, `debug.propsOnRoad()`, both `[]`; dev builds report it in the console). The welcome sign on the Halcyon Causeway used to stand on two legs in the middle of the lanes: it now hangs from the crossbeam between the two pylons, which stand outside the railings.
+
 ### City detail
 
 Chosen to make the street read as a place without adding draw calls (almost everything is merged into the existing city meshes):
 
 - Rooftops: air-conditioning units, vents, water tanks, aerials with red beacons, satellite dishes, set-back penthouse tiers with their own neon band.
 - Billboards with made-up ads on roofs and on stilts along the promenade (Flamingo Fizz, Wave 86 FM, Comet 500, Dance-Off Saturday and friends).
-- Shopfronts on the back streets: striped awnings, wide lit windows, neon blade signs in five shapes.
+- Shopfronts on the back streets: awnings in four styles (striped, a rounded hood with a scalloped valance, a dark box canopy with a neon edge, steep candy stripes), wide lit windows, neon blade signs in five shapes, and a lit fascia with the shop's name over each (see [The old town's streets](#the-old-towns-streets)).
 - Door emblems in neon for the five places (flamingo, prism, zigzag, "24", a lightning bolt with a firework burst).
 - Street furniture: benches, bins, fire hydrants, solid phone booths with a light inside, vending machines, newspaper boxes, bike racks, sandwich boards outside shops, potted plants by shop doors and cafés, and raised concrete planting beds with flowering shrubs and grasses along the promenade, the Deco Row façades and the pier foot. Every piece is checked against the carriageways at build time (nothing stands in a lane), and dev builds (`npm run dev`) report any prop on a road in the console.
 - Ground paint: kerbs, parking bays, manhole covers, sidewalk seams, a skate lane on the promenade, a volleyball court (raked darker inside its lines) and soft shade under the boardwalks.
@@ -247,9 +262,35 @@ Street lights in the key are Quaternius models (the glass is see-through, the bu
 
 Rooftop billboards, wall ads on the end walls that face the side streets in the old town, and billboards on stilts, all with invented 80s ads (Hyperwave Cassettes, Glo-Cola, Laser Lanes Bowling, Radvision VHS, Sunset Sneakers, Mega Byte Arcade, Starlite Drive-In, Synthwave 99.1 and more). Each has lamps on arms over it; they and the ads brighten at night.
 
-## Traffic variety
+## Vehicle types
 
-Besides the procedural 80s coupes, the traffic has taxis, vans, delivery vans, pickup trucks, a garbage truck and an ambulance (Kenney Car Kit). Vans and trucks get pastel paint; taxis, the ambulance and the garbage truck keep their own. They take damage like every other vehicle (smoke, sputter, fire, cartoon explosion, charred wreck) and you can take them (`E`). A few are parked in the Sunbowl car park.
+The traffic, the parked cars and the spares are a mix of fifteen types (`src/vehicles/types.js`). Each drives differently, has a collision body sized to it (a row of circles along its length), its own condition, eye height and chase-camera distance, and **its own engine sound**. All of them can be taken (`E`; a car with a driver is a carjack), driven, damaged (smoke, sputter, fire, cartoon explosion, charred wreck; the procedural sedan dents, the others darken), sunk and shown on the minimap (the long ones as bigger dots). All designs are generic: no real makes, models or liveries.
+
+| Type | Model | Handling | Engine sound |
+| --- | --- | --- | --- |
+| **Sedan** | procedural (the original wedge-nosed 80s car) | the all-rounder | the classic four-gear saw-and-square |
+| **Hatchback** | Kenney Car Kit | light, nimble, grippy, modest top speed | small buzzy four, five short gears, high and thin |
+| **Convertible** | original: top down, chrome windscreen and roll hoop, red seats | quick, fastest of the cars, sharp | high-revving sports engine: bright saw pair an octave apart, opens right up |
+| **Muscle car** | original: long bonnet with a scoop, haunches, quad lamps, two stripes | hardest pull, heavy, loose at the back (it slides) | deep V8 rumble: low, three gears, a lumpy burble |
+| **Pickup truck** | Kenney Car Kit | heavy, softer grip | V8-ish, a lighter burble |
+| **SUV** | Kenney Car Kit | heavy, steady | smooth low six |
+| **Taxi** | Kenney Car Kit (a plain yellow cab) | like the sedan, a touch heavier | a tired sedan with a little rattle |
+| **Van** | Kenney Car Kit | slow to pull, wide | small diesel |
+| **Delivery van** | Kenney Car Kit | heavy, slow, wide turns | diesel clatter (a band of noise knocking with the revs) |
+| **Ice-cream truck** | original: pastel box with a cream drip band, a serving hatch and awning, a giant cone on the roof | slowest of the vans | diesel clatter |
+| **Bus** | original: 10.6 m, two-tone with a window band, kerb-side doors | very heavy (shoves cars aside), slow, wide turns; high eye, far camera | deep bus diesel: very low, heavy clatter |
+| **Garbage truck** | Kenney Car Kit | heavy and slow | deep diesel |
+| **Ambulance** | Kenney Car Kit | brisk for its size | van engine |
+| **Comet** | procedural sport bike | wheelies, leans, fastest of all, fragile | sport-bike whine, five gears |
+| **Scooter** | original: step-through with an apron and a round lamp | light, slow, twitchy | two-stroke putter (a CVT: one smooth rise with a fast wobble) |
+
+**Engine sound.** Every type keeps the same level rules: loud only while the revs change (pulling away, braking, shifting), settling to a soft hum after a few seconds at a steady speed, gear steps (as many as its gearbox has), and ducked under the music. What differs per type (`ENGINES` in `src/audio/audio.js`): the two oscillators' waveforms and ratio, the base pitch and its range, the number of gears, how far the filter opens, a lope (an amplitude wobble at a fraction of the pitch: a V8's burble, a scooter's putter) and a diesel clatter layer.
+
+**The mix in traffic** depends on where and when (each car is given a type whenever it is put on the road out of sight): taxis come out at night (about four times as many downtown on the key), delivery vans and vans run by day, the garbage truck in the early morning, the ice-cream truck on old-town afternoons, convertibles and muscle cars cruise at night, SUVs and pickups are commoner on the key, and there are never more than two buses, one garbage truck, one ice-cream truck and one ambulance at once. Long vehicles keep their distance in queues.
+
+**Parked.** The kerbs start with a seeded mix of the everyday types (no buses or trucks), the Sunbowl car park has vans, pickups, delivery vans and taxis, four scooters stand at the back-avenue kerbs, and the spare pool (on foot with nothing to drive nearby) has ten cars of different sizes up to a bus: a long one only goes to a slot where its whole body fits (both ends on the parking lane, clear of junctions, doorways, buildings, street furniture and other vehicles).
+
+**Cost.** The sedan and the Comet keep their instanced meshes; every other type, Kenney model or original, is an instance in one `BatchedMesh` (one draw call for all). Past about 90 m (55 m on Low) a batched car is drawn as a 70-triangle stand-in.
 
 ## Rooftops
 
@@ -446,7 +487,7 @@ src/
   core/             input, shared helpers, spatial grid, quality (Low / High), adaptive (resolution scaling)
   world/            layout, roads + traffic lights, canvas textures, sky + ocean, city builder, details (rooftops, props,
                     billboards, boats, gulls), edges (seawall, causeway), horizon (distant scenery + silhouettes),
-                    key + keyCity (Solano Key), districts (culling), ads (billboard atlas), surfaces (roofs, ramps),
+                    streetscape (the old town's lot variety, inner streets and alleys), key + keyCity (Solano Key), districts (culling), ads (billboard atlas), surfaces (roofs, ramps),
                     rampGeo, kits (the embedded models),
                     glow sprites, day/night + weather, props (solid street furniture + seats, spatial grid),
                     loose (knock-over physics, lamps / hydrants / palms, vending machines), beach (Coral Beach props + exclusion zones),
@@ -458,7 +499,8 @@ src/
                     combat (blasters, fireworks, patrol lasers), pursuit (the patrol helicopter and tank), parking (spare cars and bikes,
                     parking slots), events (random street events), rooftops, stunts, cinematic (orbit camera mode)
   player/           the courier model + skating controller, follow camera
-  vehicles/         car / bike / tank / helicopter models and physics, effect pools (sparks, smoke, beams, rings)
+  vehicles/         car / bike / tank / helicopter models and physics, types.js (the fifteen vehicle types: handling, size, sound,
+                    traffic mix, the original convertible / muscle car / ice-cream truck / bus / scooter), effect pools
   cheats/           cheat console and codes
   audio/            audio.js (synth kit, schedulers, effects, music on / off), themes.js (the street score and the indoor themes),
                     music.js (the Blue Pelican's record player)
@@ -472,8 +514,8 @@ Neon Coast's town, characters, story, textures and sound are original and genera
 
 | Pack | Author | Licence | Used for |
 | --- | --- | --- | --- |
-| [Car Kit](https://www.kenney.nl/assets/car-kit) 2.0 | Kenney (www.kenney.nl) | CC0 1.0 | taxi, van, delivery van, pickup truck, garbage truck, ambulance |
-| [City Kit Suburban](https://www.kenney.nl/assets/city-kit-suburban) 1.0 | Kenney (www.kenney.nl) | CC0 1.0 | eight houses, a fence, two trees |
+| [Car Kit](https://www.kenney.nl/assets/car-kit) 2.0 | Kenney (www.kenney.nl) | CC0 1.0 | hatchback, SUV, taxi, van, delivery van, pickup truck, garbage truck, ambulance |
+| [City Kit Suburban](https://www.kenney.nl/assets/city-kit-suburban) 1.0 | Kenney (www.kenney.nl) | CC0 1.0 | eight houses, a fence, two trees (also the old town's street trees) |
 | Street Pack | Quaternius | CC0 1.0 | the street light, stop / give-way / no-parking signs |
 
 CC0 needs no attribution; it is given here with thanks. None of the MIT-licensed Kenney starter-kit models are embedded. Licence texts are in `assets/licenses/`; the whole asset library is described in `assets/README.md` and `assets/CREDITS.md`.

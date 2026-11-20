@@ -8,6 +8,7 @@ import { LADDERS, LADDER_GAP, shelfGeometry } from './sea.js';
 import { addEdges } from './edges.js';
 import { paintGround, paintSigns, SIGN_ROWS } from './textures.js';
 import { addDetails, buildLife } from './details.js';
+import { planFacades, decorateBuilding, addStreetscape, streetAtlasMesh } from './streetscape.js';
 import { createGlow } from './glow.js';
 import { rampParts } from './rampGeo.js';
 import { neonPools } from './neonpools.js';
@@ -151,6 +152,7 @@ export function buildCity(scene0, L) {
   scene0.add(scene);
   if (L.groundMeshes) scene.add(...L.groundMeshes);
   const r = rng(404);
+  planFacades(L);                                     // per-lot styles, façades, murals, shop names (world/streetscape.js)
   const solid = [], neon = [], winM = [], winSeed = [], signs = [], glows = [];
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), UP = new THREE.Vector3(0, 1, 0);
   const v = new THREE.Vector3(), sc = new THREE.Vector3();
@@ -169,6 +171,8 @@ export function buildCity(scene0, L) {
       for (let i = 0; i < n; i++) {
         const t = -usable / 2 + sp * (i + 0.5);
         if (face === 0 && b.hotel && Math.abs(t) < 3.3) continue;
+        const m = b.mural;                              // a mural on this wall: no windows behind it
+        if (m && face === m.face && Math.abs(t - m.t) < m.hw + 0.9 && f * 3.2 + 1.85 < m.y1 + 1) continue;
         const y = f * 3.2 + 1.85, seed = Math.min(0.999, r() * b.litBias);
         if (face === 0) addWin(b.cx + t, y, b.z1 + 0.04, 0, ww, 1.7, seed);
         else if (face === 1) addWin(b.cx - t, y, b.z0 - 0.04, PI, ww, 1.7, seed);
@@ -178,11 +182,14 @@ export function buildCity(scene0, L) {
     }
   }
 
+  // triangles merged into the town by each stage (debug.street().tris): keeps an eye on the phone budget
+  const triN = (a) => a.reduce((n, g) => n + g.attributes.position.count / 3, 0), tris = {};
+  let decoT = 0;
   for (const b of L.buildings) {
     const { cx, cz, w, d, h, r: rad } = b;
     solid.push(slab(w, d, rad, h, cx, 0, cz, b.color));
     solid.push(slab(w + 0.5, d + 0.5, rad + 0.25, 0.7, cx, 0, cz, b.accent));                 // plinth
-    for (let f = 1; f < b.floors; f++) solid.push(slab(w + 0.6, d + 0.6, rad + 0.3, 0.28, cx, f * 3.2 - 0.14, cz, '#fbf7f0')); // eyebrows
+    for (let f = 1; f < b.floors; f++) solid.push(slab(w + 0.6, d + 0.6, rad + 0.3, 0.28, cx, f * 3.2 - 0.14, cz, b.brow || '#fbf7f0')); // eyebrows
     solid.push(slab(w + 0.8, d + 0.8, rad + 0.4, 0.7, cx, h - 0.2, cz, b.accent));             // cornice
     solid.push(slab(w - 3, d - 3, rad, 0.9, cx, h + 0.5, cz, '#fbf7f0'));                      // parapet step
     neon.push(slab(w + 0.95, d + 0.95, rad + 0.48, 0.16, cx, h + 0.52, cz, b.neon));           // roofline tube
@@ -191,11 +198,29 @@ export function buildCity(scene0, L) {
       // stepped central tower with vertical neon fins and a canopy over the door
       const fz = b.z1 + 0.5;
       solid.push(box(6, h + 3.2, 1.6, cx, (h + 3.2) / 2, fz, '#fbf7f0'));
-      solid.push(box(3.6, 2.4, 1.6, cx, h + 4.4, fz, b.accent));
-      solid.push(box(1.4, 2.6, 1.2, cx, h + 6.9, fz, '#fbf7f0'));
-      for (const ox of [-1.8, 0, 1.8]) neon.push(box(0.16, h - 9.4, 0.12, cx + ox, 4.4 + (h - 9.4) / 2, fz + 0.86, b.neon));
-      neon.push(box(0.2, 2.6, 0.2, cx, h + 9.4, fz, b.neon));
-      glows.push([cx, h + 10.4, fz, b.neon, 7, 0.05]);
+      // the tower top differs from hotel to hotel: the classic stepped spire, a drum with a mast, a triple
+      // step with a neon ball, or twin pylons with a crossbar
+      const ht = b.hotelTop || 0, nf = b.fins || 3;
+      if (ht === 1) {
+        solid.push(cyl(1.9, 1.9, 2.4, 14, cx, h + 4.4, fz, b.accent), cyl(1.2, 1.3, 1.8, 12, cx, h + 6.5, fz, '#fbf7f0'), cyl(0.08, 0.1, 3.4, 6, cx, h + 9.1, fz, '#b9bcc8'));
+        neon.push(cyl(1.96, 1.96, 0.14, 14, cx, h + 5.5, fz, b.neon), box(0.18, 0.18, 0.18, cx, h + 10.9, fz, b.neon));
+        glows.push([cx, h + 10.9, fz, b.neon, 5, 0.1]);
+      } else if (ht === 2) {
+        [[4.8, b.accent], [3.4, '#fbf7f0'], [2.0, b.accent]].forEach(([sw, c], i) => solid.push(box(sw, 1.3, 1.5, cx, h + 3.85 + i * 1.3, fz, c)));
+        neon.push(tint(new THREE.SphereGeometry(0.55, 10, 6).translate(cx, h + 8.2, fz), b.neon));
+        glows.push([cx, h + 8.2, fz, b.neon, 8, 0.1]);
+      } else if (ht === 3) {
+        for (const ox of [-2.1, 2.1]) { solid.push(box(1.1, 4.2, 1.4, cx + ox, h + 5.3, fz, '#fbf7f0'), box(1.3, 0.3, 1.6, cx + ox, h + 7.5, fz, b.accent)); neon.push(box(0.3, 0.3, 0.3, cx + ox, h + 7.85, fz, b.neon)); }
+        solid.push(box(5.3, 0.5, 0.8, cx, h + 6.4, fz, b.accent));
+        neon.push(box(5.3, 0.1, 0.1, cx, h + 6.1, fz + 0.45, b.neon));
+        glows.push([cx, h + 7.9, fz, b.neon, 6, 0.05]);
+      } else {
+        solid.push(box(3.6, 2.4, 1.6, cx, h + 4.4, fz, b.accent));
+        solid.push(box(1.4, 2.6, 1.2, cx, h + 6.9, fz, '#fbf7f0'));
+        neon.push(box(0.2, 2.6, 0.2, cx, h + 9.4, fz, b.neon));
+        glows.push([cx, h + 10.4, fz, b.neon, 7, 0.05]);
+      }
+      for (let k = 0; k < nf; k++) neon.push(box(0.16, h - 9.4, 0.12, cx + (k - (nf - 1) / 2) * (3.6 / (nf - 1)), 4.4 + (h - 9.4) / 2, fz + 0.86, b.neon));
       glows.push([cx, h * 0.55, fz + 1.4, b.neon, 16, 0]);
       solid.push(box(8, 0.35, 3.4, cx, 3.25, b.z1 + 1.7, b.accent));
       neon.push(box(8.2, 0.12, 0.12, cx, 3.05, b.z1 + 3.42, b.neon));
@@ -214,6 +239,9 @@ export function buildCity(scene0, L) {
       solid.push(box(2.6, 2.6, 0.2, cx - w * 0.2, 1.3, b.z1 + 0.05, '#2b2440'));
       solid.push(box(3, 1.6, 3, cx + w * 0.18, h + 1.3, cz, b.accent));                         // roof plant room
     }
+    { const s0 = solid.length, n0 = neon.length;
+      decorateBuilding(b, solid, neon, glows, addWin, L.props, L.surf);
+      decoT += triN(solid.slice(s0)) + triN(neon.slice(n0)); }
     faceWindows(b, 0); faceWindows(b, 2); faceWindows(b, 3);
     if (b.row < 2) faceWindows(b, 1);
     if (b.name) {
@@ -230,7 +258,18 @@ export function buildCity(scene0, L) {
     }
   }
 
+  tris.buildings = Math.round(triN(solid) + triN(neon) - decoT); tris.facades = Math.round(decoT);
+  let s0 = solid.length, n0 = neon.length;
   addDetails(L, solid, neon, glows, addWin, signs);
+  tris.details = Math.round(triN(solid.slice(s0)) + triN(neon.slice(n0)));
+  // the inner streets and alleys; shop fascias and murals share one painted atlas and one draw call
+  const streetQuads = [];
+  s0 = solid.length; n0 = neon.length;
+  addStreetscape(L, solid, neon, glows, streetQuads);
+  tris.streetscape = Math.round(triN(solid.slice(s0)) + triN(neon.slice(n0)) + triN(streetQuads));
+  L.streetStats.tris = tris;
+  const street = streetAtlasMesh(streetQuads);
+  if (street) scene.add(street);
   for (const rp of L.ramps) if (rp.x > -HX) rampParts(rp, solid, neon);
   const blinkers = addEdges(solid, neon, glows, signs);
 
@@ -424,6 +463,7 @@ export function buildCity(scene0, L) {
     },
     setLights(neonK, lit, glass) {
       neonMat.color.setScalar(0.5 + neonK * 0.9);
+      if (street) street.userData.neonK.value = neonK * 0.9;
       signMat.color.setScalar(0.4 + neonK * 0.9);
       winU.uLit.value = lit;
       winU.uGlass.value.copy(glass);
