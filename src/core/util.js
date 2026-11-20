@@ -67,6 +67,8 @@ export const fogU = {
 };
 export const pointScaleU = { value: 600 };
 export const nightU = { value: 0 };
+// 0..1 while the sky is still bright around sunset (environment.js); street light pools fade in under it
+export const glareU = { value: 0 };
 
 export const FOG_PARS = 'uniform vec3 uFogColor; uniform float uFogNear; uniform float uFogFar;';
 

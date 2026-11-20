@@ -2,7 +2,7 @@
 // windows, signs, lamps, palms, pier and beach furniture. Everything is merged
 // or instanced, so the entire city is roughly a dozen draw calls.
 import * as THREE from 'three';
-import { box, cyl, tint, merge, timeU, fogU, FOG_PARS, PI, rng, wetU, rainU, reflU, nightU } from '../core/util.js';
+import { box, cyl, tint, merge, timeU, fogU, FOG_PARS, PI, rng, wetU, rainU, reflU, nightU, glareU } from '../core/util.js';
 import { HX, HZ, PIER, SIGN_NAMES, ADS, EDGE_SIGNS } from './layout.js';
 import { LADDERS, LADDER_GAP, shelfGeometry } from './sea.js';
 import { addEdges } from './edges.js';
@@ -85,15 +85,21 @@ export function groundMaterial(tex, lampTex, x0, z0, W, H, streaks) {
   // rectangle: its street-light pools never showed and its roads went black at night.
   mat.customProgramCacheKey = () => `ground:${x0},${z0},${W},${H},${streaks ? 1 : 0}`;
   mat.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, { uWet: wetU, uRain: rainU, uNight: nightU, uTime: timeU, uSkyC: reflU.sky, uSunC: reflU.sun, uSunD: reflU.dir, uLampMap: { value: lampTex } });
+    Object.assign(sh.uniforms, { uWet: wetU, uRain: rainU, uNight: nightU, uGlare: glareU, uTime: timeU, uSkyC: reflU.sky, uSunC: reflU.sun, uSunD: reflU.dir, uLampMap: { value: lampTex } });
     sh.vertexShader = 'varying vec3 vWP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vWP = (modelMatrix * vec4(position, 1.0)).xyz;');
-    sh.fragmentShader = 'uniform float uWet, uRain, uNight, uTime; uniform vec3 uSkyC, uSunC, uSunD; uniform sampler2D uLampMap; varying vec3 vWP;\n' + sh.fragmentShader
+    sh.fragmentShader = 'uniform float uWet, uRain, uNight, uGlare, uTime; uniform vec3 uSkyC, uSunC, uSunD; uniform sampler2D uLampMap; varying vec3 vWP;\n' + sh.fragmentShader
       .replace('#include <map_fragment>', /* glsl */`#include <map_fragment>
         float wetK = uWet * (0.5 + 0.5 * smoothstep(0.45, 0.12, dot(diffuseColor.rgb, vec3(0.333))));
         diffuseColor.rgb *= 1.0 - 0.4 * wetK;`)
       .replace('#include <opaque_fragment>', /* glsl */`
         vec3 lampL = texture2D(uLampMap, vec2((vWP.x - ${x0.toFixed(1)}) / ${W.toFixed(1)}, (vWP.z - ${z0.toFixed(1)}) / ${H.toFixed(1)})).rgb;
-        outgoingLight += diffuseColor.rgb * lampL * uNight * ${LAMP_GAIN.toFixed(2)};
+        // street-light and neon pools: they fade in as the sky darkens (not while the sunset is still lighting
+        // the pavement), add less where the ground is already bright, and roll off softly instead of clipping
+        // pale pavement to white
+        float baseL = dot(outgoingLight, vec3(0.299, 0.587, 0.114));
+        outgoingLight += diffuseColor.rgb * lampL * uNight * (1.0 - 0.85 * uGlare) * (1.0 - 0.55 * clamp(baseL, 0.0, 1.0)) * ${LAMP_GAIN.toFixed(2)};
+        float pk = max(outgoingLight.r, max(outgoingLight.g, outgoingLight.b));
+        if (pk > 0.55) outgoingLight *= (0.55 + 0.33 * (1.0 - exp(-(pk - 0.55) * 1.8))) / pk;
         if (uWet > 0.01) {
           vec3 V = normalize(cameraPosition - vWP);
           vec3 N = normalize(vec3(sin(vWP.x * 3.1 + sin(vWP.z * 2.3)) * 0.03, 1.0, cos(vWP.x * 2.2 + vWP.z * 3.3) * 0.03));

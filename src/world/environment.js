@@ -1,7 +1,7 @@
 // Time of day, lighting, fog, rain and lightning. One clock drives everything:
 // the sky/ocean shaders, the lights, neon brightness and the HUD clock.
 import * as THREE from 'three';
-import { lerp, damp, clamp, fogU, nightU, timeU, wetU, rainU, reflU, reducedMotion } from '../core/util.js';
+import { lerp, damp, clamp, fogU, nightU, timeU, glareU, wetU, rainU, reflU, reducedMotion } from '../core/util.js';
 
 const col = (h) => new THREE.Color(h);
 const PRESET = {
@@ -159,7 +159,7 @@ export function createEnvironment(scene, sky, ocean, city, camera, audio) {
       // once the sun is ~7 degrees below the horizon (about 21:00), not at sunset itself
       const sl = clamp((sunDir.y + 0.13) / 0.2, 0, 1);
       const sunLow = sl * sl * (3 - 2 * sl) * (1 - clamp((sunDir.y - 0.5) / 0.25, 0, 1));
-      env.glare = sunLow * (1 - Math.max(w.fog, w.cloud * 0.85));
+      env.glare = sunLow * (1 - Math.max(w.fog, w.cloud * 0.85)); glareU.value = env.glare;
       scene.fog.color.copy(cur.hor).lerp(cur.mid, 0.25 + 0.2 * env.glare).multiplyScalar(1 - 0.32 * env.glare);
       if (w.fog > 0.01) {
         tmp.copy(MIST).multiplyScalar(0.12 + 0.88 * dayK).lerp(scene.fog.color, 0.35);
