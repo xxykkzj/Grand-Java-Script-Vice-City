@@ -480,11 +480,11 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
       Skate into a glowing ring to walk into a place &nbsp;·&nbsp; the pulsing blip on the map is your next job<br>
       <kbd>~</kbd> / <kbd>T</kbd> cheat console &nbsp; <kbd>N</kbd> time of day &nbsp; <kbd>[</kbd> <kbd>]</kbd> time speed &nbsp; <kbd>M</kbd> music on / off (<kbd>Shift</kbd>+<kbd>M</kbd> all sound) &nbsp; <kbd>P</kbd> perf panel &nbsp; <kbd>K</kbd> cinematic camera
     </p>
-  </div>
-  <nav id="tlinks" aria-label="About this demo">
+    <nav id="tlinks" aria-label="About this demo">
     <button id="whyBtn" type="button">WHY 3D ON THE WEB?</button>
     <a id="deckBtn" href="https://xxykkzj.github.io/Grand-Java-Script-Vice-City/deck/">VIEW THE SLIDE DECK</a>
   </nav>
+  </div>
 </div>
 
 <div id="nogl" hidden>
@@ -5580,7 +5580,7 @@ DISTRICTS   ${B.districts||""}`}if(R%3!==0)return;let Tt=B.camYaw+Math.PI,it=Mat
 <style>
 /* the two talk links sit in a quiet row pinned to the bottom of the title screen, outside the card, so they
    never push CLICK TO START off centre; the title keeps room for them at the bottom */
-#tlinks{position:fixed;left:0;right:0;bottom:calc(var(--sab, 0px) + 10px);display:flex;justify-content:center;gap:8px;flex-wrap:wrap;pointer-events:none;z-index:1}
+#tlinks{position:static;margin-top:18px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;pointer-events:none;z-index:1}
 #tlinks>*{pointer-events:auto}
 #title.out #tlinks{pointer-events:none}
 #whyBtn,#deckBtn{display:inline-block;margin:0;background:rgba(10,5,24,.35);border:1px solid rgba(255,255,255,.22);color:rgba(234,246,255,.72);font:600 10px/1 system-ui,sans-serif;letter-spacing:.12em;padding:7px 12px;border-radius:999px;cursor:pointer;text-decoration:none}
