@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { box, cyl, tint, merge, rng, PI, timeU } from '../core/util.js';
 import { pierDetails } from './pier.js';
-import { PIER, ADS, SIDE_X, offRoad, inJunction, footprint } from './layout.js';
+import { PIER, ADS, SIDE_X, offRoad, inJunction, footprint, footBox } from './layout.js';
 import { KEY_ADS } from './key.js';
 import { beachGeometry } from './beach.js';
 
@@ -111,6 +111,7 @@ export function addDetails(L, S, N, glows, addWin, signs) {
     if (b.row === 1 && !b.name && ad < 5 && w > 20 && r() < 0.55) {
       billboard(ADS[ad], cx - w * 0.1, h + 4.6, b.z1 - 1.2, 0, Math.min(w * 0.6, 13), NEON[ad % 6]); ad++;
     }
+    if (b.venue === 'barber') { barberFront(b); continue; }
     // blade signs: a handful of simple neon pictograms
     const bx = cx - w * 0.2 - 2.4, by = 5.2, bz = fz + 0.5, C = b.neon, k = blade++ % 5;
     S.push(box(0.14, 3.4, 0.9, bx, by, bz, INK));
@@ -121,6 +122,37 @@ export function addDetails(L, S, N, glows, addWin, signs) {
     else if (k === 3) { seg(bx + 0.3, by + 1.2, bx + 0.3, by - 0.6, z1, C); seg(bx + 0.3, by + 1.2, bx + 0.8, by + 0.8, z1, C); N.push(box(0.5, 0.36, 0.1, bx + 0.05, by - 0.75, z1, '#18f0ff')); }
     else { path([[bx - 0.5, by + 1.2], [bx + 0.5, by + 0.5], [bx - 0.5, by - 0.2], [bx + 0.5, by - 0.9]], z1, C); }
     glows.push([bx, by, z1 + 0.4, C, 5, 0.05]);
+  }
+
+  // --- Fade & Fringe (a venue in a back-street shopfront, layout.js VENUE_DEFS.barber): glass double doors in a
+  // cream frame, a candy-striped canopy with a red neon edge and a scalloped valance, a lamp either side, a step
+  // and a mat; the name (the shop fascia, streetscape.js) over the canopy, the spinning barber pole (its own
+  // little mesh, world/barberpole.js) on a bracket to the right, scissors and a comb in neon on the window side.
+  function barberFront(b) {
+    const dx = b.cx - b.w * 0.2, fz = b.z1, RED = '#ff3a4e', W = '#fbf7f0';
+    S.push(box(2.4, 2.5, 0.06, dx, 1.3, fz + 0.12, '#9fd0e8'), box(0.08, 2.5, 0.1, dx, 1.3, fz + 0.16, '#c8c4d4'),
+      box(0.18, 2.75, 0.22, dx - 1.3, 1.37, fz + 0.12, W), box(0.18, 2.75, 0.22, dx + 1.3, 1.37, fz + 0.12, W), box(2.78, 0.2, 0.24, dx, 2.75, fz + 0.12, W),
+      box(0.05, 0.4, 0.06, dx - 0.5, 1.2, fz + 0.2, '#d4d6de'), box(0.05, 0.4, 0.06, dx + 0.5, 1.2, fz + 0.2, '#d4d6de'),
+      box(2.9, 0.12, 1.2, dx, 0.06, fz + 0.7, '#e8e0d8'), box(1.7, 0.02, 0.8, dx, 0.125, fz + 0.75, RED));
+    // the canopy: candy stripes on a slope, a valance of little scallops along the front
+    S.push(box(3.6, 0.1, 1.6, dx, 3.12, fz + 0.8, W, 0.25));
+    for (let k = 0; k < 6; k += 2) S.push(box(0.6, 0.11, 1.62, dx - 1.5 + k * 0.6, 3.125, fz + 0.8, RED, 0.25));
+    for (let x = -1.65; x < 1.7; x += 0.3) S.push(cyl(0.15, 0.15, 0.04, 6, dx + x, 2.84, fz + 1.58, Math.round((x + 1.65) / 0.3) % 2 ? W : RED, PI / 2));
+    N.push(box(3.62, 0.06, 0.06, dx, 2.92, fz + 1.6, RED), box(2.6, 0.04, 0.04, dx, 2.62, fz + 0.26, '#ffe9b0'));
+    for (const o of [-1.75, 1.75]) { S.push(box(0.18, 0.32, 0.18, dx + o, 2.15, fz + 0.1, INK)); N.push(box(0.14, 0.22, 0.06, dx + o, 2.15, fz + 0.2, '#ffe9b0')); glows.push([dx + o, 2.15, fz + 0.5, '#ffe0b0', 3.2, 0.2]); }
+    glows.push([dx, 3.0, fz + 1.1, '#ffe9c0', 6, 0.2]);
+    // the pole's bracket and chrome ends (the striped glass turns: world/barberpole.js)
+    const px = dx + 2.15, pz = fz + 0.36;
+    S.push(box(0.06, 0.06, 0.34, px, 2.75, fz + 0.18, STEEL), box(0.06, 0.06, 0.34, px, 1.5, fz + 0.18, STEEL),
+      cyl(0.13, 0.13, 0.08, 10, px, 2.62, pz, STEEL), tint(new THREE.SphereGeometry(0.11, 10, 6, 0, PI * 2, 0, PI / 2).translate(px, 2.66, pz), '#e8eaf0'),
+      cyl(0.13, 0.11, 0.1, 10, px, 1.58, pz, STEEL), tint(new THREE.SphereGeometry(0.05, 8, 5).translate(px, 1.5, pz), STEEL));
+    glows.push([px, 2.1, pz + 0.4, RED, 3.4, 0.3]);
+    // scissors and a comb in neon over the window
+    const sx = b.cx + b.w * 0.17 - 2.6, sy = 2.15, z = fz + 0.12;
+    seg(sx - 0.45, sy - 0.35, sx + 0.45, sy + 0.35, z, '#18f0ff'); seg(sx - 0.45, sy + 0.35, sx + 0.45, sy - 0.35, z, '#18f0ff');
+    for (const s of [-1, 1]) N.push(cyl(0.13, 0.13, 0.06, 8, sx - 0.55, sy + s * 0.42, z, '#ff2bd1', PI / 2));
+    seg(sx + 0.9, sy + 0.4, sx + 1.9, sy + 0.4, z, '#ffe14a'); for (let k = 0; k < 6; k++) seg(sx + 1.0 + k * 0.17, sy + 0.38, sx + 1.0 + k * 0.17, sy + 0.12, z, '#ffe14a', 0.06);
+    footBox('door: ' + (L.venues.barber ? L.venues.barber.name : 'Fade & Fringe'), dx - 2.0, dx + 2.4, fz, fz + 1.7);
   }
 
   // --- door emblems for the places you can walk into

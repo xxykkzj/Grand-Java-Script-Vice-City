@@ -417,6 +417,40 @@ export const THEMES = {
     },
   },
 
+  // Fade & Fringe: laid-back soul and funk on the salon radio. A dorian vamp under a syncopated bass, a clipped
+  // clavinet-ish chop on the off-beats, warm electric piano, tight drums with ghost notes and a tambourine, horn
+  // stabs at the top of a section, a soft sung-sounding lead; the bridge trades the lead for a vibes figure.
+  salon: {
+    bpm: 96, swing: 0.25, wet: 0.16, vol: 0.95,
+    sec: { A: prog('Bbm9 | Eb9 | Bbm9 | Eb9'), B: prog('Gbmaj7 | Fm7 | Ebm7 | Ab7sus4 Ab7'), C: prog('Dbmaj7 | Cm7 F7 | Bbm9 | Eb9') },
+    form: ['A', 'A', 'B', 'A', 'C', 'B'],
+    lead: { sc: scale(10, 'dor', 60), motifs: [mot('0:4:2 2:2:2 4:4:4 10:6:2 12:4:4 20:2:2 22:0:6'), mot('2:7:2 4:6:2 6:4:6 16:2:2 18:4:2 20:2:8'),
+      mot('0:0:2 2:2:2 4:3:2 6:4:6 14:6:2 16:7:4 22:6:2 24:4:6'), mot('4:9:4 8:7:2 10:6:2 12:4:8 24:2:4 28:0:4')], drop: 0.12, grace: 0.1 },
+    bassLine: { 0: 0, 3: 12, 6: 7, 8: 0, 10: 10, 11: 12 },
+    play(e, K) {
+      const { t, s, chord: c, bus, spb, r } = e, sec = e.secKey, b = low(c, 36);
+      // drums: kick on one and its pushes, snare on two and four with ghost notes, sixteenth hats, a tambourine
+      if (s === 0 || s === 10 || (s === 7 && r() < 0.55)) K.kick(t, s === 0 ? 0.5 : 0.34, bus);
+      if (s === 4 || s === 12) { K.snare(t, 0.13, bus); K.shaker(t, 0.03, bus); }
+      else if ((s === 6 || s === 15 || s === 9) && r() < 0.4) K.snare(t, 0.028, bus);
+      if (s % 2 === 0) K.hat(t, s % 4 === 2 ? 0.04 : 0.026, bus, s === 14 && r() < 0.5);
+      else if (r() < 0.45) K.hat(t, 0.012, bus);
+      // the bass: a syncopated line round the root, an approach note into the next chord
+      const bl = this.bassLine[s];
+      if (bl !== undefined) K.bass(b + bl, t, spb * (s === 0 ? 1.8 : 0.9), s === 0 ? 0.3 : 0.22, bus, 950);
+      else if (s === 14 && e.next.name !== c.name) K.bass(low(e.next, 36) - 1, t, spb * 0.9, 0.18, bus, 950);
+      // the chop: short, bright chords on the off-beats
+      if ((s === 2 || s === 6 || s === 10 || s === 13) && (sec !== 'C' || r() < 0.6)) for (const m of tones(c, 60, 3)) K.pluck(m, t, spb * 0.45, 0.016, bus, 0.85, 'square');
+      // warm electric piano: held chords in the B and C sections, a single push in A
+      if (sec !== 'A' && (s === 0 || (s === 8 && e.bar.length === 2))) for (const m of tones(c, 55)) K.ep(m, t, spb * (e.bar.length === 2 ? 7 : 14), 0.026, bus);
+      else if (sec === 'A' && s === 8 && r() < 0.7) for (const m of tones(c, 55)) K.ep(m, t, spb * 3, 0.022, bus, 1);
+      // horn stabs at the top of a section
+      if (e.barIn === 0 && (s === 0 || s === 3) && sec !== 'A') for (const m of tones(c, 62, 3)) K.horn(m, t, spb * (s ? 1.6 : 1.1), 0.026, bus, 1500);
+      if (sec === 'C') { if (s % 2 === 0 && r() < 0.5) K.bell(tones(c, 72, 4)[(s >> 1) % 4], t, spb * 2.5, 0.011, bus); }
+      else if (sec === 'B' || e.formI > 0 || e.loop % 2) melody(e, { ...this.lead, vol: 0.045, voice: (m, tt, d, v) => K.tone('sine', m, tt, d, v, bus, { att: 0.035, sus: true, det: 5 }) });
+    },
+  },
+
   // Starlight Pier: a carnival galop on a band-organ sound. Oom-pah bass and chords, a bright piping melody
   // with quick turns, glockenspiel sparkles, a woodblock and a cymbal splash at the end of a phrase.
   pier: {
@@ -441,4 +475,4 @@ export const THEMES = {
   },
 };
 // which theme plays in which place (places and venues by key)
-export const THEME_OF = { bar: 'bar', club: 'club', lounge: 'lounge', diner: 'diner', arcade: 'arcade', wear: 'wear', mart: 'mart', arms: 'arms', motel: 'motel', mall: 'mall', bait: 'bait', spire: 'rooftop', terrace: 'rooftop', pier: 'pier' };
+export const THEME_OF = { bar: 'bar', club: 'club', lounge: 'lounge', diner: 'diner', arcade: 'arcade', wear: 'wear', mart: 'mart', arms: 'arms', motel: 'motel', mall: 'mall', bait: 'bait', spire: 'rooftop', terrace: 'rooftop', pier: 'pier', barber: 'salon' };

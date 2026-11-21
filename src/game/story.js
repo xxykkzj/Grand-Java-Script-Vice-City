@@ -35,6 +35,7 @@ export const CAST = {
   BIRDIE: { name: 'BIRDIE', color: '#8fb8ff', voice: 0.9 },
   LEO: { name: 'LEO', color: '#ffcf7a', voice: 0.8 },
   JUNE: { name: 'JUNE', color: '#ff9f6a', voice: 1.3 },
+  DOLLY: { name: 'DOLLY', color: '#ff7ab8', voice: 1.15 },
   // voices of the street events (game/events.js): subtitles only, no scene
   DISPATCH: { name: 'PATROL DISPATCH', color: '#5ff0e0', voice: 0.9 },
   OFFICER: { name: 'OFFICER DUARTE', color: '#19d8c8', voice: 0.8 },
@@ -212,6 +213,7 @@ export const BARKS = {
   mall: ['KIKI', ["Kiki's Knots! Warm pretzels, warmer smiles!", 'Toss a coin in the fountain. The fountain likes shiny things.', "Escalator's been broken all week. Call it stairs with ambition."]],
   lounge: ['BIRDIE', ['Welcome to the Pelican, sugar. Shoes optional, manners required.', 'The band plays what the records tell them. Ask the jukebox.', 'Requests go in the jar. The jar is the jukebox.', 'Skates by the door, please. The floor is older than both of us.']],
   spire: ['LEO', ['Good evening. The terrace is on twenty-three, and the view is on the house.', 'Skates are welcome. Just not on the marble, if you can help it.', 'The lift is an express. Mind your ears.', 'Sunset is at about half past seven. Daily, without fail.']],
+  barber: ['DOLLY', ['Sit down, sugar. Nobody leaves Fade & Fringe looking the way they came in.', 'Hats off at the door. I need to see what we are working with.', 'A new cut changes your whole walk. Ask anybody on the boulevard.', 'Hairspray is a lifestyle, not a product.']],
   bait: ['RUDY', ['Ahoy. Mind the bait fridge, it bites back.', "Forty years on the water and I still can't swim. Ask me how.", 'Tides are up, prices are down. Mostly.']],
   arms: ['ZIZI', ['Goggles on, fingers off the glowy ones.', 'Everything here is certified toy-grade. Mostly.', 'Bangs are for the road, not the boardwalk.', 'It only zaps cars and bins. People just get a fright.']],
 };

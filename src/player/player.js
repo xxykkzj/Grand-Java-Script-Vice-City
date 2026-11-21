@@ -5,12 +5,12 @@ import * as THREE from 'three';
 import { damp, clamp, angleDelta, pushOut, PI, reducedMotion } from '../core/util.js';
 import { clampToWorld, PIER, HZ } from '../world/layout.js';
 import { APIER } from '../world/pier.js';
-import { kit, rig, blockyMaterial, faceDriver, castAtlas, CAST_ROW } from '../actors/blocky.js';
+import { kit, rig, blockyMaterial, faceDriver, castAtlas, CAST_ROW, hairPieces, lookMask, hairColor, facialOf, CAP_SLOT } from '../actors/blocky.js';
 import { pushFromSolids } from '../world/sea.js';
 
 const TEAL = '#12b5a6', MAG = '#e6258f', WHITE = '#f7f5ef', SKIN = '#c98d62', BAG = '#f2b63a', HAIR = '#2a2140', DARK = '#1b1830';
 // Outfit roles: every vertex carries the index of the outfit colour it takes (-1 = keeps its own colour)
-const ROLES = ['jacket', 'trim', 'light', 'bag', 'sleeve', 'cuff', 'shorts', 'thigh', 'shin', 'zip', 'boot', 'collar'];
+const ROLES = ['jacket', 'trim', 'light', 'bag', 'sleeve', 'cuff', 'shorts', 'thigh', 'shin', 'zip', 'boot', 'collar', 'hair'];
 const RI = Object.fromEntries(ROLES.map((r, i) => [r, i]));
 // what each role is for a given outfit (dresses bare the arms, skirts and trousers recolour the legs)
 export function lookOf(o) {
@@ -79,7 +79,9 @@ function buildSkirt(mat) {
 // pivots below, plus the skirt. Pivots, nesting and names are unchanged, so every animation still works.
 function buildModel() {
   const atlas = castAtlas();
-  const mat = blockyMaterial({ atlas, row: CAST_ROW.SKYE });
+  // the hair: every hairstyle's slots on her head, shown by a uniform mask (Fade & Fringe changes it, game/salon.js)
+  const hairU = { value: new THREE.Vector2() };
+  const mat = blockyMaterial({ atlas, row: CAST_ROW.SKYE, hair: hairU });
   const root = new THREE.Group(), body = new THREE.Group();
   root.add(body);
   const K = kit(atlas, { roles: RI });
@@ -106,19 +108,16 @@ function buildModel() {
     B(0.13, 0.26, 0.34, -0.31, 0.98, -0.02, 'bag', 'leather'), B(0.136, 0.12, 0.35, -0.31, 1.06, -0.02, 'trim', 'seam'),
     B(0.14, 0.04, 0.06, -0.31, 1.0, 0.13, STEEL), B(0.014, 0.1, 0.1, -0.378, 0.93, -0.02, 'light'),
   ];
-  // head: a chunky block with a pixel face, nose, ears; hair masses (back, sides, sideburns, a fringe
-  // poking out of the cap's strap gap) under a backwards cap with a button, a band and the brim behind
-  const head = pivot(0, 1.66, 0);
+  // head: a chunky block with a pixel face, nose, ears; every hairstyle's slots (actors/blocky.js HAIR, the mask
+  // picks hers), and the backwards cap with a button, a band, the brim behind and a tuft through the strap gap
+  const head = pivot(0, 1.66, 0), CAPO = { slot: CAP_SLOT };
   const H = [
     B(0.32, 0.32, 0.3, 0, 0.18, 0, SKIN, 'plain', { b: 0.022 }), K.face(0.276, 0.276, 0, 0.18, 0.1505, SKIN),
     B(0.04, 0.045, 0.03, 0, 0.142, 0.162, SKIN2), B(0.035, 0.075, 0.065, 0.168, 0.165, 0, SKIN2), B(0.035, 0.075, 0.065, -0.168, 0.165, 0, SKIN2),
-    B(0.34, 0.24, 0.1, 0, 0.2, -0.12, HAIR, 'hair'), B(0.04, 0.17, 0.2, 0.166, 0.235, -0.035, HAIR, 'hair'), B(0.04, 0.17, 0.2, -0.166, 0.235, -0.035, HAIR, 'hair'),
-    B(0.03, 0.08, 0.035, 0.157, 0.13, 0.11, HAIR, 'hair'), B(0.03, 0.08, 0.035, -0.157, 0.13, 0.11, HAIR, 'hair'),
-    B(0.11, 0.05, 0.04, -0.08, 0.315, 0.15, HAIR, 'hair', { rz: 0.2 }), B(0.1, 0.05, 0.04, 0.03, 0.32, 0.155, HAIR, 'hair', { rz: -0.1 }), B(0.08, 0.045, 0.04, 0.11, 0.312, 0.148, HAIR, 'hair', { rz: -0.35 }),
-    B(0.25, 0.1, 0.08, 0, 0.06, -0.13, HAIR, 'hair'),
-    B(0.345, 0.11, 0.325, 0, 0.37, 0, 'trim', 'weave'), B(0.35, 0.045, 0.33, 0, 0.32, 0, 'jacket', 'rib'),
-    B(0.24, 0.03, 0.17, 0, 0.32, -0.235, 'trim', 'seam'), B(0.08, 0.04, 0.02, 0, 0.345, 0.166, HAIR, 'hair'),
-    C(0.028, 0.028, 0.025, 6, 0, 0.435, 0, 'jacket'),
+    ...hairPieces(K, { w: 0.32, h: 0.32, d: 0.3, y: 0.18 }, 'hair', { all: true }),
+    B(0.345, 0.11, 0.325, 0, 0.37, 0, 'trim', 'weave', CAPO), B(0.35, 0.045, 0.33, 0, 0.32, 0, 'jacket', 'rib', CAPO),
+    B(0.24, 0.03, 0.17, 0, 0.32, -0.235, 'trim', 'seam', CAPO), B(0.08, 0.04, 0.02, 0, 0.345, 0.166, 'hair', 'hair', CAPO),
+    C(0.028, 0.028, 0.025, 6, 0, 0.435, 0, 'jacket', CAPO),
   ];
   const eyes = pivot(0, 0.17, 0, head), mouth = pivot(0, 0.09, 0.006, head);
   // arms: upper sleeve with a shoulder seam, an elbow, the forearm, a ribbed cuff, a fingerless glove
@@ -156,15 +155,30 @@ function buildModel() {
   const cA = mesh.geometry.attributes.color, rA = mesh.geometry.attributes.aRole;
   const c = new THREE.Color();
   let look = lookOf({});
+  // the hair: { style, color, facial } and whether the cap is on (game/salon.js; kept with the save)
+  let hair = { style: 'shag', color: 'plum', facial: 'none' }, cap = true;
   const setOutfit = (o) => {
     look = lookOf(o || {});
+    look.hair = hairColor(hair.color).hex;
     const cols = ROLES.map((r) => new THREE.Color(look[r]));
     for (let i = 0; i < cA.count; i++) { const k = rA.getX(i); if (k >= 0) { c.copy(cols[k]); if (look.sequin && (k === 0 || k === 6)) c.multiplyScalar(0.8 + ((i * 13) % 7) * 0.07); cA.setXYZ(i, c.r, c.g, c.b); } }
     cA.needsUpdate = true;
     skirt.paint(look);
   };
+  let lastOutfit = {};
+  const setHair = (h, capOn = cap) => {
+    hair = { ...hair, ...(h || {}) }; cap = !!capOn;
+    const m = lookMask(hair, cap);
+    if (cap) m[1] += 2 ** (CAP_SLOT - 24);
+    hairU.value.set(m[0], m[1]);
+    mat.userData.face.y = facialOf(hair.facial).stubble ? CAST_ROW.SKYE_STUBBLE : CAST_ROW.SKYE;
+    setOutfit(lastOutfit);
+  };
   const face = faceDriver(mat.userData.face, reducedMotion);
-  const api = { root, body, torso, head, eyes, mouth, armL, armR, legL, legR, skirt, mesh, setOutfit, face, get look() { return look; }, get faceState() { return mat.userData.face.x; } };
+  const api = { root, body, torso, head, eyes, mouth, armL, armR, legL, legR, skirt, mesh, face, setHair,
+    setOutfit(o) { lastOutfit = o || {}; setOutfit(lastOutfit); },
+    get hair() { return { ...hair, cap }; }, get look() { return look; }, get faceState() { return mat.userData.face.x; } };
+  setHair({});
   setOutfit({});
   return api;
 }

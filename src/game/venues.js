@@ -4,6 +4,7 @@
 //   motel   the safehouse: sleep to morning / golden hour, which saves your cash and the clock
 //   mall    Kiki's pretzel cart, and a coin in the wishing fountain
 //   bait    Cap'n Rudy's counter: a snorkel vest (more breath under water), tackle trivia, taffy
+//   barber  Fade & Fringe: Dolly's chair (game/salon.js): hairstyle, colour, facial hair, the cap
 //   lounge  the Blue Pelican: Birdie's drinks (a little health), the jukebox / stage skip the record
 //           (audio/music.js streams them), a now-playing card with title, artist and licence
 // Menus reuse the shop panel (game/places.js asks menu(kind) for a provider).
@@ -11,6 +12,7 @@ import { clamp, rng, PI, reducedMotion, angleDelta } from '../core/util.js';
 import { SKYBAR_MENU } from './story.js';
 import { CAST, BARKS, DINER_MENU, DINER_SIT, JUKEBOX, MOTEL_MENU, MOTEL_WAKE, PRETZELS, WISHES, BAIT_MENU, TRIVIA, TRIVIA_RIGHT, TRIVIA_WRONG, LOUNGE_MENU, CLUB_MENU, KIOSK_MENU, PIER_MENU, PIER_GREET } from './story.js';
 import { OY } from './interiors.js';
+import { createSalon } from './salon.js';
 
 const $ = (id) => document.getElementById(id);
 const pickOf = (a, n) => a[((n % a.length) + a.length) % a.length];
@@ -28,7 +30,9 @@ export function createVenues(game) {
   };
 
   // ---- menus -------------------------------------------------------------------------------------
+  const salon = createSalon(game);
   const MENUS = {
+    salon,
     diner: {
       title: 'SUNSET STRIP DINER', label: 'ORDER',
       items: () => DINER_MENU, greet: () => say('diner', n++),
@@ -229,7 +233,7 @@ export function createVenues(game) {
 
   // ---- the API -------------------------------------------------------------------------------------
   const api = {
-    stats, arcade: A, canvas: cv,
+    stats, arcade: A, canvas: cv, salon,
     get vest() { return !!save.vest; },
     menu: (kind) => MENUS[kind] || null,
     closeMenu: () => game.places.closeShop(),

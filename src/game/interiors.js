@@ -3,7 +3,7 @@
 // and only visible while you are inside. Rooms are authored around (0, 0, 0); the door is on +z.
 import * as THREE from 'three';
 import { box, cyl, tint, merge, PI, rng, beatU, section, angleDelta, reducedMotion } from '../core/util.js';
-import { kit, rig, blockyMaterial, faceDriver, instExtras, castAtlas, crowdAtlas, mergeParts, CAST_ROW, CROWD_FACE_N } from '../actors/blocky.js';
+import { kit, rig, blockyMaterial, faceDriver, instExtras, castAtlas, crowdAtlas, mergeParts, CAST_ROW, hairPieces, pickHair, lookMask } from '../actors/blocky.js';
 import { newPose, dancePose, cheerPose, sitPose, blendPose } from '../actors/moves.js';
 import { CLUB_CROWD, clubTier } from './story.js';
 import { shell, stool, bake, glow } from './dress.js';
@@ -509,28 +509,25 @@ function buildClub(room) {
   // the same refined blocks as the cast, cheaper: unlit with the shading baked in, big blocks bevelled,
   // per-person second / third colours (hair, trousers, shoes, hands) and a face from the shared atlas
   const CA = crowdAtlas(), CK = kit(CA, { shade: true }), W = '#ffffff', P0 = { b: 0 };
-  const cMat = blockyMaterial({ atlas: CA, basic: true, inst: true }), cHead = blockyMaterial({ atlas: CA, basic: true, inst: true, face: true });
+  const cMat = blockyMaterial({ atlas: CA, basic: true, inst: true }), cHead = blockyMaterial({ atlas: CA, basic: true, inst: true, face: true, hair: true });
   const torso = new THREE.InstancedMesh(mergeParts([CK.B(0.4, 0.17, 0.25, 0, 0.93, 0, W, 'denim', { alt: 1 }), CK.B(0.41, 0.035, 0.258, 0, 1.02, 0, '#3a3440', 'leather', { alt: 3, b: 0 }),
     CK.B(0.42, 0.2, 0.25, 0, 1.12, 0, W, 'weave'), CK.B(0.45, 0.25, 0.27, 0, 1.33, 0, W, 'weave'), CK.B(0.12, 0.09, 0.26, 0.215, 1.45, 0, W, 'seam', P0), CK.B(0.12, 0.09, 0.26, -0.215, 1.45, 0, W, 'seam', P0),
     CK.B(0.24, 0.045, 0.2, 0, 1.475, 0, W, 'rib', { alt: 2, b: 0 }), CK.B(0.455, 0.05, 0.275, 0, 1.3, 0, W, 'plain', { alt: 2, b: 0 })]), cMat, N);
   const head = new THREE.InstancedMesh(mergeParts([CK.B(0.1, 0.08, 0.1, 0, 0, 0, W, 'plain', P0), CK.B(0.27, 0.28, 0.26, 0, 0.17, 0, W, 'plain', { b: 0.018 }), CK.face(0.234, 0.244, 0, 0.17, 0.1305, W),
     CK.B(0.032, 0.036, 0.022, 0, 0.135, 0.139, '#e2e2e2', 'plain', P0), CK.B(0.026, 0.06, 0.05, 0.145, 0.16, 0, '#dcdcdc', 'plain', P0), CK.B(0.026, 0.06, 0.05, -0.145, 0.16, 0, '#dcdcdc', 'plain', P0),
-    CK.B(0.285, 0.07, 0.275, 0, 0.3, -0.005, W, 'hair', { alt: 1 }), CK.B(0.285, 0.2, 0.07, 0, 0.2, -0.11, W, 'hair', { alt: 1, b: 0 }),
-    CK.B(0.03, 0.12, 0.17, 0.142, 0.24, -0.04, W, 'hair', { alt: 1, b: 0 }), CK.B(0.03, 0.12, 0.17, -0.142, 0.24, -0.04, W, 'hair', { alt: 1, b: 0 }),
-    CK.B(0.2, 0.04, 0.03, 0.03, 0.29, 0.132, W, 'hair', { alt: 1, b: 0, rz: -0.12 })]), cHead, N);
+    ...hairPieces(CK, { w: 0.27, h: 0.28, d: 0.26, y: 0.17 }, W, { all: true, alt: 1 })]), cHead, N);
   const arms = new THREE.InstancedMesh(mergeParts([CK.B(0.12, 0.24, 0.13, 0, -0.11, 0, W, 'weave'), CK.B(0.105, 0.04, 0.115, 0, -0.25, 0, W, 'plain', { alt: 1, b: 0 }),
     CK.B(0.112, 0.17, 0.122, 0, -0.35, 0, W, 'weave', { alt: 1 }), CK.B(0.085, 0.08, 0.09, 0, -0.475, 0, W, 'plain', { alt: 2, b: 0 }), CK.B(0.075, 0.04, 0.075, 0, -0.53, 0.005, W, 'plain', { alt: 2, b: 0 })]), cMat, N * 2);
   const legs = new THREE.InstancedMesh(mergeParts([CK.B(0.15, 0.4, 0.17, 0, -0.2, 0, W, 'denim'), CK.B(0.135, 0.05, 0.155, 0, -0.42, 0, W, 'plain', { alt: 1, b: 0 }),
     CK.B(0.14, 0.33, 0.16, 0, -0.6, 0, W, 'denim', { alt: 1 }), CK.B(0.155, 0.1, 0.25, 0, -0.82, 0.04, W, 'leather', { alt: 2, b: 0 }), CK.B(0.16, 0.03, 0.26, 0, -0.885, 0.04, '#3a3a3a', 'tread', { alt: 3, b: 0 })]), cMat, N * 2);
-  const xT = instExtras(torso), xH = instExtras(head, true), xA = instExtras(arms), xL = instExtras(legs);
-  const col = new THREE.Color();
-  const HAIRS = ['#1b1410', '#2a1a12', '#5a3a1a', '#a0703a', '#d9b26a', '#22203a', '#8a8a90', '#ff5fa8', '#27d8cf', '#9b7bff'];
+  const xT = instExtras(torso), xH = instExtras(head, true, true), xA = instExtras(arms), xL = instExtras(legs);
+  const col = new THREE.Color(), hrnd = rng(86);
   const SHOES = ['#f6f1e7', '#22203a', '#ff3f6a', '#27d8cf', '#c9b38a', '#ffd447'];
   for (const d of crowd) {
     const top = CROWD_TOPS[(d.i * 7) % CROWD_TOPS.length], sk = SKINS[(d.i * 5) % SKINS.length], lg2 = d.kind === 'coat' ? '#22203a' : CROWD_LEGS[(d.i * 3) % CROWD_LEGS.length];
     const shirt = d.kind === 'coat' ? '#f6f1e7' : top, acc = d.i % 3 === 1 ? CROWD_TOPS[(d.i * 3 + 4) % CROWD_TOPS.length] : shirt, bare = d.i % 4 === 2;
     torso.setColorAt(d.i, col.set(shirt)); xT.b(d.i, lg2); xT.c(d.i, acc);
-    head.setColorAt(d.i, col.set(sk)); xH.b(d.i, HAIRS[(d.i * 7 + 3) % HAIRS.length]); xH.face(d.i, (d.i * 3) % CROWD_FACE_N);
+    head.setColorAt(d.i, col.set(sk)); { const hr = pickHair(hrnd, { age: hrnd() < 0.6 ? 'young' : 'adult' }); xH.b(d.i, hr.hex); xH.face(d.i, hr.face); xH.hair(d.i, lookMask(hr)); }
     for (const k of [0, 1]) {
       arms.setColorAt(d.i * 2 + k, col.set(d.i % 3 ? shirt : sk)); xA.b(d.i * 2 + k, d.i % 3 === 1 ? shirt : sk); xA.c(d.i * 2 + k, sk);
       legs.setColorAt(d.i * 2 + k, col.set(lg2)); xL.b(d.i * 2 + k, bare ? sk : lg2); xL.c(d.i * 2 + k, SHOES[(d.i * 5 + 1) % SHOES.length]);

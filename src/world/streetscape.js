@@ -24,7 +24,7 @@ const NEON = ['#ff2bd1', '#18f0ff', '#ffe14a', '#8dff5a', '#ff6a3d', '#b388ff'];
 // Shop names (all invented). `c`: a café or food place, which may put tables out.
 export const SHOPS = [
   { n: 'Seashell Café', c: 1 }, { n: 'Lido Laundromat' }, { n: 'Palmetto Pharmacy' }, { n: 'Tiki Taco Hut', c: 1 },
-  { n: 'Vinyl Lagoon' }, { n: 'Sunnyside Bakery', c: 1 }, { n: 'Wavelength TV Repair' }, { n: 'Bayfront Barber' },
+  { n: 'Vinyl Lagoon' }, { n: 'Sunnyside Bakery', c: 1 }, { n: 'Wavelength TV Repair' }, { n: 'Fade & Fringe' },
   { n: 'Flamingo Florist' }, { n: 'Sandbar Surf Co.' }, { n: 'Neptune Noodles', c: 1 }, { n: 'Gelato Galaxy', c: 1 },
   { n: 'Pink Palm Pawn' }, { n: 'Turquoise Travel' }, { n: 'Mojo Music' }, { n: 'Starfish Shoes' },
   { n: 'Coral Copy Center' }, { n: 'Hibiscus Hair' }, { n: 'Driftwood Deli', c: 1 }, { n: 'Moonbeam Video' },
@@ -189,7 +189,9 @@ export function planFacades(L) {
   const STY = ['plain', 'turret', 'ziggurat', 'fins', 'pergola', 'sign'], FAC = ['none', 'balcony', 'porthole', 'glass', 'balcony', 'porthole'];
   const order = [...L.buildings].sort((a, b) => a.row - b.row || a.cx - b.cx);
   let prevS = null, prevF = null, prevRow = -1, shop = 0, mural = 0;
-  const shops = SHOPS.map((s, i) => i).sort(() => r() - 0.5);
+  // the barber's fascia (Fade & Fringe, a venue: layout.js) belongs to its lot alone
+  const BARBER = SHOPS.findIndex((s) => s.n === 'Fade & Fringe');
+  const shops = SHOPS.map((s, i) => i).sort(() => r() - 0.5).filter((i) => i !== BARBER);
   for (const b of order) {
     if (b.row !== prevRow) { prevS = prevF = null; prevRow = b.row; }
     b.keep = [];
@@ -203,7 +205,7 @@ export function planFacades(L) {
     if (b.name && s === 'ziggurat') s = 'turret';
     if (b.floors < 3 && s === 'turret') s = 'sign';
     b.style = s; b.facade = f; prevS = s; prevF = f;
-    if (!b.hotel && !b.place && b.row >= 1) b.shop = shops[shop++ % shops.length];
+    if (!b.hotel && !b.place && b.row >= 1) b.shop = b.venue === 'barber' ? BARBER : shops[shop++ % shops.length];
     // murals on the blank-ish rear walls the back avenues look at (row 0's backs face Back Avenue 1, row 1's
     // face the yards along Back Avenue 2): the windows behind them are left out
     if (b.row < 2 && !b.place && b.w > 15 && r() < 0.5) {
@@ -337,10 +339,11 @@ export function addStreetscape(L, S, N, glows, quads) {
   // --- shop fascias over the awnings, with an invented name each (details.js builds the shopfront)
   for (const b of L.buildings) {
     if (b.shop === undefined) continue;
-    const sw = Math.min(b.w * 0.42, 8), sx = b.cx + b.w * 0.17, fw = Math.min(sw + 0.6, 6.2), fh = fw / 6.1;
-    S.push(box(fw + 0.2, fh + 0.16, 0.1, sx, 3.78, b.z1 + 0.06, INK));
-    quad(quads, shopCell(b.shop), sx, 3.78, b.z1 + 0.12, 0, fw, fh, 1);
-    glows.push([sx, 3.78, b.z1 + 0.8, SHOP_C[b.shop % SHOP_C.length], fw * 0.9, 0]);
+    // the barber's name sits over its door and canopy instead of over the window (details.js barberFront)
+    const bar = b.venue === 'barber', sw = Math.min(b.w * 0.42, 8), sx = bar ? b.cx - b.w * 0.2 : b.cx + b.w * 0.17, fw = bar ? 4.4 : Math.min(sw + 0.6, 6.2), fh = fw / 6.1, fy = bar ? 3.98 : 3.78;
+    S.push(box(fw + 0.2, fh + 0.16, 0.1, sx, fy, b.z1 + 0.06, INK));
+    quad(quads, shopCell(b.shop), sx, fy, b.z1 + 0.12, 0, fw, fh, 1);
+    glows.push([sx, fy, b.z1 + 0.8, SHOP_C[b.shop % SHOP_C.length], fw * 0.9, 0]);
   }
   // --- murals on the rear walls (planFacades chose them and left the windows out)
   for (const b of L.buildings) {

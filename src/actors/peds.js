@@ -3,7 +3,7 @@
 // cost five draw calls. Refined blocks with pixel faces (actors/blocky.js). They walk a sidewalk graph and cross on the walk phase.
 import * as THREE from 'three';
 import { angleDelta, clamp, PI, dailyCurve, outOfSight } from '../core/util.js';
-import { kit, blockyMaterial, instExtras, crowdAtlas, mergeParts, CROWD_FACE_N } from './blocky.js';
+import { kit, blockyMaterial, instExtras, crowdAtlas, mergeParts, hairPieces, pickHair, lookMask, hairColor, CROWD_F, CROWD_M } from './blocky.js';
 import { SIDE_X, KEY, FOOTPRINTS, FOOTBOXES, onRoad } from '../world/layout.js';
 import { KH, KV, KEY_JUNCTIONS } from '../world/key.js';
 import { H_ROADS, walkOK } from '../world/roads.js';
@@ -75,7 +75,7 @@ export function createPeds(scene, R, grid, game) {
   // refined blocks, the cheap way: the big blocks bevelled, the small ones sharp; per-person second and third
   // colours (trousers / hair / band, accents / shoes / hands) and a face from the shared crowd atlas
   const A = crowdAtlas(), K = kit(A), W = '#ffffff', P0 = { b: 0 };
-  const mat = blockyMaterial({ atlas: A, inst: true }), headMat = blockyMaterial({ atlas: A, inst: true, face: true });
+  const mat = blockyMaterial({ atlas: A, inst: true }), headMat = blockyMaterial({ atlas: A, inst: true, face: true, hair: true });
   const mk = (geo, count, m = mat) => { const o = new THREE.InstancedMesh(geo, m, count); o.frustumCulled = false; scene.add(o); return o; };
   const torso = mk(mergeParts([K.B(0.4, 0.12, 0.24, 0, 0.06, 0, W, 'denim', { alt: 1, b: 0 }), K.B(0.41, 0.03, 0.25, 0, 0.12, 0, '#3a3440', 'leather', { alt: 3, b: 0 }),
     K.B(0.42, 0.2, 0.25, 0, 0.235, 0, W, 'weave'), K.B(0.45, 0.22, 0.265, 0, 0.44, 0, W, 'weave'),
@@ -83,9 +83,13 @@ export function createPeds(scene, R, grid, game) {
     K.B(0.22, 0.04, 0.19, 0, 0.58, 0, W, 'rib', { alt: 2, b: 0 }), K.B(0.455, 0.045, 0.27, 0, 0.42, 0, W, 'plain', { alt: 2, b: 0 })]), N + BN + DRIVERS);
   const head = mk(mergeParts([K.B(0.1, 0.08, 0.1, 0, -0.02, 0, W, 'plain', P0), K.B(0.26, 0.26, 0.24, 0, 0.13, 0, W, 'plain', { b: 0.016 }), K.face(0.228, 0.228, 0, 0.13, 0.1205, W),
     K.B(0.03, 0.034, 0.02, 0, 0.1, 0.127, '#e2e2e2', 'plain', P0), K.B(0.024, 0.055, 0.045, 0.135, 0.12, 0, '#dcdcdc', 'plain', P0), K.B(0.024, 0.055, 0.045, -0.135, 0.12, 0, '#dcdcdc', 'plain', P0),
-    K.B(0.275, 0.065, 0.255, 0, 0.25, -0.005, W, 'hair', { alt: 1, b: 0 }), K.B(0.275, 0.19, 0.065, 0, 0.15, -0.1, W, 'hair', { alt: 1, b: 0 }),
-    K.B(0.026, 0.11, 0.15, 0.137, 0.19, -0.04, W, 'hair', { alt: 1, b: 0 }), K.B(0.026, 0.11, 0.15, -0.137, 0.19, -0.04, W, 'hair', { alt: 1, b: 0 }),
-    K.B(0.19, 0.035, 0.03, 0.025, 0.24, 0.122, W, 'hair', { alt: 1, b: 0, rz: -0.12 })]), N + BN + DRIVERS, headMat);
+    // every hairstyle's slots (actors/blocky.js HAIR): each person's mask picks theirs, a hat hides the crown pieces
+    ...hairPieces(K, { w: 0.26, h: 0.26, d: 0.24, y: 0.13 }, W, { all: true, alt: 1 })]), N + BN, headMat);
+  // drivers (seen through the glass): the same heads with the everyday cuts only, so a hundred of them stay cheap
+  const DRIVER_SLOTS = ['cap', 'back', 'sideL', 'sideR', 'crew', 'fringe', 'partTop', 'sweep', 'slick', 'longBack', 'hairL', 'hairR', 'bobBack', 'bangs', 'bun', 'horseB', 'horseL', 'horseR', 'stache'];
+  const dHead = mk(mergeParts([K.B(0.1, 0.08, 0.1, 0, -0.02, 0, W, 'plain', P0), K.B(0.26, 0.26, 0.24, 0, 0.13, 0, W, 'plain', { b: 0.016 }), K.face(0.228, 0.228, 0, 0.13, 0.1205, W),
+    K.B(0.03, 0.034, 0.02, 0, 0.1, 0.127, '#e2e2e2', 'plain', P0), K.B(0.024, 0.055, 0.045, 0.135, 0.12, 0, '#dcdcdc', 'plain', P0), K.B(0.024, 0.055, 0.045, -0.135, 0.12, 0, '#dcdcdc', 'plain', P0),
+    ...hairPieces(K, { w: 0.26, h: 0.26, d: 0.24, y: 0.13 }, W, { all: true, alt: 1, only: DRIVER_SLOTS })]), DRIVERS, headMat);
   const limb = mk(mergeParts([K.B(0.13, 0.24, 0.14, 0, -0.12, 0, W, 'weave'), K.B(0.115, 0.04, 0.125, 0, -0.26, 0, W, 'plain', { alt: 1, b: 0 }),
     K.B(0.125, 0.22, 0.135, 0, -0.39, 0, W, 'weave', { alt: 1 }), K.B(0.13, 0.09, 0.16, 0, -0.545, 0.015, W, 'leather', { alt: 2, b: 0 }),
     K.B(0.135, 0.025, 0.165, 0, -0.6, 0.015, W, 'tread', { alt: 2, b: 0 })]), (N + BN) * 4);
@@ -112,7 +116,7 @@ export function createPeds(scene, R, grid, game) {
   // drivers' arms: upper arm + forearm per arm, 4 instances per vehicle slot, one extra draw call (placed in update())
   const arms = mk(mergeParts([K.B(0.1, 1, 0.1, 0, -0.5, 0, W, 'weave', P0)]), DRIVERS * 4);
   instExtras(arms);
-  const xT = instExtras(torso), xH = instExtras(head, true), xL = instExtras(limb), xHat = instExtras(hat);
+  const xT = instExtras(torso), xH = instExtras(head, true, true), xDH = instExtras(dHead, true, true), xL = instExtras(limb), xHat = instExtras(hat);
   const shadow = new THREE.InstancedMesh(new THREE.CircleGeometry(0.42, 10).rotateX(-PI / 2), new THREE.MeshBasicMaterial({
     color: 0, transparent: true, opacity: 0.26, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), N + BN);
   shadow.frustumCulled = false; shadow.renderOrder = 1; scene.add(shadow);
@@ -120,18 +124,21 @@ export function createPeds(scene, R, grid, game) {
   const ZERO0 = new THREE.Matrix4().makeScale(0, 0, 0);
   const col = new THREE.Color(), pick = (a) => a[Math.floor(Math.random() * a.length)];
   const peds = [];
-  const HAIR = ['#1b1410', '#2a1a12', '#5a3a1a', '#a0703a', '#d9b26a', '#22203a', '#8a8a90', '#c4c0c8', '#b0402a'];
+  // hair is what tells people apart now (style, colour, facial hair: actors/blocky.js pickHair); hats are an
+  // accessory on some. The mask follows the hat: when it is on, the crown pieces go (hatShow below).
+  const hairOf = (p, h) => { p.hair = h; p.hm = lookMask(h); p.hmHat = lookMask(h, true); p.hatShown = null; xH.b(p.i, h.hex); xH.face(p.i, h.face); };
+  const hatShow = (p, on) => { if (p.hatShown === on) return; p.hatShown = on; xH.hair(p.i, on ? p.hmHat : p.hm); };
   const SHOE = ['#f6f1e7', '#22203a', '#ff3f6a', '#27d8cf', '#c9b38a', '#ffd447', '#5a3a1a'];
   function dress(p) {
     const i = p.i, skin = pick(SKIN), shirt = pick(SHIRT), legs = pick(LEGS);
     torso.setColorAt(i, col.set(shirt)); xT.b(i, legs); xT.c(i, Math.random() < 0.45 ? pick(SHIRT) : shirt);
-    head.setColorAt(i, col.set(skin)); xH.b(i, Math.random() < 0.08 ? skin : pick(HAIR)); xH.face(i, Math.floor(Math.random() * CROWD_FACE_N));
+    head.setColorAt(i, col.set(skin)); hairOf(p, pickHair());
     const long = Math.random() < 0.5, shorts = Math.random() < 0.35, shoe = pick(SHOE);
     for (const k of [0, 1]) { limb.setColorAt(i * 4 + k, col.set(legs)); xL.b(i * 4 + k, shorts ? skin : legs); xL.c(i * 4 + k, shoe); }
     for (const k of [2, 3]) { limb.setColorAt(i * 4 + k, col.set(shirt)); xL.b(i * 4 + k, long ? shirt : skin); xL.c(i * 4 + k, skin); }
     hat.setColorAt(i, col.set(pick(HAT))); xHat.b(i, pick(SHIRT));
     p.umb = Math.random() < 0.62; p.hurry = 0.5 + Math.random() * 0.7;
-    p.hat = Math.random() < 0.4; p.h = 0.9 + Math.random() * 0.2; p.w = 0.88 + Math.random() * 0.3; p.voice = 0.75 + Math.random() * 0.6;
+    p.hat = Math.random() < (p.hair.age === 'old' ? 0.22 : 0.1); p.h = (p.hair.fem ? 0.88 : 0.93) + Math.random() * 0.17; p.w = 0.88 + Math.random() * 0.3; p.voice = 0.75 + Math.random() * 0.6;
     for (const m of [torso, head, limb, hat]) m.instanceColor.needsUpdate = true;
   }
   // beach clothes: swimwear and bare feet, or a vest and shorts for sport (actors/beachgoers.js)
@@ -144,7 +151,7 @@ export function createPeds(scene, R, grid, game) {
       torso.setColorAt(i, col.set(one ? suit : sk)); xT.b(i, suit); xT.c(i, one ? suit : sk);
       for (const k of [0, 1]) { limb.setColorAt(i * 4 + k, col.set(one ? sk : suit)); xL.b(i * 4 + k, sk); xL.c(i * 4 + k, sk); }
       for (const k of [2, 3]) { limb.setColorAt(i * 4 + k, col.set(sk)); xL.b(i * 4 + k, sk); xL.c(i * 4 + k, sk); }
-      p.hat = Math.random() < 0.25;
+      p.hat = Math.random() < 0.18;
     } else {
       torso.setColorAt(i, col.set(suit)); xT.b(i, pick(['#22203a', '#3b5a9a', '#f6f1e7', '#2f8f86'])); xT.c(i, suit);
       for (const k of [0, 1]) { limb.setColorAt(i * 4 + k, col.set(pick(['#22203a', '#3b5a9a', '#ff5fa8']))); xL.b(i * 4 + k, sk); xL.c(i * 4 + k, pick(SHOE)); }
@@ -167,12 +174,15 @@ export function createPeds(scene, R, grid, game) {
     if (p.e.cross) p.d = 0;
     peds.push(p);
   }
+  const drivers = [];
   for (let i = 0; i < DRIVERS; i++) {
     const k = N + BN + i, sk = pick(SKIN), sh = pick(SHIRT);
     for (let a = 0; a < 4; a++) arms.setColorAt(i * 4 + a, col.set(a & 1 ? sk : sh));      // sleeve, then bare forearm
+    dHead.setMatrixAt(i, ZERO0);
     arms.setMatrixAt(i * 4, ZERO0); arms.setMatrixAt(i * 4 + 1, ZERO0); arms.setMatrixAt(i * 4 + 2, ZERO0); arms.setMatrixAt(i * 4 + 3, ZERO0);
     torso.setColorAt(k, col.set(sh)); xT.b(k, pick(LEGS)); xT.c(k, pick(SHIRT));
-    head.setColorAt(k, col.set(sk)); xH.b(k, pick(HAIR)); xH.face(k, Math.floor(Math.random() * CROWD_FACE_N));
+    dHead.setColorAt(i, col.set(sk));
+    const h = pickHair(Math.random, { slots: DRIVER_SLOTS }); xDH.b(i, h.hex); xDH.face(i, h.face); xDH.hair(i, lookMask(h)); drivers.push(h);
   }
 
   const B = new THREE.Matrix4(), Lm = new THREE.Matrix4(), M = new THREE.Matrix4(), ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
@@ -194,6 +204,7 @@ export function createPeds(scene, R, grid, game) {
       const arm = g ? 0.7 : -0.45;
       part(limb, i * 4 + 2, 0.27 * p.w, 1.38, lean * 0.4, arm, 0.25, 0.85, 1); part(limb, i * 4 + 3, -0.27 * p.w, 1.38, lean * 0.4, arm, -0.25, 0.85, 1);
       if (p.hat) part(hat, i, 0, 1.5, lean * 0.6, 0, 0, 1, 1); else hat.setMatrixAt(i, ZERO);
+      hatShow(p, !!p.hat);
       shadow.setMatrixAt(i, M.makeTranslation(p.x, 0.03, p.z));
       return;
     }
@@ -206,6 +217,7 @@ export function createPeds(scene, R, grid, game) {
       part(limb, i * 4, 0.1 * p.w, 0.8, 0, -0.35, 0, 1, 1.3); part(limb, i * 4 + 1, -0.1 * p.w, 0.8, 0, 0.1, 0, 1, 1.3);
       part(limb, i * 4 + 2, 0.24 * p.w, 1.28, 0.2, -2.7, 0.5, 0.85, 1); part(limb, i * 4 + 3, -0.24 * p.w, 1.28, 0.2, -2.7, -0.5, 0.85, 1);
       if (p.hat) part(hat, i, 0, 1.34, 0.2, 0.45, 0, 1, 1); else hat.setMatrixAt(i, ZERO);
+      hatShow(p, !!p.hat);
       shadow.setMatrixAt(i, M.makeTranslation(p.x, gy + 0.03, p.z));
       return;
     }
@@ -221,7 +233,9 @@ export function createPeds(scene, R, grid, game) {
     part(limb, i * 4 + 1, -0.1 * p.w, 0.86, 0, -s, 0, 1, 1.38);
     part(limb, i * 4 + 2, 0.27 * p.w, 1.38, 0, fist || -s - flail, g === 'wave' ? 0.4 : 0.08, 0.85, 1);
     part(limb, i * 4 + 3, -0.27 * p.w, 1.38, 0, brolly ? -1.05 : s - flail, -0.08, 0.85, 1);
-    if (p.hat && p.state !== LIE && !brolly) part(hat, i, 0, 1.5, 0, 0, 0, 1, 1); else hat.setMatrixAt(i, ZERO);
+    const hatOn = !!p.hat && p.state !== LIE;
+    if (hatOn) part(hat, i, 0, 1.5, 0, 0, 0, 1, 1); else hat.setMatrixAt(i, ZERO);
+    hatShow(p, hatOn);
     if (p.state === LIE || gy < -0.3) shadow.setMatrixAt(i, ZERO); else shadow.setMatrixAt(i, M.makeTranslation(p.x, gy + 0.03, p.z));
   }
 
@@ -697,13 +711,25 @@ export function createPeds(scene, R, grid, game) {
   }
 
   // the beach crowd: its own pool of people in the same meshes (indices N .. N + BN - 1)
-  const beach = createBeachgoers({ game, base: N, count: BN, torso, head, limb, hat, shadow, part, B, M, v, q, eu, sc, ZERO, dress, dressBeach, knock, shout, standUp: () => {},
+  const beach = createBeachgoers({ game, base: N, count: BN, torso, head, limb, hat, hatShow, shadow, part, B, M, v, q, eu, sc, ZERO, dress, dressBeach, knock, shout, standUp: () => {},
     steer, onGhost: () => { stats.ghosts++; },
     hitCheck: (p) => { const u = p.use; if (shove(p, !(p.ghost > 0), p.gx, p.gz, u ? u[0] : NaN, u ? u[1] : NaN)) { p.x += PUSH[0]; p.z += PUSH[1]; } hitCheck(p); },
     S: { WALK, DOWN, LIE, SIT, FLINCH, ACT } });
   const all = () => (beach.on ? [...peds, ...beach.list] : peds);
   const api = {
     peds, count: N, beach, carStats: stats, collide: true, avoidProps: true, props: PROPS,
+    // give someone a particular look (automated checks, the line-up): { style, color, facial, fem, hat, face }
+    restyle(p, o) {
+      const fem = !!o.fem, face = o.face ?? (fem ? CROWD_F : CROWD_M)[p.i % (fem ? CROWD_F.length : CROWD_M.length)];
+      hairOf(p, { style: o.style, color: o.color, hex: hairColor(o.color).hex, facial: o.facial || 'none', fem, age: o.age || 'adult', face });
+      p.hat = !!o.hat; head.instanceColor.needsUpdate = true;
+    },
+    // who wears what (automated checks): hairstyles, colours, facial hair, hats, men / women, ages
+    hairStats(withDrivers = false) {
+      const list = [...peds, ...beach.list.filter((p) => p.hair)].map((p) => ({ ...p.hair, hat: !!p.hat })).concat(withDrivers ? drivers.map((h) => ({ ...h, hat: false })) : []);
+      const count = (k) => list.reduce((o, h) => { o[h[k]] = (o[h[k]] || 0) + 1; return o; }, {});
+      return { n: list.length, hats: list.filter((h) => h.hat).length, women: list.filter((h) => h.fem).length, styles: count('style'), colors: count('color'), facial: count('facial'), age: count('age') };
+    },
     // the footprint box test the checks use: is (x, z) inside any nearby vehicle (unpadded)?
     inCar(x, z) { nearCars(x, z, 4); for (let k = 0; k < nVB; k++) { const b = VB[k], rx = x - b[0], rz = z - b[1]; if (Math.abs(rx * b[2] + rz * b[3]) < b[4] && Math.abs(rx * b[3] - rz * b[2]) < b[5]) return true; } return false; },
     // scare everyone within r of (x, z); the closest ones go flying
@@ -820,23 +846,23 @@ export function createPeds(scene, R, grid, game) {
       for (const c of cars) {
         const i = N + BN + c.idx, ai = c.idx * 4;
         // (the player's own car too: the figure shows through the glass; the convertible gets Skye herself, main.js)
-        if (c.off || !(c.hasDriver || c.driven) || !(c.ai || c.jacking || (c.driven && c.kind === 'car' && c.type !== 'coupe' && !game.vehicles.firstPerson))) { torso.setMatrixAt(i, ZERO); head.setMatrixAt(i, ZERO); for (let a = 0; a < 4; a++) arms.setMatrixAt(ai + a, ZERO); continue; }
+        if (c.off || !(c.hasDriver || c.driven) || !(c.ai || c.jacking || (c.driven && c.kind === 'car' && c.type !== 'coupe' && !game.vehicles.firstPerson))) { torso.setMatrixAt(i, ZERO); dHead.setMatrixAt(c.idx, ZERO); for (let a = 0; a < 4; a++) arms.setMatrixAt(ai + a, ZERO); continue; }
         B.compose(v.set(c.x, c.y, c.z), q.setFromEuler(eu.set(c.tx, c.yaw, c.tz)), sc.set(1, 1, 1));
         // the wheel angle follows the car's steering input a little late
         c.wa = (c.wa || 0) + ((c.steerLast || 0) * 1.1 - (c.wa || 0)) * Math.min(1, dt * 10);
         if (c.kind === 'bike') {
-          part(torso, i, 0, 0.92, -0.42, 0.5, 0, 0.9, 0.9); part(head, i, 0, 1.42, -0.1, 0.1, 0, 1, 1);
+          part(torso, i, 0, 0.92, -0.42, 0.5, 0, 0.9, 0.9); part(dHead, c.idx, 0, 1.42, -0.1, 0.1, 0, 1, 1);
           for (const sd of [1, -1]) arm(ai + (sd > 0 ? 0 : 2), sd * 0.24, 1.35, -0.19, sd * 0.3, 1.2, 0.46 + sd * c.wa * 0.05, 0.36);
           continue;
         }
         const st = (c.spec && c.spec.seat) || SEAT0;
         part(torso, i, st[0], st[1], st[2], -0.12, 0, 0.9, 0.9);
-        part(head, i, st[0], st[1] + 0.58, st[2] - 0.05, 0, 0, 1, 1);
+        part(dHead, c.idx, st[0], st[1] + 0.58, st[2] - 0.05, 0, 0, 1, 1);
         // hands on a wheel in front of the seat, turned by the steering
         const ca = Math.cos(c.wa), sa = Math.sin(c.wa);
         for (const sd of [1, -1]) arm(ai + (sd > 0 ? 0 : 2), st[0] + sd * 0.24, st[1] + 0.49, st[2] - 0.11, st[0] + sd * 0.16 * ca, st[1] + 0.22 + sd * 0.16 * sa, st[2] + 0.42 - sd * 0.16 * sa * 0.3, 0.3);
       }
-      for (const m of [torso, head, limb, hat, shadow, arms, umb]) m.instanceMatrix.needsUpdate = true;
+      for (const m of [torso, head, dHead, limb, hat, shadow, arms, umb]) m.instanceMatrix.needsUpdate = true;
       umb.visible = rainK > 0.15;
     },
     // rain checks: umbrellas up, people sheltering, people hurrying

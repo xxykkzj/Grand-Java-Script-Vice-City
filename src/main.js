@@ -16,6 +16,7 @@ import { createHorizon } from './world/horizon.js';
 import { createAnimals } from './actors/animals.js';
 import { createSky, createOcean } from './world/sky.js';
 import { buildGround, buildCity } from './world/city.js';
+import { barberPole } from './world/barberpole.js';
 import { createEnvironment } from './world/environment.js';
 import { createFx } from './vehicles/effects.js';
 import { createVehicles } from './vehicles/vehicles.js';
@@ -123,6 +124,8 @@ async function boot() {
   const groundCanvas = buildGround(scene, L, renderer);
   await progress(0.38, 'RAISING DECO HOTELS…');
   const city = buildCity(scene, L);
+  // Fade & Fringe's spinning barber pole on its bracket by the door (world/details.js builds the bracket)
+  { const v = L.venues.barber, pole = barberPole(); pole.position.set(v.b.cx + v.along + 2.15, 2.105, v.b.z1 + 0.36); city.group.add(pole); }
   await progress(0.5, 'OPENING THE HALCYON CAUSEWAY…');
   const keyCity = buildKey(scene, L, renderer, L.adSigns);
   const ads = buildAds(scene, L.adSigns);
@@ -182,6 +185,9 @@ async function boot() {
   if (!Array.isArray(save.owned)) save.owned = [];
   if (!save.gift || typeof save.gift !== 'object') save.gift = {};
   save.story = Math.max(0, Math.floor(+save.story || 0));
+  // the haircut from Fade & Fringe (game/salon.js): { style, color, facial }, and whether the cap is on
+  if (!save.hair || typeof save.hair !== 'object') save.hair = { style: 'shag', color: 'plum', facial: 'none' };
+  save.cap = save.cap === 0 ? 0 : 1;
   game.persist = () => { try { localStorage.setItem(SAVE, JSON.stringify(save)); } catch (e) { /* ignore */ } };
   const cut = game.cut = createDirector(camera, game);
   const rules = game.rules = createRules(game, scene);

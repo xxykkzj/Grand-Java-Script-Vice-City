@@ -7,11 +7,28 @@ import * as THREE from 'three';
 import { box, cyl, tint, merge, PI, rng } from '../core/util.js';
 import { buildSpire, SPIRE_LOOKS } from './spireroom.js';
 import { shell, stool, plant, rug, pipe, boards, P, fan, fishTank, pulser, pbox, shadeHex } from './dress.js';
+import { hairPieces, hairStyle, stylePieces, HAIR_COLORS } from '../actors/blocky.js';
+import { barberPole } from '../world/barberpole.js';
 
 const BLK = '#22203a', GOLD = '#ffd166', CHROME = '#d9d6e6', NEON = ['#ff2bd1', '#18f0ff', '#ffe14a', '#8dff5a', '#ff6a3d', '#b388ff'];
 
 // ---- residents -------------------------------------------------------------------------------------------
 export const VENUE_LOOKS = {
+  // Dolly, Fade & Fringe's stylist: a pink salon smock with a white collar and a comb in the pocket, black capris,
+  // a big auburn perm (actors/blocky.js HAIR), gold hoops, scissors in her right hand
+  DOLLY: { skin: '#c98d62', top: '#ff7ab8', topPat: 'knit', legs: '#22203a', sleeve: '#ff7ab8', fore: '#c98d62', cuff: '#ffffff', shoe: '#ff3a4e', belt: null,
+    wear(K, P) {
+      const S = '#ff7ab8';
+      P.body.push(K.B(0.27, 0.05, 0.23, 0, 1.478, 0, '#ffffff', 'rib'), K.B(0.47, 0.3, 0.28, 0, 0.88, 0, S, 'knit'), K.B(0.12, 0.09, 0.02, 0.11, 1.3, 0.138, '#ffffff', 'seam'),
+        K.B(0.012, 0.11, 0.012, 0.09, 1.36, 0.15, '#22203a'), K.B(0.012, 0.09, 0.012, 0.12, 1.35, 0.15, '#22203a'), K.decal(0.08, 0.08, -0.11, 1.34, 0.138, S, 'heart'),
+        K.B(0.48, 0.03, 0.29, 0, 0.73, 0, '#ffffff', 'rib'));
+      P.head.push(...hairPieces(K, { w: 0.3, h: 0.31, d: 0.28, y: 0.17 }, '#a8381e', { slots: hairStyle('perm').s }),
+        K.B(0.018, 0.06, 0.05, 0.168, 0.075, 0.02, GOLD), K.B(0.018, 0.06, 0.05, -0.168, 0.075, 0.02, GOLD));
+      P.arms((sx) => [K.B(0.14, 0.05, 0.15, 0, -0.25, 0, '#ffffff', 'rib')]);
+      // scissors (two chrome blades and pink finger loops) in the right hand
+      P.armR.push(K.B(0.012, 0.13, 0.02, 0.012, -0.66, 0.05, CHROME, 'plain', { rz: 0.12 }), K.B(0.012, 0.13, 0.02, -0.012, -0.66, 0.05, CHROME, 'plain', { rz: -0.12 }),
+        K.B(0.05, 0.03, 0.03, 0.02, -0.58, 0.05, '#ff2bd1'), K.B(0.05, 0.03, 0.03, -0.02, -0.58, 0.05, '#ff2bd1'));
+    } },
   // Dot: a mint diner dress with a white collar and apron, red bouffant under a paper cap, a pencil behind the ear
   DOT: { skin: '#e8b48a', top: '#7fe8c8', legs: '#e8b48a', sleeve: '#7fe8c8', fore: '#e8b48a', cuff: '#ffffff', shoe: '#ff4f6a', belt: null,
     wear(K, P) {
@@ -849,5 +866,171 @@ function buildLounge(room) {
 const posterA = (c, W, H) => { P.grad(c, W, H, '#2a3a8a', '#101848'); c.fillStyle = '#ffd166'; c.beginPath(); c.arc(W * 0.5, H * 0.42, H * 0.22, 0, 6.3); c.fill(); c.fillStyle = '#101848'; c.fillRect(W * 0.46, H * 0.2, W * 0.08, H * 0.5); P.text(c, 'MAE CALLOWAY', W / 2, H * 0.8, H * 0.09, '#f6f1e7', { italic: true, max: W * 0.9 }); P.text(c, 'BLUE NOTES · BLUE SKIES', W / 2, H * 0.92, H * 0.05, '#9fd0ff', { max: W * 0.9 }); };
 const posterB = (c, W, H) => { P.grad(c, W, H, '#e8c890', '#c8945e'); c.fillStyle = '#5a3016'; c.beginPath(); c.moveTo(W * 0.3, H * 0.6); c.lineTo(W * 0.5, H * 0.15); c.lineTo(W * 0.7, H * 0.6); c.fill(); c.fillStyle = '#c0303a'; c.fillRect(W * 0.2, H * 0.58, W * 0.6, H * 0.04); P.text(c, 'THE DRIFTWOOD', W / 2, H * 0.75, H * 0.09, '#3a2016', { italic: true, max: W * 0.9 }); P.text(c, 'TRIO', W / 2, H * 0.88, H * 0.1, '#c0303a', { italic: true }); };
 
-export const VENUE_BUILD = { boutique: buildBoutique, diner: buildDiner, arcade: buildArcade, motel: buildMotel, mall: buildMall, bait: buildBait, lounge: buildLounge, spire: buildSpire };
+
+// ---- Fade & Fringe: the barber and salon on Back Avenue 1 ----------------------------------------------------
+// A chequered floor, mint walls over a pink wainscot with a chrome rail, three retro barber chairs at mirrored
+// stations along the left wall (a jar of blue disinfectant and the combs, clippers, tonic bottles), two shampoo
+// sinks with reclining chairs and two hood dryers along the right, a Hollywood vanity mirror at the back where
+// Dolly works (the try-on spot: game/salon.js), posters of the house styles painted from the same hair pieces the
+// characters wear, a retail shelf, a waiting bench and magazines, the reception desk, a barber pole by the door.
+// one hairstyle, painted front and side from its blocks (the same pieces the characters wear: actors/blocky.js)
+function headArt(c, cx, cy, s, style, hex, { side = false, facial = 'none', skin = '#e0a878' } = {}) {
+  const pcs = stylePieces(style, facial), dk = shadeHex(hex, 0.7);
+  const rect = (x, y, w, h, col, line) => { c.fillStyle = col; c.fillRect(cx + (x - w / 2) * s, cy - (y + h / 2 - 0.13) * s, w * s, h * s); if (line) { c.strokeStyle = line; c.lineWidth = Math.max(1, s * 0.006); c.strokeRect(cx + (x - w / 2) * s, cy - (y + h / 2 - 0.13) * s, w * s, h * s); } };
+  // [w, h, d, x, y, z]: front view uses (x, w), the side view (from the right) (z, d)
+  const P2 = (p) => (side ? [p[5], p[1], p[2], p[4]] : [p[3], p[1], p[0], p[4]]);
+  const behind = (p) => (side ? p[3] + p[0] / 2 < -0.06 : p[5] + p[2] / 2 < -0.09);
+  for (const p of pcs) if (behind(p)) { const [x, h, w, y] = P2(p); rect(x, y, w, h, hex, dk); }
+  rect(0, -0.2, side ? 0.27 : 0.45, 0.26, '#3a3550'); rect(0, -0.04, 0.1, 0.08, skin);
+  rect(0, 0.13, side ? 0.24 : 0.26, 0.26, skin, shadeHex(skin, 0.8));
+  c.fillStyle = '#22203a';
+  if (side) { c.fillRect(cx + 0.085 * s, cy - 0.01 * s, 0.025 * s, 0.03 * s); c.fillStyle = shadeHex(skin, 0.85); c.fillRect(cx + 0.12 * s, cy + 0.02 * s, 0.02 * s, 0.035 * s); c.fillStyle = '#8a3a48'; c.fillRect(cx + 0.09 * s, cy + 0.07 * s, 0.03 * s, 0.012 * s); }
+  else { for (const ex of [-0.05, 0.05]) c.fillRect(cx + (ex - 0.015) * s, cy - 0.01 * s, 0.03 * s, 0.03 * s); c.fillStyle = '#8a3a48'; c.fillRect(cx - 0.03 * s, cy + 0.07 * s, 0.06 * s, 0.014 * s); }
+  const order = pcs.filter((p) => !behind(p)).sort((a, b) => (side ? a[3] - b[3] : a[5] - b[5]));
+  for (const p of order) { const [x, h, w, y] = P2(p); rect(x, y, w, h, hex, dk); }
+}
+const hairPoster = (style, hex, bg, ink, title, sub, facial) => (c, W, H) => {
+  P.grad(c, W, H, bg[0], bg[1]);
+  c.fillStyle = 'rgba(255,255,255,.18)'; for (let i = 0; i < 6; i++) c.fillRect(0, H * (0.22 + i * 0.1), W, H * 0.02);
+  const s = Math.min(W * 0.44 / 0.36, H * 0.5 / 0.5);
+  headArt(c, W * 0.29, H * 0.5, s, style, hex, { facial });
+  headArt(c, W * 0.73, H * 0.5, s, style, hex, { side: true, facial, skin: '#c98d62' });
+  P.text(c, title, W / 2, H * 0.1, H * 0.085, ink, { italic: true, max: W * 0.92 });
+  P.text(c, sub, W / 2, H * 0.92, H * 0.05, ink, { max: W * 0.9 });
+  P.frame(c, W, H, ink, 5);
+};
+const styleGuide = (c, W, H) => {
+  P.fill(c, W, H, '#fff6ec'); P.frame(c, W, H, '#ff5a6e', 6);
+  P.text(c, 'THE HOUSE STYLES', W / 2, H * 0.08, H * 0.06, '#ff5a6e', { italic: true });
+  const L = [['crew', '#3a2416'], ['sidepart', '#16110e'], ['mullet', '#dcb25e'], ['afro', '#16110e'], ['pony', '#8a301c'], ['bob', '#efe4c4'], ['pixie', '#ff4fa8'], ['bun', '#cfcfd8'], ['spacebuns', '#8a48d8']];
+  L.forEach(([st, hx], i) => {
+    const x = W * (0.18 + (i % 3) * 0.32), y = H * (0.27 + Math.floor(i / 3) * 0.28), s = H * 0.42;
+    headArt(c, x, y, s, st, hx);
+    P.text(c, hairStyle(st).name, x, y + H * 0.115, H * 0.03, '#22203a', { max: W * 0.3 });
+  });
+};
+function buildSalon(room) {
+  const g = [], B = room.boards = boards(1024), HX = 6, HZ = 4.5, H = 3.6, pools = room.pools, hi = room.hiPools;
+  const RED = '#ff5a6e', PINK = '#ff8aa0', MINT = '#a8e6d6', LEATHER = '#c81e3a', CREAM = '#f6f1e7';
+  shell(g, HX, HZ, H, '#f2ece2', '#24202e', [MINT, '#a0e0d0', '#ffd0dc'], '#f4ece0', RED);
+  // pink wainscot with a chrome rail, a red stripe under the ceiling
+  g.push(box(HX * 2, 1.0, 0.04, 0, 0.5, -HZ + 0.03, PINK), box(0.04, 1.0, HZ * 2, -HX + 0.03, 0.5, 0, PINK), box(0.04, 1.0, HZ * 2, HX - 0.03, 0.5, 0, PINK),
+    box(HX * 2, 0.05, 0.07, 0, 1.03, -HZ + 0.05, CHROME), box(0.07, 0.05, HZ * 2, -HX + 0.05, 1.03, 0, CHROME), box(0.07, 0.05, HZ * 2, HX - 0.05, 1.03, 0, CHROME),
+    box(HX * 2, 0.12, 0.04, 0, H - 0.25, -HZ + 0.03, RED), box(0.04, 0.12, HZ * 2, -HX + 0.03, H - 0.25, 0, RED), box(0.04, 0.12, HZ * 2, HX - 0.03, H - 0.25, 0, RED));
+  for (const sx of [-1, 1]) g.push(box(HX - 1, 1.0, 0.04, sx * (HX + 1) / 2, 0.5, HZ - 0.03, PINK));
+  // three barber stations along the left wall: mirror, counter with the tools, a red leather chair facing it
+  const seats = [], blocks = [];
+  const mirror = (c, W, Hh) => P.mirror(c, W, Hh, ['#9ab8c4', '#6a8a9a'], [['#ff8aa0', 3], ['#a8e6d6', 4], ['#f6f1e7', 3], ['#22203a', 2]], 7);
+  for (const z of [-2.4, -0.4, 1.6]) {
+    g.push(box(0.04, 1.42, 1.32, -HX + 0.05, 1.9, z, '#e8dcc8'), box(0.5, 0.9, 1.3, -HX + 0.3, 0.45, z, CREAM), box(0.56, 0.05, 1.36, -HX + 0.32, 0.92, z, RED),
+      box(0.02, 0.6, 1.0, -HX + 0.56, 0.45, z, '#e8e0d4'));
+    B.add(1.2, 1.3, -HX + 0.08, 1.9, z, PI / 2, mirror);
+    // a jar of blue disinfectant with combs in it, tonic bottles, the clippers, a brush
+    g.push(cyl(0.065, 0.065, 0.22, 10, -HX + 0.3, 1.06, z - 0.42, '#3ac8e8'), cyl(0.07, 0.07, 0.03, 10, -HX + 0.3, 1.18, z - 0.42, CHROME));
+    for (let k = 0; k < 3; k++) g.push(box(0.012, 0.18, 0.04, -HX + 0.28 + k * 0.02, 1.15, z - 0.42 + (k - 1) * 0.02, '#22203a'));
+    for (let k = 0; k < 3; k++) g.push(cyl(0.035, 0.04, 0.2, 8, -HX + 0.3, 1.04, z - 0.15 + k * 0.1, ['#ffd447', '#8dff5a', '#ff8a3d'][k]), cyl(0.015, 0.015, 0.05, 6, -HX + 0.3, 1.17, z - 0.15 + k * 0.1, '#22203a'));
+    g.push(box(0.16, 0.06, 0.07, -HX + 0.32, 0.98, z + 0.25, '#3a3550'), box(0.04, 0.03, 0.07, -HX + 0.42, 0.98, z + 0.25, CHROME), box(0.2, 0.04, 0.06, -HX + 0.3, 0.97, z + 0.45, '#8a5a3a'));
+    // the chair: chrome base and pump, a red leather seat, back and headrest, chrome arms, a foot plate
+    const cx = -4.5;
+    g.push(cyl(0.3, 0.34, 0.07, 14, cx, 0.035, z, CHROME), cyl(0.07, 0.09, 0.42, 10, cx, 0.28, z, CHROME), box(0.62, 0.14, 0.62, cx, 0.56, z, LEATHER),
+      box(0.62, 0.05, 0.64, cx, 0.49, z, '#22203a'), box(0.12, 0.72, 0.6, cx + 0.32, 0.98, z, LEATHER, 0, 0, 0.12), box(0.1, 0.18, 0.34, cx + 0.38, 1.44, z, LEATHER, 0, 0, 0.12),
+      box(0.04, 0.3, 0.04, cx + 0.38, 1.28, z, CHROME), box(0.56, 0.06, 0.08, cx, 0.78, z + 0.33, CHROME), box(0.56, 0.06, 0.08, cx, 0.78, z - 0.33, CHROME),
+      box(0.05, 0.22, 0.05, cx - 0.22, 0.67, z + 0.33, CHROME), box(0.05, 0.22, 0.05, cx - 0.22, 0.67, z - 0.33, CHROME), box(0.32, 0.04, 0.44, cx - 0.48, 0.2, z, CHROME), box(0.04, 0.3, 0.04, cx - 0.33, 0.35, z, CHROME, 0, 0, 0.7));
+    seats.push({ x: cx, z, y: 0.64, yaw: -PI / 2, kind: 'chair' });
+    blocks.push({ x0: -HX, x1: cx + 0.4, z0: z - 0.5, z1: z + 0.5 });
+    g.push(cyl(0.012, 0.012, 0.6, 4, -4.9, H - 0.3, z, '#3a3550'), cyl(0.18, 0.12, 0.2, 10, -4.9, H - 0.7, z, '#ff5a6e'), cyl(0.1, 0.1, 0.06, 10, -4.9, H - 0.82, z, '#fff3c4'));
+    pools.push(disc(-4.9, 0.012, z, 1.2, '#ffe0b0', 0.3)); hi.push(cone(-4.9, H - 0.85, z, 0.12, 1.0, 2.2, '#ffe9c0', 0.14));
+  }
+  // the back wall: the Hollywood vanity where Dolly works (bulbs all round), a styling trolley, a round mat
+  const VX = -1.6;
+  g.push(box(1.84, 1.84, 0.06, VX, 1.95, -HZ + 0.05, '#f6e0c8'), box(1.6, 0.06, 0.4, VX, 0.95, -HZ + 0.25, CREAM), box(1.6, 0.9, 0.04, VX, 0.47, -HZ + 0.43, '#ffc6d6'));
+  B.add(1.56, 1.56, VX, 1.95, -HZ + 0.085, 0, (c, W, Hh) => P.mirror(c, W, Hh, ['#a8c0cc', '#7a98a8'], [['#ff8aa0', 4], ['#a8e6d6', 3], ['#fff6ec', 4], ['#ff5a6e', 2]], 11));
+  for (let k = 0; k < 6; k++) for (const [x, y] of [[VX - 0.86, 1.2 + k * 0.3], [VX + 0.86, 1.2 + k * 0.3], [VX - 0.75 + k * 0.3, 2.82]]) g.push(tint(new THREE.SphereGeometry(0.045, 6, 4).translate(x, y, -HZ + 0.1), '#fffaf0'));
+  g.push(box(0.5, 0.75, 0.4, VX + 1.3, 0.38, -HZ + 0.4, '#22203a'), box(0.52, 0.04, 0.42, VX + 1.3, 0.77, -HZ + 0.4, RED), box(0.14, 0.18, 0.1, VX + 1.22, 0.88, -HZ + 0.4, '#ffe14a'), cyl(0.03, 0.03, 0.18, 6, VX + 1.42, 0.86, -HZ + 0.36, '#ff2bd1'));
+  g.push(cyl(0.8, 0.8, 0.02, 20, VX, 0.01, -2.5, RED), cyl(0.7, 0.7, 0.024, 20, VX, 0.012, -2.5, '#fff6ec'));
+  blocks.push({ x0: VX - 0.95, x1: VX + 1.6, z0: -HZ, z1: -HZ + 0.65 });
+  // posters of the house styles on the back wall, a big neon name, a retail shelf of tonics and sprays under them
+  const posters = [['pomp', '#16110e', ['#ffd0dc', '#ff8aa0'], '#7a1030', 'THE POMPADOUR', 'ROLLED, PINNED & PROUD', 'stache'],
+    ['perm', '#8a301c', ['#c8f4ec', '#7fd8c8'], '#1a5a50', 'THE BIG PERM', 'VOLUME FOR DAYS'],
+    ['flattop', '#3a2416', ['#fff0b3', '#ffc890'], '#7a4a10', 'THE FLAT-TOP', 'LEVEL BEST'],
+    ['braids', '#16110e', ['#e6d4fa', '#b8a0e8'], '#4a2a7a', 'BOX BRAIDS', 'LONG LIVE THE BRAID']];
+  posters.forEach(([st, hx, bg, ink, t, sub, fac], i) => {
+    const x = 0.7 + i * 1.45;
+    g.push(box(1.2, 1.5, 0.04, x, 2.15, -HZ + 0.04, '#22203a'));
+    B.add(1.1, 1.4, x, 2.15, -HZ + 0.07, 0, hairPoster(st, hx, bg, ink, t, sub, fac));
+  });
+  B.add(3.4, 0.55, 2.9, 3.18, -HZ + 0.07, 0, (c, W, Hh) => P.neon(c, W, Hh, 'Fade & Fringe', RED, { back: null, size: 0.62 }), 160);
+  g.push(box(4.6, 0.95, 0.42, 2.9, 0.47, -HZ + 0.25, '#22203a'), box(4.62, 0.04, 0.44, 2.9, 0.96, -HZ + 0.25, RED));
+  B.add(4.5, 0.82, 2.9, 0.48, -HZ + 0.465, 0, (c, W, Hh) => P.products(c, W, Hh, 33, { rows: 2, bg: '#2a2440', shelf: '#ff8aa0', palette: ['#ff5a6e', '#3ac8e8', '#ffd447', '#a8e6d6', '#ff8aa0', '#f6f1e7', '#8a48d8'], names: ['HOLD', 'SHINE', 'TONIC', 'FIZZ', 'WAVE', 'GEL', 'MIST'] }));
+  for (let k = 0; k < 7; k++) g.push(cyl(0.04, 0.05, 0.2 + (k % 3) * 0.04, 8, 0.9 + k * 0.62, 1.08 + (k % 3) * 0.02, -HZ + 0.25, ['#ff5a6e', '#3ac8e8', '#ffd447', '#8a48d8'][k % 4]));
+  blocks.push({ x0: 0.55, x1: 5.25, z0: -HZ, z1: -HZ + 0.5 });
+  // the right wall: two shampoo sinks with reclining chairs, two hood dryers with pink chairs
+  for (const z of [-2.7, -1.4]) {
+    g.push(box(0.62, 0.85, 1.0, HX - 0.32, 0.425, z, CREAM), box(0.5, 0.18, 0.62, HX - 0.38, 0.94, z, '#22203a'), box(0.36, 0.06, 0.46, HX - 0.38, 1.02, z, '#3a3a50'),
+      cyl(0.02, 0.02, 0.24, 6, HX - 0.12, 1.12, z, CHROME), box(0.16, 0.03, 0.03, HX - 0.2, 1.24, z, CHROME), box(0.14, 0.05, 0.14, HX - 0.58, 0.92, z, '#22203a'));
+    g.push(box(0.62, 0.14, 0.6, HX - 1.3, 0.52, z, '#2fbfb0'), box(0.5, 0.42, 0.1, HX - 1.3, 0.24, z, CHROME), box(0.12, 0.6, 0.6, HX - 0.95, 0.86, z, '#2fbfb0', 0, 0, -0.5),
+      box(0.5, 0.06, 0.08, HX - 1.3, 0.76, z + 0.32, CHROME), box(0.5, 0.06, 0.08, HX - 1.3, 0.76, z - 0.32, CHROME));
+    seats.push({ x: HX - 1.32, z, y: 0.6, yaw: -PI / 2, kind: 'chair' });
+  }
+  blocks.push({ x0: HX - 1.65, x1: HX, z0: -3.25, z1: -0.85 });
+  for (const z of [1.0, 2.5]) {
+    g.push(box(0.6, 0.14, 0.6, HX - 0.85, 0.5, z, '#ff8ab0'), box(0.12, 0.7, 0.6, HX - 0.55, 0.9, z, '#ff8ab0'), cyl(0.05, 0.08, 0.43, 8, HX - 0.85, 0.22, z, CHROME), cyl(0.26, 0.3, 0.04, 12, HX - 0.85, 0.02, z, CHROME),
+      box(0.5, 0.06, 0.08, HX - 0.85, 0.74, z + 0.32, CHROME), box(0.5, 0.06, 0.08, HX - 0.85, 0.74, z - 0.32, CHROME), cyl(0.03, 0.03, 1.6, 6, HX - 0.3, 0.8, z, CHROME), box(0.5, 0.05, 0.05, HX - 0.5, 1.62, z, CHROME));
+    const hood = new THREE.SphereGeometry(0.33, 14, 7, 0, PI * 2, 0, PI * 0.55); hood.rotateZ(-0.45); hood.translate(HX - 0.85, 1.48, z);
+    g.push(tint(hood, '#ffc6e0'), cyl(0.3, 0.3, 0.04, 14, HX - 0.92, 1.3, z, CHROME, 0, -0.45));
+    seats.push({ x: HX - 0.88, z, y: 0.58, yaw: -PI / 2, kind: 'chair' });
+  }
+  blocks.push({ x0: HX - 1.2, x1: HX, z0: 0.6, z1: 2.9 });
+  posterAt(B, g, HX - 0.04, 2.45, -2.05, -PI / 2, hairPoster('sidepony', '#ff4fa8', ['#fff0b3', '#ffd447'], '#7a4a10', 'SIDE PONY', 'SCRUNCHIE INCLUDED'));
+  posterAt(B, g, HX - 0.04, 2.45, 1.75, -PI / 2, styleGuide, 1.3, 1.3);
+  // the front: a waiting bench with magazines, the reception desk with the book and the till, a coat stand, a palm
+  g.push(box(2.4, 0.45, 0.6, -3.7, 0.225, HZ - 0.55, RED), box(2.4, 0.6, 0.12, -3.7, 0.75, HZ - 0.15, RED), box(2.45, 0.06, 0.62, -3.7, 0.47, HZ - 0.55, '#ff8aa0'));
+  for (const x of [-4.4, -3.0]) seats.push({ x, z: HZ - 0.6, y: 0.5, yaw: PI, kind: 'bench' });
+  blocks.push({ x0: -4.95, x1: -2.45, z0: HZ - 0.9, z1: HZ });
+  g.push(box(0.62, 0.42, 0.5, -1.95, 0.21, HZ - 0.5, '#22203a'), box(0.64, 0.03, 0.52, -1.95, 0.43, HZ - 0.5, CHROME));
+  ['#ff4fa3', '#27d8cf', '#ffd447', '#9b7bff'].forEach((c2, k) => g.push(box(0.26, 0.015, 0.34, -2.05 + (k % 2) * 0.2, 0.455 + k * 0.012, HZ - 0.5 + (k - 1.5) * 0.03, c2, 0, 0.2 * k)));
+  blocks.push({ x0: -2.3, x1: -1.6, z0: HZ - 0.8, z1: HZ - 0.2 });
+  g.push(box(1.9, 1.05, 0.7, 3.3, 0.525, HZ - 1.15, '#22203a'), box(2.0, 0.05, 0.8, 3.3, 1.07, HZ - 1.15, RED), box(1.9, 0.08, 0.02, 3.3, 0.7, HZ - 1.5, '#ff2bd1'),
+    box(0.4, 0.28, 0.36, 3.9, 1.24, HZ - 1.2, '#3a3550'), box(0.32, 0.08, 0.16, 3.9, 1.41, HZ - 1.06, '#8dff5a'), box(0.4, 0.03, 0.3, 2.9, 1.11, HZ - 1.15, '#fff6ec'), box(0.02, 0.035, 0.31, 2.9, 1.12, HZ - 1.15, RED));
+  blocks.push({ x0: 2.3, x1: 4.3, z0: HZ - 1.55, z1: HZ - 0.75 });
+  g.push(cyl(0.025, 0.03, 1.8, 6, 5.3, 0.9, HZ - 0.4, '#3a3550'), cyl(0.2, 0.22, 0.04, 8, 5.3, 0.02, HZ - 0.4, '#3a3550'));
+  for (let k = 0; k < 4; k++) { const a = k * PI / 2; g.push(box(0.2, 0.025, 0.025, 5.3 + Math.cos(a) * 0.1, 1.72, HZ - 0.4 + Math.sin(a) * 0.1, '#3a3550', 0, -a)); }
+  g.push(box(0.3, 0.6, 0.12, 5.42, 1.4, HZ - 0.4, '#2a4a9a'), box(0.3, 0.5, 0.1, 5.3, 1.45, HZ - 0.28, '#ffd447'));
+  plant(g, 1.6, HZ - 0.45, 1.1, RED, '#2f9f6a', 0);
+  B.add(1.4, 0.55, 3.3, 2.2, HZ - 0.08, PI, (c, W, Hh) => { P.fill(c, W, Hh, '#22203a'); P.frame(c, W, Hh, RED, 4); P.text(c, 'WALK-INS WELCOME', W / 2, Hh * 0.38, Hh * 0.22, '#fff6ec', { italic: true, max: W * 0.9 }); P.text(c, 'NO HATS IN THE CHAIR · TIPS IN THE JAR', W / 2, Hh * 0.75, Hh * 0.12, '#ff8aa0', { max: W * 0.92 }); });
+  // the barber pole by the door (it turns), and a slow ceiling fan
+  const POLE = [-1.45, 4.3];
+  g.push(box(0.06, 0.06, 0.3, POLE[0], 2.55, POLE[1] + 0.06, CHROME), box(0.06, 0.06, 0.3, POLE[0], 1.4, POLE[1] + 0.06, CHROME),
+    cyl(0.12, 0.12, 0.08, 10, POLE[0], 2.45, POLE[1] - 0.08, CHROME), tint(new THREE.SphereGeometry(0.1, 10, 6, 0, PI * 2, 0, PI / 2).translate(POLE[0], 2.49, POLE[1] - 0.08), '#e8eaf0'),
+    cyl(0.12, 0.1, 0.1, 10, POLE[0], 1.45, POLE[1] - 0.08, CHROME));
+  const pole = barberPole(0.09, 0.9, { fog: false }); pole.position.set(POLE[0], 1.95, POLE[1] - 0.08);
+  room.extras.push(pole);
+  pools.push(disc(POLE[0], 1.95, POLE[1] - 0.02, 0.8, '#ff5a6e', 0.35, '-z'));
+  const f = fan(g, 1.5, 0.6, H, '#3a3550', '#f6f1e7');
+  room.extras.push(f);
+  pools.push(disc(VX, 0.014, -2.6, 1.8, '#fff0d0', 0.42), disc(VX, 1.95, -HZ + 0.2, 1.3, '#fff6e0', 0.3, 'z'), disc(2.9, 3.18, -HZ + 0.15, 1.6, RED, 0.35, 'z'), disc(HX - 0.9, 0.014, 1.75, 1.6, '#ffd0e8', 0.25));
+  hi.push(cone(VX, H - 0.1, -2.6, 0.3, 1.4, 3.3, '#fff0d0', 0.1));
+  Object.assign(room, {
+    hx: HX, hz: HZ, h: H, geo: g, rim: '#4a2a3a', amb: 0.62, ambCol: '#fff4ea', clerk: 'DOLLY',
+    lights: [{ x: VX, y: 2.4, z: -3.6, hex: '#fff0d8', r: 4.5, k: 0.85 }, { x: -4.9, y: 2.6, z: -0.4, hex: '#ffe0c0', r: 5, k: 0.5 }, { x: 2.9, y: 3, z: -3.6, hex: '#ff8aa0', r: 4, k: 0.45 },
+      { x: 4.8, y: 2.4, z: 0.6, hex: '#ffe0f0', r: 5, k: 0.45 }, { x: 0, y: 3, z: 2.4, hex: '#fff4ea', r: 6, k: 0.4 }],
+    blocks: [...blocks, { x0: -2.9, x1: -2.25, z0: -3.55, z1: -2.9 }], seats, me: [0.6, 0.6], cast: { DOLLY: [-2.6, -3.2, 0.9] },
+    uses: [{ x: VX, z: -2.1, r: 1.4, kind: 'salon', hint: 'sit down with Dolly for a new look' }],
+    wide: [4.4, 2.5, 3.4, -1.4, 1.2, -2.0],
+    idle(t, dt, still) {
+      const n = room.npc.DOLLY, k = still ? 0.3 : 1, busy = room.cutting;
+      // she snips the air while you choose, otherwise she combs a wig on its stand and looks about
+      n.armR.rotation.set(busy ? -1.9 + Math.sin(t * 9) * 0.06 * k : -0.6, 0, busy ? -0.5 : -0.2);
+      n.armL.rotation.set(busy ? -1.5 : -0.4 + Math.sin(t * 1.4) * 0.15 * k, 0, busy ? 0.35 : 0.15);
+      n.head.rotation.y = busy ? 0.25 : Math.sin(t * 0.45) * 0.45 * k;
+      f.rotation.y += dt * (still ? 0.4 : 1.4);
+    },
+  });
+}
+function posterAt(B, g, x, y, z, ry, draw, w = 1.1, h = 1.4) {
+  g.push(box(Math.abs(Math.sin(ry)) > 0.5 ? 0.04 : w + 0.1, h + 0.1, Math.abs(Math.sin(ry)) > 0.5 ? w + 0.1 : 0.04, x + Math.sin(ry) * 0.01, y, z + Math.cos(ry) * 0.01, '#22203a'));
+  B.add(w, h, x + Math.sin(ry) * 0.035, y, z + Math.cos(ry) * 0.035, ry, draw);
+}
+
+export const VENUE_BUILD = { barber: buildSalon, boutique: buildBoutique, diner: buildDiner, arcade: buildArcade, motel: buildMotel, mall: buildMall, bait: buildBait, lounge: buildLounge, spire: buildSpire };
 Object.assign(VENUE_LOOKS, SPIRE_LOOKS);

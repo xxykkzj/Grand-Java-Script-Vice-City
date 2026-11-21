@@ -34,7 +34,7 @@ const ground = (x, z) => (z > 149.5 ? Math.max(bedAt(x, z), -3) : 0);
 const depth = (x, z) => WL - ground(x, z);
 
 export function createBeachgoers(ctx) {
-  const { game, base, count, torso, head, limb, hat, shadow, part, B, M, v, q, eu, sc, ZERO, dressBeach, knock, shout, hitCheck } = ctx;
+  const { game, base, count, torso, head, limb, hat, hatShow, shadow, part, B, M, v, q, eu, sc, ZERO, dressBeach, knock, shout, hitCheck } = ctx;
   const { WALK, DOWN, LIE, SIT, FLINCH, ACT } = ctx.S;
   const L = game.L, BE = L.beach, scene = game.scene;
   const list = [];
@@ -177,6 +177,7 @@ export function createBeachgoers(ctx) {
     const sy = 0.84 + 0.54 * cl, sz = 0.54 * sl;
     part(limb, i * 4 + 2, 0.27 * w, sy, sz, o.aL[0] + l, o.aL[1], 0.85, 1); part(limb, i * 4 + 3, -0.27 * w, sy, sz, o.aR[0] + l, o.aR[1], 0.85, 1);
     if (p.hat) part(hat, i, 0, 0.84 + 0.66 * cl, 0.66 * sl, l * 0.4 + o.hx, 0, 1, 1); else hat.setMatrixAt(i, ZERO);
+    hatShow(p, !!p.hat);
     if (gy < -0.3 || Math.abs(o.tilt) > 0.8) shadow.setMatrixAt(i, ZERO); else shadow.setMatrixAt(i, M.makeTranslation(p.x, gy + 0.03, p.z));
   }
 

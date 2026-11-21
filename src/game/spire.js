@@ -9,12 +9,12 @@
 //   - while you are up there the view goes further: trees, lamps and the fog are pushed back (core/util.js VIEW).
 //   - the helicopter cannot land on it (vehicles/vehicles.js keeps it hovering; a toast says why).
 import * as THREE from 'three';
-import { clamp, lerp, damp, angleDelta, PI, reducedMotion, timeU, unseen, VIEW } from '../core/util.js';
+import { clamp, lerp, damp, angleDelta, PI, reducedMotion, timeU, unseen, VIEW, rng } from '../core/util.js';
 import { ease } from './cutscene.js';
 import { OY, makeCastNPC } from './interiors.js';
 import { LIFT } from './spireroom.js';
 import { SKYBAR_GREET, LEO_LINES } from './story.js';
-import { kit, blockyMaterial, instExtras, crowdAtlas, mergeParts, CROWD_FACE_N } from '../actors/blocky.js';
+import { kit, blockyMaterial, instExtras, crowdAtlas, mergeParts, hairPieces, pickHair, lookMask } from '../actors/blocky.js';
 import { newPose, sitPose } from '../actors/moves.js';
 import { quality } from '../core/quality.js';
 import { setDeckLight } from '../world/lamplight.js';
@@ -55,28 +55,27 @@ export function createSpire(game, scene) {
   // ---------------------------------------------------------------- the guests: refined blocks, instanced (4 draw calls)
   const spots = T.spots, NG = spots.length;
   const CA = crowdAtlas(), CK = kit(CA), WH = '#ffffff', P0 = { b: 0 };
-  const cMat = blockyMaterial({ atlas: CA, inst: true }), cHead = blockyMaterial({ atlas: CA, inst: true, face: true });
+  const cMat = blockyMaterial({ atlas: CA, inst: true }), cHead = blockyMaterial({ atlas: CA, inst: true, face: true, hair: true });
   const mk = (geo, n, m = cMat) => { const o = new THREE.InstancedMesh(geo, m, n); o.frustumCulled = false; scene.add(o); return o; };
   const torso = mk(mergeParts([CK.B(0.4, 0.17, 0.25, 0, 0.93, 0, WH, 'denim', { alt: 1 }), CK.B(0.41, 0.035, 0.258, 0, 1.02, 0, '#3a3440', 'leather', { alt: 3, b: 0 }),
     CK.B(0.42, 0.2, 0.25, 0, 1.12, 0, WH, 'weave'), CK.B(0.45, 0.25, 0.27, 0, 1.33, 0, WH, 'weave'), CK.B(0.12, 0.09, 0.26, 0.215, 1.45, 0, WH, 'seam', P0), CK.B(0.12, 0.09, 0.26, -0.215, 1.45, 0, WH, 'seam', P0),
     CK.B(0.24, 0.045, 0.2, 0, 1.475, 0, WH, 'rib', { alt: 2, b: 0 })]), NG);
   const head = mk(mergeParts([CK.B(0.1, 0.08, 0.1, 0, 0, 0, WH, 'plain', P0), CK.B(0.27, 0.28, 0.26, 0, 0.17, 0, WH, 'plain', { b: 0.018 }), CK.face(0.234, 0.244, 0, 0.17, 0.1305, WH),
     CK.B(0.032, 0.036, 0.022, 0, 0.135, 0.139, '#e2e2e2', 'plain', P0), CK.B(0.026, 0.06, 0.05, 0.145, 0.16, 0, '#dcdcdc', 'plain', P0), CK.B(0.026, 0.06, 0.05, -0.145, 0.16, 0, '#dcdcdc', 'plain', P0),
-    CK.B(0.285, 0.07, 0.275, 0, 0.3, -0.005, WH, 'hair', { alt: 1 }), CK.B(0.285, 0.2, 0.07, 0, 0.2, -0.11, WH, 'hair', { alt: 1, b: 0 }),
-    CK.B(0.03, 0.12, 0.17, 0.142, 0.24, -0.04, WH, 'hair', { alt: 1, b: 0 }), CK.B(0.03, 0.12, 0.17, -0.142, 0.24, -0.04, WH, 'hair', { alt: 1, b: 0 })]), NG, cHead);
+    ...hairPieces(CK, { w: 0.27, h: 0.28, d: 0.26, y: 0.17 }, WH, { all: true, alt: 1 })]), NG, cHead);
   const arms = mk(mergeParts([CK.B(0.12, 0.24, 0.13, 0, -0.11, 0, WH, 'weave'), CK.B(0.105, 0.04, 0.115, 0, -0.25, 0, WH, 'plain', { alt: 1, b: 0 }),
     CK.B(0.112, 0.17, 0.122, 0, -0.35, 0, WH, 'weave', { alt: 1 }), CK.B(0.085, 0.08, 0.09, 0, -0.475, 0, WH, 'plain', { alt: 2, b: 0 })]), NG * 2);
   const legs = mk(mergeParts([CK.B(0.15, 0.4, 0.17, 0, -0.2, 0, WH, 'denim'), CK.B(0.135, 0.05, 0.155, 0, -0.42, 0, WH, 'plain', { alt: 1, b: 0 }),
     CK.B(0.14, 0.33, 0.16, 0, -0.6, 0, WH, 'denim', { alt: 1 }), CK.B(0.155, 0.1, 0.25, 0, -0.82, 0.04, WH, 'leather', { alt: 2, b: 0 })]), NG * 2);
-  const xT = instExtras(torso), xH = instExtras(head, true), xA = instExtras(arms), xL = instExtras(legs);
+  const xT = instExtras(torso), xH = instExtras(head, true, true), xA = instExtras(arms), xL = instExtras(legs);
   const TOPS = ['#f6f1e7', '#ff8a6a', '#27a8a0', '#ffd447', '#7a5cff', '#ff5fa8', '#2a3a5a', '#e8c070', '#9fe8d0', '#c8622a'];
   const BOTTOMS = ['#22203a', '#f6f1e7', '#2f4a6a', '#c9b38a', '#5a2a4a', '#3a5a4a'];
-  const SKIN = ['#f1c9a5', '#e0a878', '#c98d62', '#a56b43', '#7a4a2e', '#5a3620'], HAIRS = ['#1b1410', '#2a1a12', '#5a3a1a', '#a0703a', '#d9b26a', '#8a8a90', '#ff7a5a', '#22203a'];
-  const col = new THREE.Color();
+  const SKIN = ['#f1c9a5', '#e0a878', '#c98d62', '#a56b43', '#7a4a2e', '#5a3620'];
+  const col = new THREE.Color(), hrnd = rng(23), hairs = [];
   const guests = spots.map((s, i) => {
     const top = TOPS[(i * 7 + 3) % TOPS.length], sk = SKIN[(i * 5 + 1) % SKIN.length], lg = BOTTOMS[(i * 3) % BOTTOMS.length], dress = i % 4 === 1;
     torso.setColorAt(i, col.set(top)); xT.b(i, dress ? top : lg); xT.c(i, i % 3 ? top : '#ffd166');
-    head.setColorAt(i, col.set(sk)); xH.b(i, HAIRS[(i * 7 + 2) % HAIRS.length]); xH.face(i, (i * 3 + 1) % CROWD_FACE_N);
+    head.setColorAt(i, col.set(sk)); { const hr = pickHair(hrnd); xH.b(i, hr.hex); xH.face(i, hr.face); xH.hair(i, lookMask(hr)); hairs.push(hr); }
     for (const k of [0, 1]) {
       arms.setColorAt(i * 2 + k, col.set(i % 3 === 2 ? sk : top)); xA.b(i * 2 + k, i % 3 === 0 ? top : sk); xA.c(i * 2 + k, sk);
       legs.setColorAt(i * 2 + k, col.set(dress ? sk : lg)); xL.b(i * 2 + k, dress ? sk : lg); xL.c(i * 2 + k, ['#22203a', '#f6f1e7', '#c0303a', '#c9a46a'][(i + k * 0) % 4]);

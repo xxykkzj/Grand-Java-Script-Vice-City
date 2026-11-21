@@ -6,6 +6,7 @@ import { makeMarker, ease } from './cutscene.js';
 import { buildRoom, OY, rimU } from './interiors.js';
 import { OUTFITS, SNACKS, BARKS, CAST, VEND, ARMS, ARMS_INTRO } from './story.js';
 import { BRANDS } from '../world/loose.js';
+import { fixHair } from './salon.js';
 
 const $ = (id) => document.getElementById(id);
 const USE_HINT = { bar: 'ask Dee for a delivery', wear: 'try on outfits', mart: 'buy a snack', arms: 'browse the blasters' };
@@ -21,13 +22,13 @@ export function createPlaces(game, scene, camera) {
   // a door faces along (nx, nz): +z for everything on Lumina Boulevard
   const N = (p) => [p.nx ?? 0, p.nz ?? 1];
   const faceYaw = (p) => { const [nx, nz] = N(p); return Math.atan2(nx, nz); };
-  const outside = (p, d = 3.4) => { const [nx, nz] = N(p); return [p.x + nx * d, p.z + nz * d]; };
+  const outside = (p, d = p.exit ?? 3.4) => { const [nx, nz] = N(p); return [p.x + nx * d, p.z + nz * d]; };
   // out of the door: a short walk from the ring onto the sidewalk with the camera looking back from the street,
   // then she turns along the street and the camera comes round behind her (never inside a canopy or an atrium)
   const walkOutOf = (p) => {
     if (!game.rules || !game.rules.walkOut) return;
     const [nx, nz] = N(p), [x1, z1] = outside(p), side = Math.atan2(nx, nz) + PI / 2;
-    game.rules.walkOut(p.x, p.z, x1, z1, side, { camOff: -0.35 });
+    game.rules.walkOut(p.x, p.z, x1, z1, side, { camOff: p.camOff ?? -0.35 });
   };
   // the use spots in a room (E): r.uses, or the single r.use; the nearest one in reach
   const usesOf = (r) => r.uses || (r.use ? [r.use] : []);
@@ -43,6 +44,7 @@ export function createPlaces(game, scene, camera) {
   const worn = () => OUTFITS.find((o) => o.id === save.outfit) || OUTFITS[0];
   const owns = (o) => !o.price || save.owned.includes(o.id) || (o.gift && save.gift[o.id]);
   player.model.setOutfit(worn());
+  player.model.setHair(fixHair(save.hair), !!save.cap);       // the cut from Fade & Fringe (game/salon.js)
 
   const room = (p) => rooms[p.key] || (rooms[p.key] = buildRoom(p, scene, game));
   const bark = (key) => { const b = BARKS[key]; return `${key === 'boutique' ? 'LAURENT' : CAST[b[0]].name}: “${b[1][barkN++ % b[1].length]}”`; };
@@ -166,15 +168,21 @@ export function createPlaces(game, scene, camera) {
       if (arms) s.textContent += ` ${statLine(o)}${inv.owned[o.id] ? ` · CARRYING ${inv.ammo[o.id]}` : ''}`;
       if (i === sel) li.className = 'sel';
       // tap / click: the first tap picks, a tap on the picked line buys or wears it
-      li.addEventListener('click', () => { if (!shop) return; if (sel === i) buy(); else { sel = i; msg = ''; audio.step(1); if (wear) player.model.setOutfit(items()[i]); render(); } });
+      li.addEventListener('click', () => { if (!shop) return; if (sel === i) buy(); else { sel = i; msg = ''; audio.step(1); if (wear) player.model.setOutfit(items()[i]); const pv = prov(); if (pv && pv.preview) pv.preview(items()[i]); render(); } });
       li.append(b, pr, s); el.l.appendChild(li);
     });
-    if (v) { el.f.textContent = msg || (game.input.touchMode ? `Tap to choose · tap again or ${v.label} · DONE to leave` : v.foot || `W/S choose · Enter ${v.label.toLowerCase()} · Esc done`); return; }
+    // a long list (the salon's styles) keeps the picked line in view
+    { const li = el.l.querySelector('.sel'); if (li && li.scrollIntoView && el.box.scrollHeight > el.box.clientHeight + 2) li.scrollIntoView({ block: 'nearest' }); }
+    if (v) {
+      const bb = el.box.querySelector('[data-k="Enter"]'); if (bb) bb.textContent = v.label;
+      el.f.textContent = msg || (game.input.touchMode ? `Tap to choose · tap again or ${v.label} · ${v.mode && v.mode !== 'top' ? 'DONE goes back' : 'DONE to leave'}` : v.foot || `W/S choose · Enter ${v.label.toLowerCase()} · Esc done`); return;
+    }
     el.f.textContent = msg || (game.input.touchMode ? (wear ? 'Tap to try on · tap again or WEAR / BUY · DONE to leave' : 'Tap to choose · tap again or BUY · DONE to leave') : wear ? 'W/S choose · Enter wear or buy · Esc done · a new look sheds one star of heat' : arms ? 'W/S choose · Enter buy · Esc done · outside: 1-5 or Q to pick, click / R to fire, G to throw' : 'W/S choose · Enter buy · Esc done');
   }
   for (const b of el.box.querySelectorAll('[data-k]')) b.addEventListener('click', () => { if (shop) api.key({ code: b.dataset.k }); });
   function openShop(kind) {
     shop = kind; game.busy = 'shop'; const v = prov();
+    if (v && v.open) v.open();
     msg = v ? v.greet() : kind === 'vend' ? 'IT HUMS AT YOU EXPECTANTLY' : bark(kind);
     sel = isWear(kind) ? Math.max(0, items().findIndex((o) => o.id === save.outfit)) : 0;
     el.box.hidden = false; render();
@@ -191,15 +199,16 @@ export function createPlaces(game, scene, camera) {
   // camera keeps its three-quarter angle, backs off far enough for her to fit that area, then turns so she
   // lands in its middle.
   const FIT_DIR = new THREE.Vector3(1.5, 0.45, 2.9).normalize();
-  function frameFitting(x, y, z) {
+  // o: what to fit (default: all of her, 1.9 m on the platform); the salon fits her head and shoulders
+  function frameFitting(x, y, z, o = {}) {
     const W = innerWidth, H = innerHeight, rc = el.box.getBoundingClientRect();
     const bottom = !el.box.hidden && rc.top > H * 0.3 && rc.width > W * 0.6;      // the menu across the bottom
     const fx0 = bottom ? 0 : el.box.hidden ? 0 : Math.min(W * 0.7, rc.right), fy1 = bottom ? rc.top : H;
     const cx = (fx0 + W) / 2, cy = fy1 / 2, fw = W - fx0, fh = fy1;
     const fov = 42, tv = Math.tan(fov * Math.PI / 360), th = tv * camera.aspect;
     // she is about 1.9 m tall standing on the platform (and 0.9 m wide as she turns): fit 78 % of the free area
-    const dist = Math.max(2.6, 2.1 / (2 * tv * 0.78 * fh / H), 1.1 / (2 * th * 0.78 * fw / W));
-    const sy = y + 0.9;
+    const dist = Math.max(o.min ?? 2.6, (o.h ?? 2.1) / (2 * tv * 0.78 * fh / H), (o.w ?? 1.1) / (2 * th * 0.78 * fw / W));
+    const sy = y + (o.cy ?? 0.9);
     camera.position.set(x + FIT_DIR.x * dist, sy + FIT_DIR.y * dist, z + FIT_DIR.z * dist);
     camera.lookAt(x, sy, z);
     const nx = cx / W * 2 - 1, ny = 1 - cy / H * 2;
@@ -207,7 +216,7 @@ export function createPlaces(game, scene, camera) {
   }
   function buy() {
     const v = prov();
-    if (v) { const m = v.pick(items()[sel], sel); if (!shop) return; msg = m || ''; return render(); }
+    if (v) { const m = v.pick(items()[sel], sel); if (!shop) return; msg = m || ''; if (v.takeSel) { const k = v.takeSel(); if (k !== null && k !== undefined) sel = k; } return render(); }
     if (isWear(shop)) {
       const o = items()[sel];
       if (save.outfit === o.id) { msg = 'YOU ARE WEARING IT'; return render(); }
@@ -250,17 +259,23 @@ export function createPlaces(game, scene, camera) {
     exit() { const p = game.inside; if (p) putOutside(...outside(p), faceYaw(p)); },
     key(e) {
       const n = items().length;
-      if (e.code === 'Escape' || e.code === 'Backspace' || e.code === 'KeyQ') return closeShop();
+      if (e.code === 'Escape' || e.code === 'Backspace' || e.code === 'KeyQ') {
+        // a menu with sub-lists (the salon) steps back to its top list first
+        const v = prov();
+        if (v && v.back && v.back()) { const k = v.takeSel ? v.takeSel() : 0; sel = k ?? 0; msg = ''; audio.step(1); return render(); }
+        return closeShop();
+      }
       if (e.code === 'ArrowUp' || e.code === 'KeyW') sel = (sel + n - 1) % n;
       else if (e.code === 'ArrowDown' || e.code === 'KeyS') sel = (sel + 1) % n;
       else if (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'KeyE' || e.code === 'Space') return buy();
       else return;
       msg = ''; audio.step(1);
       if (isWear(shop)) player.model.setOutfit(items()[sel]);
+      { const v = prov(); if (v && v.preview) v.preview(items()[sel]); }
       render();
     },
     // pick a menu line directly (automated checks): select line i and press it
-    choose(i) { if (!shop) return null; sel = i; buy(); return msg; },
+    choose(i) { if (!shop) return null; sel = i; const v = prov(); if (v && v.preview) v.preview(items()[i]); buy(); return msg; },
     get msg() { return msg; },
     // E while inside
     use() {
@@ -311,6 +326,10 @@ export function createPlaces(game, scene, camera) {
         if (isWear(shop)) {
           player.pos.set(r.ox + u.x, OY + 0.22, r.oz + u.z - 0.4); player.yaw += angleDelta(player.yaw, 0.25 + (reducedMotion ? 0 : Math.sin(timeU.value * 0.9) * 0.5)) * (1 - Math.exp(-5 * dt));
           frameFitting(r.ox + u.x, OY + 0.22, r.oz + u.z - 0.4);
+        } else if (shop === 'salon') {
+          // Dolly's chair: she turns slowly so the back of the cut shows too (ponytails, buns, braids)
+          player.pos.set(r.ox + u.x, OY, r.oz + u.z - 0.3); player.yaw += angleDelta(player.yaw, 0.35 + (reducedMotion ? 0 : Math.sin(timeU.value * 0.7) * 1.1)) * (1 - Math.exp(-4 * dt));
+          frameFitting(r.ox + u.x, OY, r.oz + u.z - 0.3, { h: 1.3, w: 0.95, cy: 1.7, min: 1.7 });
         } else {
           const g = u.look ? { x: u.look[0], z: u.look[1] } : r.npc[u.clerk || r.clerk || 'GUS'], cs = u.cam || [-1.3, 2, 2.1];
           player.pos.set(r.ox + u.x, OY, r.oz + u.z); player.yaw += angleDelta(player.yaw, Math.atan2(g.x - u.x, g.z - u.z)) * (1 - Math.exp(-8 * dt));

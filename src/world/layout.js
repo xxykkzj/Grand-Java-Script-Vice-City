@@ -59,6 +59,9 @@ export const VENUE_DEFS = {
   spire: { name: 'The Solstice Spire', title: 'THE SOLSTICE SPIRE · LOBBY', color: '#ffb35a', at: 'The Solstice Spire', isle: 'key', face: Math.PI, along: 0, out: 4.2 },
   // upstairs in the Galleria, reached by its escalator (no street door of its own: hidden)
   boutique: { name: 'Velvet Rope Couture', title: 'VELVET ROPE COUTURE · GALLERIA UPPER LEVEL', color: '#d8b4ff', at: 'Seafoam Galleria', isle: 'key', face: Math.PI, along: 0, out: 6.9, hidden: true, up: 'mall' },
+  // Fade & Fringe: a barber and salon in a back-street shopfront (row 1, facing Back Avenue 1) in the old town;
+  // `lot` picks the building (row, nearest x), `alongK` puts the door where that shopfront's door is (city.js)
+  barber: { name: 'Fade & Fringe', title: 'FADE & FRINGE · BARBER & SALON', color: '#ff5a6e', lot: { row: 1, x: -23 }, face: 0, alongK: -0.2, out: 2.3, exit: 1.05, camOff: 0.35 },   // a narrow sidewalk: the camera comes round on the street side
   bait: { name: 'Starboard Bait & Tackle', title: 'STARBOARD BAIT & TACKLE', color: '#8dff5a', at: 'Starboard Marina', isle: 'key', face: -Math.PI / 2, along: 0, out: 5.2 },
 };
 
@@ -288,10 +291,14 @@ export function makeLayout() {
   // the venues: door ring position from the building face
   const venues = {};
   for (const k in VENUE_DEFS) {
-    const d = VENUE_DEFS[k], b = (d.isle === 'key' ? key.buildings : buildings).find((q) => q.name === d.at), f = d.face;
+    const d = VENUE_DEFS[k], f = d.face;
+    const b = d.lot ? buildings.filter((q) => q.row === d.lot.row && !q.place).sort((p, q) => Math.abs(p.cx - d.lot.x) - Math.abs(q.cx - d.lot.x))[0]
+      : (d.isle === 'key' ? key.buildings : buildings).find((q) => q.name === d.at);
+    const along = d.alongK !== undefined ? d.alongK * b.w : d.along;
+    if (d.lot) b.venue = k;
     const nx = Math.round(Math.sin(f)), nz = Math.round(Math.cos(f));
-    const fx = nx ? (nx > 0 ? b.x1 : b.x0) : b.cx + d.along, fz = nz ? (nz > 0 ? b.z1 : b.z0) : b.cz + d.along;
-    venues[k] = { key: k, ...d, b, x: fx + nx * d.out, z: fz + nz * d.out, nx, nz, venue: true };
+    const fx = nx ? (nx > 0 ? b.x1 : b.x0) : b.cx + along, fz = nz ? (nz > 0 ? b.z1 : b.z0) : b.cz + along;
+    venues[k] = { key: k, ...d, along, b, x: fx + nx * d.out, z: fz + nz * d.out, nx, nz, venue: true };
   }
   return { alleys, streetTrees, buildings, lamps, palms, parking, umbrellas, huts, beach, solids, bar, station, clinic, places, venues, bikes, booths, props, cafe, loose: [], planters: [], key, ramps, surf };
 }
