@@ -16,7 +16,7 @@ import { shaped } from './models.js';
 export const VTYPES = {
   sedan: { label: 'sedan', kind: 'car', len: 4.4, w: 1.9, mass: 1, acc: 26, top: 44, grip: 7.5, steer: 2.5, brake: 40, sound: 'sedan', eye: [1.25, 0.35], cam: 1, seat: [0.42, 0.66, -0.55], hp: 100, cruise: 1 },
   hatch: { label: 'hatchback', kind: 'car', kit: 'hatch', s: 1.45, len: 4.13, w: 1.9, mass: 0.8, acc: 25, top: 38, grip: 8.4, steer: 2.85, brake: 42, sound: 'hatch', eye: [1.2, 0.25], cam: 0.95, seat: [0.4, 0.62, -0.25], hp: 85, cruise: 1.02, paint: true },
-  coupe: { label: 'convertible', kind: 'car', geo: coupeGeometry, len: 4.3, w: 1.86, mass: 0.9, acc: 32, top: 53, grip: 8.2, steer: 2.75, brake: 44, sound: 'sports', eye: [1.12, -0.25], cam: 0.95, seat: [0.4, 1.07, -0.42], hp: 85, cruise: 1.1, paint: true },
+  coupe: { label: 'convertible', kind: 'car', geo: coupeGeometry, len: 4.3, w: 1.86, mass: 0.9, acc: 32, top: 53, grip: 8.2, steer: 2.75, brake: 44, sound: 'sports', eye: [1.42, -0.3], cam: 0.95, seat: [0.4, 0.82, -0.42], hp: 85, cruise: 1.1, paint: true },
   muscle: { label: 'muscle car', kind: 'car', geo: muscleGeometry, len: 4.9, w: 1.96, mass: 1.25, acc: 35, top: 50, grip: 5.8, steer: 2.3, brake: 38, sound: 'v8', eye: [1.2, -0.3], cam: 1.05, seat: [0.42, 0.62, -0.5], hp: 115, cruise: 1.05, paint: true },
   pickup: { label: 'pickup truck', kind: 'car', kit: 'truck', s: 1.5, len: 4.43, w: 2.25, mass: 1.5, acc: 22, top: 39, grip: 6.6, steer: 2.2, brake: 36, sound: 'pickup', eye: [1.55, 0.5], cam: 1.1, seat: [0.45, 0.85, 0.35], hp: 125, cruise: 0.98, paint: true },
   suv: { label: 'SUV', kind: 'car', kit: 'suv', s: 1.6, len: 4.32, w: 2.4, mass: 1.5, acc: 23, top: 41, grip: 6.9, steer: 2.2, brake: 38, sound: 'suv', eye: [1.6, 0.25], cam: 1.1, seat: [0.45, 0.85, 0.1], hp: 130, cruise: 1, paint: true },
@@ -86,11 +86,15 @@ function wheels(parts, xs, zs, r, wd, rim = RIM) {
 export function coupeGeometry() {
   const p = [
     box(1.86, 0.4, 4.3, 0, 0.52, 0, W),
-    shaped(1.86, 0.26, 4.3, 0, 0.85, 0, W, (x, y, z) => [x * (z > 1 ? 0.93 : 1), y > 0 && z > 0.4 ? y - 0.1 - (z - 0.4) * 0.06 : y, z]),
-    box(1.5, 0.08, 1.55, 0, 0.99, -0.45, '#2a1830'),                                                 // the tub
-    box(0.55, 0.14, 0.6, 0.4, 1.06, -0.45, '#7a1f3a'), box(0.55, 0.14, 0.6, -0.4, 1.06, -0.45, '#7a1f3a'),
-    box(0.5, 0.55, 0.12, 0.4, 1.32, -0.78, '#7a1f3a', -0.15), box(0.5, 0.55, 0.12, -0.4, 1.32, -0.78, '#7a1f3a', -0.15),
-    box(0.3, 0.2, 0.14, 0.4, 1.66, -0.86, '#7a1f3a'), box(0.3, 0.2, 0.14, -0.4, 1.66, -0.86, '#7a1f3a'),
+    // upper body in three parts round a sunken cockpit (it used to run solid nose to tail, so the seats sat on
+    // top of it and the driver perched a block too high): bonnet, rear quarter, and the two door sills
+    shaped(1.86, 0.26, 1.9, 0, 0.85, 1.2, W, (x, y, z) => { const g = z + 1.2; return [x * (g > 1 ? 0.93 : 1), y > 0 && g > 0.4 ? y - 0.1 - (g - 0.4) * 0.06 : y, z]; }),
+    box(1.86, 0.26, 0.95, 0, 0.85, -1.675, W),
+    box(0.18, 0.26, 1.45, 0.84, 0.85, -0.475, W), box(0.18, 0.26, 1.45, -0.84, 0.85, -0.475, W),
+    box(1.5, 0.06, 1.45, 0, 0.74, -0.475, '#2a1830'),                                                // the tub floor, down in the body
+    box(0.55, 0.14, 0.6, 0.4, 0.8, -0.45, '#7a1f3a'), box(0.55, 0.14, 0.6, -0.4, 0.8, -0.45, '#7a1f3a'),
+    box(0.5, 0.55, 0.12, 0.4, 1.06, -0.78, '#7a1f3a', -0.15), box(0.5, 0.55, 0.12, -0.4, 1.06, -0.78, '#7a1f3a', -0.15),
+    box(0.3, 0.2, 0.14, 0.4, 1.4, -0.86, '#7a1f3a'), box(0.3, 0.2, 0.14, -0.4, 1.4, -0.86, '#7a1f3a'),
     shaped(1.7, 0.18, 1.0, 0, 1.06, -1.55, W, (x, y, z) => [x, y > 0 && Math.abs(x) < 0.1 ? y - 0.08 : y, z]),   // rear deck
     box(1.62, 0.06, 0.06, 0, 1.47, 0.07, CHROME, -0.55), box(0.06, 0.48, 0.06, 0.8, 1.22, 0.2, CHROME, -0.55), box(0.06, 0.48, 0.06, -0.8, 1.22, 0.2, CHROME, -0.55),
     box(1.5, 0.4, 0.04, 0, 1.24, 0.2, '#5f8fb0', -0.55), box(1.5, 0.12, 0.3, 0, 1.05, 0.25, TRIM),    // windscreen just ahead of the seats, on the dash
