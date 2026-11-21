@@ -152,13 +152,34 @@ function bakeOne(id, rel) {
   };
   const scene = g.scenes[g.scene || 0];
   for (const ni of scene.nodes) walk(ni, ident());
-  // Car Kit: the commonest colour on the body is the paint (it takes the instance colour)
+  // Car Kit: the paint is the body's dominant saturated colour family (the models bake their shading into many
+  // shades of one hue: green, blue, yellow...). Every shade in that family is flagged, so the whole body takes
+  // the instance colour; grey trim, tyres, glass and the small lamp colours keep their own. (Picking the single
+  // commonest colour chose the dark-grey tyres/trim and left the body its stock green.)
   if (bodyVerts.length) {
-    const count = new Map();
-    for (const v of bodyVerts) count.set(col[v], (count.get(col[v]) || 0) + 1);
-    const top = [...count.entries()].sort((a, b) => b[1] - a[1])[0][0], p = pal[top];
-    const paint = palOf(p[0], p[1], p[2], p[3] | 1);
-    for (const v of bodyVerts) if (col[v] === top) col[v] = paint;
+    const hsv = (p) => { const r = p[0] / 255, gg = p[1] / 255, b = p[2] / 255, mx = Math.max(r, gg, b), mn = Math.min(r, gg, b), d = mx - mn;
+      let h = 0; if (d > 0) h = mx === r ? ((gg - b) / d + 6) % 6 : mx === gg ? (b - r) / d + 2 : (r - gg) / d + 4;
+      return [h * 60, mx ? d / mx : 0, mx]; };
+    const sat = (i) => { const [, sv, v] = hsv(pal[i]); return sv > 0.3 && v > 0.25; };
+    const bins = new Map();
+    for (const v of bodyVerts) if (sat(col[v])) { const b = Math.round(hsv(pal[col[v]])[0] / 15) % 24; bins.set(b, (bins.get(b) || 0) + 1); }
+    const flagged = new Map();
+    if (bins.size) {
+      const top = [...bins.entries()].sort((a, b) => b[1] - a[1])[0][0];
+      const inFam = (i) => { if (!sat(i)) return false; const d = Math.abs(((Math.round(hsv(pal[i])[0] / 15) - top) % 24 + 36) % 24 - 12); return d <= 1; };  // the top bin and its neighbours (within ~15-30 deg)
+      for (const v of bodyVerts) {
+        const c = col[v]; if (!inFam(c)) continue;
+        if (!flagged.has(c)) { const p = pal[c]; flagged.set(c, palOf(p[0], p[1], p[2], p[3] | 1)); }
+        col[v] = flagged.get(c);
+      }
+    }
+    if (!flagged.size) {   // no saturated body colour (a grey model): fall back to the commonest one
+      const count = new Map();
+      for (const v of bodyVerts) count.set(col[v], (count.get(col[v]) || 0) + 1);
+      const top = [...count.entries()].sort((a, b) => b[1] - a[1])[0][0], p = pal[top];
+      const paint = palOf(p[0], p[1], p[2], p[3] | 1);
+      for (const v of bodyVerts) if (col[v] === top) col[v] = paint;
+    }
   }
   if (pal.length > 255) throw new Error(id + ': palette too big');
   const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
