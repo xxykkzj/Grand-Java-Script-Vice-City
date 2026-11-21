@@ -226,6 +226,9 @@ export function createPlaces(game, scene, camera) {
 
   const api = {
     list, enter, talk, putOutside, bark, byKey, openShop, closeShop, render, outside, faceYaw,
+    // a place's room (built on first use), and stepping straight into it at room (x, z) (the Spire's lift)
+    roomOf: (p) => room(p),
+    enterRoom(key, x, z) { const p = byKey(key); setInside(p, x, z); return p.room; },
     get shopUse() { return shopUse; },
     // F at a street vending machine
     openVend(m) { vend = m; game.act.reset(); player.vel.set(0, 0, 0); player.speed = 0; player.yaw = m.yaw + PI; openShop('vend'); },

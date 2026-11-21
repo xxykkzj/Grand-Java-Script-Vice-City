@@ -54,6 +54,7 @@ export const VENUE_DEFS = {
   motel: { name: 'Moonlite Motor Inn', title: 'MOONLITE MOTOR INN · ROOM 7', color: '#ff8fc4', at: 'Moonlite Motor Inn', isle: 'key', face: Math.PI / 2, along: 0, out: 5.2 },
   mall: { name: 'Seafoam Galleria', title: 'SEAFOAM GALLERIA', color: '#27d8cf', at: 'Seafoam Galleria', isle: 'key', face: Math.PI, along: 5, out: 4.6 },
   lounge: { name: 'The Blue Pelican Lounge', title: 'THE BLUE PELICAN LOUNGE', color: '#4f8dff', at: 'Tidewater Records', face: 0, along: 2, out: 5.2 },
+  spire: { name: 'The Solstice Spire', title: 'THE SOLSTICE SPIRE · LOBBY', color: '#ffb35a', at: 'The Solstice Spire', isle: 'key', face: Math.PI, along: 0, out: 4.2 },
   bait: { name: 'Starboard Bait & Tackle', title: 'STARBOARD BAIT & TACKLE', color: '#8dff5a', at: 'Starboard Marina', isle: 'key', face: -Math.PI / 2, along: 0, out: 5.2 },
 };
 

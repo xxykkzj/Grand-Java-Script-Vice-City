@@ -26,7 +26,8 @@ export function createGlow(scene, capacity) {
         float dist = -mv.z;
         mv.z += min(0.9, dist * 0.5);              // nudge towards the camera so the lamp itself doesn't hide it
         float k = aBase + (1.0 - aBase) * uNight;
-        vCol = aColor * k * (1.0 - smoothstep(uFogNear, uFogFar * 1.4, dist));
+        // (and fade out right in front of the lens: a halo a metre or two away is just a blot)
+        vCol = aColor * k * (1.0 - smoothstep(uFogNear, uFogFar * 1.4, dist)) * smoothstep(1.2, 4.0, dist);
         gl_Position = projectionMatrix * mv;
         gl_PointSize = min(aSize * uScale / max(dist, 0.1), 240.0);
       }`,

@@ -45,7 +45,7 @@ Characters indoors are lit with a soft rim light so they read against light and 
 
 ### More places to walk into
 
-Six venues, each with a resident, a few lines of their own and something to do. They hang off existing buildings: only their door ring is new on the street.
+Seven venues, each with a resident, a few lines of their own and something to do. They hang off existing buildings: only their door ring is new on the street.
 
 | Place | Where | Ring | Inside, and what you can do |
 | --- | --- | --- | --- |
@@ -54,11 +54,25 @@ Six venues, each with a resident, a few lines of their own and something to do. 
 | **Moonlite Motor Inn, room 7** | Solano Key, by the Sunbowl (east face) | pink | The safehouse: a rattan bed under a flamingo painting, a TV that flickers on channel 86, a window with VACANCY glowing outside, a kitchenette. **Hazel** (lilac perm, cat-eye glasses). `E` by the bed: **Sleep till morning** (8:00) or **Nap till golden hour** (18:30), both with full health and no heat, or **Just save**. Saving writes your cash and the clock to local storage; a reload puts them back. |
 | **Seafoam Galleria** | Solano Key, Halcyon Avenue (north face) | teal | A skylit atrium: a three-tier fountain, five painted shopfronts (Tape Deck Tropics, Sole Patrol, Byte Shack, Glow Getter, Seashell Sweets) and four more up on the mezzanine, an escalator that is out of order, benches, palms, a directory. **Kiki** and her pretzel cart: `E` for a Classic Knot ($6, +25) or a Cinnamon Swirl ($9, +40). `E` at the fountain tosses a coin ($1) for a wish; every fifth wish Kiki throws you a free pretzel. |
 | **Starboard Bait & Tackle** | Solano Key, Starboard Marina (west face) | green | Planked walls, rods in a rack, Big Bertha on the wall, a tide chart, LIVE BAIT in flickering neon, a fish tank, life rings, the marina through the back window, a canoe on the ceiling. **Cap'n Rudy** (captain's hat, yellow slicker, a big white beard). `E` at the counter: the **Buoy-O Snorkel Vest** ($90, you can stay under water 75% longer, kept with your save), **Tackle Trivia** (a sea question, $10 for a right answer) and Saltwater Taffy ($4, +12). |
+| **The Solstice Spire** | Solano Key, Stadium Way (north face of the waterfront tower) | amber | The lobby of the key's waterfront tower: a marble floor with brass inlays and a sun medallion, walnut wainscot, a coffered ceiling with ring chandeliers, a pair of sofas round a coffee table, a skyline painting, a brass sun sculpture, palms in big pots and the lift bank. **Leo** (teal tailcoat, gold epaulettes, silver hair) at the curved concierge desk: `E` for a word. `E` at the middle lift (touch: **Use**) rides up: the doors close, the floor counter races to 23, and the doors open on the roof, out on the **Solstice Terrace** (see [The Solstice Terrace](#the-solstice-terrace)). `F` sits you on a sofa. |
 | **The Blue Pelican Lounge** | Lumina Boulevard, old town, downstairs at Tidewater Records | blue | A small jazz and country bar: a low wooden stage under a truss of warm cans, with an upright piano, an upright bass, a drum kit, a sunburst guitar on its stand and a mic in front of a velvet curtain; booths in red leather along the left wall, café tables on a diamond rug, a walnut jukebox, a chalkboard line-up of invented acts and THE BLUE PELICAN in blue neon over the back bar. **Birdie** (tan cowboy hat, silver bob, teal waistcoat, bolo tie) runs the bar: `E` for Sweet Porch Tea ($3, +8), a Blue Pelican Fizz ($6, +14, with a paper umbrella), Hot Honey Cider ($9, +20) or a Porch Light Lager ($4, +6). `F` sits you on a stool, in a booth or at a table. It plays **recorded music** (see [Live music](#live-music-at-the-blue-pelican)); `E` at the jukebox or the front of the stage puts on the next track. |
+
+### The Solstice Terrace
+
+The roof of the Solstice Spire, 79 m up, outdoors at the tower's real height: you look east over the causeway to the old town (where the sun goes down), south over Halcyon Avenue to the sea, and across the key behind you. The tower has a lit name crown (its name on all four faces under amber neon bands, corner fins with lit tips, a mast with a red light on the lift hut) and the name in lights over its lobby canopy.
+
+- **The deck:** teak planks behind a **glass balustrade** all round. It is solid and taller than any jump, and you are kept inside it: there is no way to drop off. The lift hut is the only way up and down (there is no stair door).
+- **Seats:** six loungers along the east edge facing the old town and the sunset, benches along the south edge facing the sea, a sofa corner round a fire table, stools at the bar. `F` sits; the camera eases out to a wide view over the city and the sea, and you can **wait for the sunset** (`1`, the clock fast-forwards smoothly to 19:30) or **wait for the night** (`2`, to 22:00). Touch: **Sunset** / **Night**. `F`, `E` or moving gets you up any time and stops the clock where it is. `K` (cinematic mode) works up here too.
+- **The Afterglow Bar** under a pergola strung with lights: **June** (rust waistcoat, coral bob) mixes a Causeway Cooler ($4), a Terrace Lager ($5), a Skyline Sour ($6), a Sundown Spritz ($7) or a Midnight Nightcap ($9) (`E` at the bar; see [Eating and drinking](#eating-and-drinking)).
+- **String lights** zigzag across the deck on poles and throw warm pools on the planks at night; planters with shrubs and small trees, standing tables with candle lamps.
+- **Guests** by the clock: one early riser in the morning, a few by day, the place fills up in the evening (12), a handful late at night, nobody between 2:00 and 6:00, and nobody at all in rain or a storm (half as many in fog). They lean on the glass, take loungers, benches, the sofas and the bar stools; while you are up there they come and go only where you are not looking.
+- **The view reaches further** while you are on the deck: the street-tree and street-light cut-offs and the district culling go out 2.4x (1.7x on Low), and the haze is pushed back 1.75x, so both districts, the causeway and the sea read at sunset and at night. It all goes back as you ride down.
+- **Not a helipad:** a helicopter that comes down over the deck is held a few metres up and eased off the edge (NO LANDING ON THE TERRACE); the Glasswater Tower pad is just up the street.
+- Its own music: a mellow downtempo theme (warm pad, offbeat electric piano, a lazy bass, rim clicks, a vibes arpeggio, a soft flute-like line), which also plays in the lobby.
 
 ## Eating and drinking
 
-Everything you can buy to eat or drink (Pelican Pantry, the street vending machines, the diner, Kiki's pretzel cart, Rudy's taffy, the Blue Pelican, the Club Prism bar and the Coconut Shack on the beach) is consumed on the spot, **at any health**:
+Everything you can buy to eat or drink (Pelican Pantry, the street vending machines, the diner, Kiki's pretzel cart, Rudy's taffy, the Blue Pelican, the Club Prism bar, the Afterglow Bar on the Solstice Terrace and the Coconut Shack on the beach) is consumed on the spot, **at any health**:
 
 - It always charges you. Below full health it heals by its amount, never past 100.
 - At full health it still plays and gives a short **REFRESHED** buff instead (a toast with a "+"): for 40 seconds Skye sprints about 8 % faster on skates and indoors, and a fast swimming stroke costs less stamina.
@@ -82,6 +96,7 @@ All of the music is original, composed for the game and synthesised live with We
 | **Moonlite Motor Inn** | a mellow late-night slow tune on electric piano with a soft flute-like line |
 | **Seafoam Galleria** | airy mall ambience: a slow pad, sparkles and a soft bell melody with a long echo |
 | **Starboard Bait & Tackle** | gentle country / folk: fingerpicked guitar, brushes, a harmonica-like lead |
+| **The Solstice Spire and its terrace** | a mellow downtempo sunset groove: a warm pad, offbeat electric-piano stabs, a lazy bass, rim clicks and a shaker, a vibes arpeggio, a soft flute-like line (darker at night). Up on the terrace it plays like an indoor theme: it ignores the street music's fade-out, and `M` switches it off with the rest |
 
 **The street.** Out on the street the score picks its next section as it goes from a set of sections with their own chords, grooves and bass lines (a four-on-the-floor drive, a sunny clap groove, a half-time cruise, a moody night section, a sparse "rain" section on a ride cymbal, a quiet lull with no drums, and a faster chase when the patrol is after you). The lead voice changes from section to section (bell, saw, soft triangle, square). By day it is brighter and a little faster; at night it moves to the darker sections, slower, with darker pads; with no heat it is calmer (lighter drums, no chase).
 
@@ -254,7 +269,7 @@ Drive, ride or skate west along Lumina Boulevard and over the Halcyon Causeway (
 
 | District | What is there |
 | --- | --- |
-| **Glasswater** (downtown) | Glass towers up to 112 m with rooftop helipads (lit pad rings, a red beacon on a mast), office blocks with ribbon windows, the Pelican Point Lofts and other apartment blocks with balconies. A helicopter waits on the Glasswater Tower helipad. |
+| **Glasswater** (downtown) | Glass towers up to 112 m with rooftop helipads (lit pad rings, a red beacon on a mast) and the **Solstice Spire** on the waterfront with its roof terrace (see [The Solstice Terrace](#the-solstice-terrace)), office blocks with ribbon windows, the Pelican Point Lofts and other apartment blocks with balconies. A helicopter waits on the Glasswater Tower helipad. |
 | **Sunbowl** | An open-air stadium: stepped stands in team colours with a crowd, canopies, four floodlight masts that glare at dusk and night, a pitch with its markings, a dot-matrix scoreboard (STINGRAYS 3, PILOTS 1) and a big car park with a pay booth. |
 | **Moonlite** | The Moonlite Motor Inn: two storeys with an open walkway, and a roadside sign with VACANCY in red neon. |
 | **Fernwood Park** | Lawns, paths, a pond, a bandstand, benches you can sit on, palms and trees, low hedges, and a grassy hill with a kicker on top. |
@@ -315,10 +330,10 @@ The traffic, the parked cars and the spares are a mix of fifteen types (`src/veh
 
 Every flat roof is solid, in both districts: the cornice ring and the raised parapet step in the old town, the roof slabs and helipads in the key, and the container tops at the docks.
 
-- **The helicopter can land** on any flat roof or helipad; `E` gets you out onto the roof (on the side with room to stand).
+- **The helicopter can land** on any flat roof or helipad (except the Solstice Terrace); `E` gets you out onto the roof (on the side with room to stand).
 - **Walk the roofs.** Rooftop clutter (air-con units, water tanks, aerials, dishes, plant rooms, penthouse tiers, sign frames, billboards) is solid.
 - **Mind the edge.** Walk off and you fall: a short drop is nothing, a few storeys hurts (OUCH), a long way knocks you out (**KNOCKED OUT**, the usual clinic bill).
-- **Roof doors.** Every roof has a stair hut with a lit door: `F` (touch: **Stairs down**) takes the stairs down and you come out at the street door below.
+- **Roof doors.** Every roof (but the Solstice Spire's, which has its lift) has a stair hut with a lit door: `F` (touch: **Stairs down**) takes the stairs down and you come out at the street door below.
 
 ## Stunt jumps
 
@@ -347,14 +362,14 @@ Cars and bikes now have vertical physics: they follow ramps and decks, fly on wi
 | `Shift` | sprint | | | | |
 | `Space` | jump | handbrake (drift) | | | climb |
 | `C` or `Ctrl` | | | | | descend |
-| `E` | get in or on the nearest vehicle, or take an occupied one | get out | get off | get out | get out (land first, on the ground or a roof) |
+| `E` | get in or on the nearest vehicle, or take an occupied one; on the Solstice Terrace: the lift down, June's bar | get out | get off | get out | get out (land first, on the ground or a roof) |
 | `F` | sit down near a seat or on the sand, get up; buy from a vending machine or the Coconut Shack; on the club dance floor: dance; at a roof door: take the stairs down | | | fire | |
 | Mouse drag | orbit the camera (right-drag too) | orbit | orbit | aim the turret | orbit |
 | Click / `R` | fire the blaster (aim with the camera; hold `R` to keep firing) | fire ahead (auto-aim) | fire ahead (auto-aim) | fire | |
 | `G` | throw a firework bang (hold for distance) | drop a bang behind you | drop a bang behind you | | |
-| `Q` / wheel, `1`-`5` | switch blaster / put it away, pick one | switch | switch | | |
+| `Q` / wheel, `1`-`5` | switch blaster / put it away, pick one (seated on the Solstice Terrace: `1` wait for the sunset, `2` wait for the night) | switch | switch | | |
 
-Indoors: `W A S D` walk (the camera looks in from the door, so `W` is further in), `Shift` hurry, `E` at the yellow ring (Dee's counter, the podium, Gus's counter, Zizi's counter, the Club Prism bar, the venues' counters), `F` to sit on a stool or a booth or to dance on the club floor, walk into the white ring to leave. In a shop menu: `W`/`S` or arrows choose, `Enter` buys or wears, `Esc` closes. Blasters stay holstered indoors.
+Indoors: `W A S D` walk (the camera looks in from the door, so `W` is further in), `Shift` hurry, `E` at the yellow ring (Dee's counter, the podium, Gus's counter, Zizi's counter, the Club Prism bar, the venues' counters, the Solstice Spire's lift and concierge desk), `F` to sit on a stool or a booth or to dance on the club floor, walk into the white ring to leave. In a shop menu: `W`/`S` or arrows choose, `Enter` buys or wears, `Esc` closes. Blasters stay holstered indoors.
 
 Anywhere:
 
@@ -377,7 +392,7 @@ Tip: in the helicopter prefer `C` to descend. `Ctrl` works too, but `Ctrl+W` is 
 
 - **Left thumb:** touch anywhere on the left half and a stick appears under your thumb. It skates or walks; in a car, on the Comet, in the tank or the helicopter it steers and gives throttle (pull back to brake or reverse). Push it all the way out to sprint on foot.
 - **Right side:** swipe on the empty right half to turn the camera (or look around in first person, or aim the tank's turret).
-- **Buttons, bottom right:** they change with what you are doing and match the keyboard: **Jump**; **Enter / Ride / Take** (`E`) next to a vehicle; **Sit / Dance / Buy** (`F`) near a seat, on the club floor or at a vending machine; **Use** (`E`) at a counter; in a car **Drift** (handbrake), **Brake** and **Exit**; on the bike **Brake** and **Get off**; in the tank **Fire**; in the helicopter **Up**, **Down** and **Exit** (**Land** in the air); in a scene **Next** and **Skip**; on the JOB BLOWN card **Retry** and **Drop**.
+- **Buttons, bottom right:** they change with what you are doing and match the keyboard: **Jump**; **Enter / Ride / Take** (`E`) next to a vehicle; **Sit / Dance / Buy** (`F`) near a seat, on the club floor or at a vending machine; **Use** (`E`) at a counter; **Lift** and **Order** on the Solstice Terrace, **Sunset** / **Night** / **Get up** seated up there; in a car **Drift** (handbrake), **Brake** and **Exit**; on the bike **Brake** and **Get off**; in the tank **Fire**; in the helicopter **Up**, **Down** and **Exit** (**Land** in the air); in a scene **Next** and **Skip**; on the JOB BLOWN card **Retry** and **Drop**.
 - **Blasters:** with a weapon out, **Fire** becomes the big button (on foot it auto-aims at the nearest vehicle in a wide cone in front of the camera, or fires straight ahead; in a car or on the Comet it fires ahead with auto-aim), **Bang** throws a firework bang (hold for distance; **Drop** in a vehicle drops it behind you) and **Swap** cycles the weapons.
 - **Top right:** **View** (camera view, like `V`), **Codes** (the cheat console with a tappable list of every code; tap the input line if you would rather type), **♪** (music on / off, like `M`; struck through while the street music is off), and the gear (pause + controls + subtitle size).
 - **Dancing:** a ring of eight move buttons round a **Stop** button. Tap a move on the beat, just like the number keys; the beat panel sits bottom left.
@@ -427,11 +442,12 @@ The pause / settings panel (gear button, top right) has a **Graphics** choice, *
 
 **Resolution** (also in the panel): *Auto* watches the frame time. If frames stay slow for a couple of seconds the render pixel ratio steps down (about 15 % at a time, never below 0.6 pixels per CSS pixel); when there is headroom for a good while it creeps back up, waiting longer each time a climb was followed by another drop. *Full* keeps the full pixel ratio. The `P` panel shows the current scale and the graphics level.
 
-**Cinematic mode.** Press `K`, or choose *Start cinematic mode* in the pause panel (that is the touch button too). The HUD and touch controls hide, letterbox bars slide in and the camera flies a slow orbit round Skye (or the vehicle), drifting in and out and up and down. It pulls in or lifts over buildings that would block the view. Any key, click, tap or scroll ends it (that input is not passed on to the game). It is not available during a scene, in a shop or indoors. With reduced motion the orbit is much slower and level.
+**Cinematic mode.** Press `K`, or choose *Start cinematic mode* in the pause panel (that is the touch button too). The HUD and touch controls hide, letterbox bars slide in and the camera flies a slow orbit round Skye (or the vehicle), drifting in and out and up and down. It pulls in or lifts over buildings that would block the view. Any key, click, tap or scroll ends it (that input is not passed on to the game). It is not available during a scene, in a shop or indoors (the Solstice Terrace is outdoors, so it works there, seated or not). With reduced motion the orbit is much slower and level.
 
 ## Hardware notes
 
 - Built for integrated laptop graphics: a typical street frame is about 52 to 56 draw calls in the old town (two more near the beach for the beach crowd's props and balls, one more at night for the fire pit) and 40 to 52 in Solano Key (57 on the causeway, where both districts are in view) with all traffic, pedestrians, beach animals, loose props, planters and the horizon on screen. The new effects add at most a handful while something is happening: smoke and debris, beams, shockwave rings, projectiles, the blaster in your hand and an event's bag and ring are each one pooled or instanced draw call, drawn only while in use. Indoors the camera only renders the room's layer (the room, the cast, the courier, the rings), so Club Prism with its whole crowd, lasers, lights and lounge is about 28 draw calls. No shadow maps. The only post-processing is the High-quality bloom (three full-screen passes at half and quarter resolution, only while it is on; the frame is copied once, the scene is not re-rendered). The other new effects add at most one draw call (the night ambience points, only at night). Interiors are built the first time you walk in and hidden when you leave. Each district keeps its detailed meshes in one group; from more than about 240 m away the group is hidden and a one-draw-call silhouette (hazed boxes with night windows) stands in for it. The key's walls all take their windows from one shader (punched, curtain glass or ribbon windows from the world position, lit at random at night), so its whole skyline is one draw call; its detailed street lights are drawn only within about 190 m (their glow sprites carry them further at night).
+- **The Solstice Terrace** sees both districts in full: about 85 draw calls and 0.72 M triangles on Low, about 90 and 0.75 M on High (at sunset with a full terrace), roughly the causeway's cost plus a handful for the terrace's own pieces (the glass, the warm light pools, June, the lift doors and the guests' four instanced meshes, all hidden unless the camera can see the deck). Everything solid up there is merged into the key's one solid mesh. The Spire's lobby is 9 draw calls on Low, 13 on High.
 - The pixel ratio is capped at 2 (1.5 on phones and tablets), and it is checked again whenever the window, the zoom or the screen changes. On top of that the adaptive resolution (above) lowers it by itself when the frame rate suffers. You can also pick **Low** graphics, zoom the page in (`Ctrl` / `Cmd` + `+`) or shrink the window: fewer pixels is the big lever.
 - Needs WebGL 2. Without it you get a plain explanatory message instead of a black page. Make sure hardware acceleration is switched on in the browser.
 - Rendering and audio pause while the tab is hidden.
@@ -510,7 +526,7 @@ src/
   core/             input, shared helpers, spatial grid, quality (Low / High), adaptive (resolution scaling)
   world/            layout, roads + traffic lights, canvas textures, sky + ocean, city builder, details (rooftops, props,
                     billboards, boats, gulls), edges (seawall, causeway), horizon (distant scenery + silhouettes),
-                    streetscape (the old town's lot variety, inner streets and alleys), key + keyCity (Solano Key), keyscape (the key's downtown street level), streettrees (the street-tree species), lamplight (lamp pools on characters and cars), districts (culling), ads (billboard atlas), surfaces (roofs, ramps),
+                    streetscape (the old town's lot variety, inner streets and alleys), key + keyCity (Solano Key), keyscape (the key's downtown street level), spire (the Solstice Spire's crown, lobby front and roof terrace), streettrees (the street-tree species), lamplight (lamp pools on characters and cars), districts (culling), ads (billboard atlas), surfaces (roofs, ramps),
                     rampGeo, kits (the embedded models),
                     glow sprites, day/night + weather, props (solid street furniture + seats, spatial grid),
                     loose (knock-over physics, lamps / hydrants / palms, vending machines), beach (Coral Beach props + exclusion zones),
@@ -520,7 +536,8 @@ src/
                     interiors (the five rooms + cast), places (doors, walking indoors, shops),
                     rules (heat, cash, health, pickups, carjack), eat (food and drink models, eating animation), damage (vehicle condition, fire, explosions),
                     combat (blasters, fireworks, patrol lasers), pursuit (the patrol helicopter and tank), parking (spare cars and bikes,
-                    parking slots), events (random street events), rooftops, stunts, cinematic (orbit camera mode)
+                    parking slots), events (random street events), rooftops, stunts, cinematic (orbit camera mode),
+                    spire + spireroom (the Solstice Spire: lift, terrace, guests, waiting for the sunset; its lobby)
   player/           the courier model + skating controller, follow camera
   vehicles/         car / bike / tank / helicopter models and physics, types.js (the fifteen vehicle types: handling, size, sound,
                     traffic mix, the original convertible / muscle car / ice-cream truck / bus / scooter), effect pools

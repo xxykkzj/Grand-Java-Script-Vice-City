@@ -127,6 +127,7 @@ export function addRim(mat) {
   };
   return mat;
 }
+export const makeCastNPC = (key) => makeNPC(key);
 function makeNPC(key) {
   const o = LOOKS[key], g = new THREE.Group(), atlas = castAtlas(), K = kit(atlas);
   const mat = blockyMaterial({ atlas, row: CAST_ROW[key], rim: rimU });

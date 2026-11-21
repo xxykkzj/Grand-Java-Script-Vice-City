@@ -105,7 +105,7 @@ export function createHud(L, groundCanvas, renderer, keyCanvas) {
       const clock = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
       if (clock !== lastClock) {
         lastClock = clock; el.time.textContent = clock; el.phase.textContent = env.phase;
-        el.wx.textContent = WEATHER[env.weather].label; el.zone.textContent = zoneName(focus.x, focus.z);
+        el.wx.textContent = WEATHER[env.weather].label; el.zone.textContent = game.spire && game.spire.on ? 'SOLSTICE TERRACE' : zoneName(focus.x, focus.z);
       }
       breath(game.swim);
       // cash rolls towards its real value like a tape counter

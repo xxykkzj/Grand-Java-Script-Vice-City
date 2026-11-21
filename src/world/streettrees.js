@@ -12,7 +12,7 @@
 // species switches to a simpler geometry (fewer fronds and leaf blobs). Each street picks a dominant species
 // with some variety (pickSpecies).
 import * as THREE from 'three';
-import { tint, merge, rng, PI, timeU } from '../core/util.js';
+import { tint, merge, rng, PI, timeU, VIEW } from '../core/util.js';
 import { quality } from '../core/quality.js';
 
 export const SPECIES = ['royal', 'coconut', 'fan', 'ficus', 'jacaranda', 'seagrape', 'cypress'];
@@ -158,7 +158,7 @@ export function createStreetTrees(scene, trees) {
   const lod = (cam) => {
     if ((lodT -= 1) > 0) return;
     lodT = 20;
-    const R = quality.high ? 230 : 160, cx = cam.position.x, cz = cam.position.z;
+    const R = (quality.high ? 230 : 160) * VIEW.far, cx = cam.position.x, cz = cam.position.z;
     for (const mesh of meshes) {
       const { all, tint } = mesh.userData;
       let n = 0;

@@ -33,6 +33,8 @@ export const CAST = {
   KIKI: { name: 'KIKI', color: '#ffd166', voice: 1.4 },
   RUDY: { name: "CAP'N RUDY", color: '#9dffb0', voice: 0.65 },
   BIRDIE: { name: 'BIRDIE', color: '#8fb8ff', voice: 0.9 },
+  LEO: { name: 'LEO', color: '#ffcf7a', voice: 0.8 },
+  JUNE: { name: 'JUNE', color: '#ff9f6a', voice: 1.3 },
   // voices of the street events (game/events.js): subtitles only, no scene
   DISPATCH: { name: 'PATROL DISPATCH', color: '#5ff0e0', voice: 0.9 },
   OFFICER: { name: 'OFFICER DUARTE', color: '#19d8c8', voice: 0.8 },
@@ -208,6 +210,7 @@ export const BARKS = {
   motel: ['HAZEL', ['Fresh towels, fresh sheets, same old ice machine.', 'Checkout is whenever you wake up, sugar.', "The pool's closed. The pool has been closed since 1979."]],
   mall: ['KIKI', ["Kiki's Knots! Warm pretzels, warmer smiles!", 'Toss a coin in the fountain. The fountain likes shiny things.', "Escalator's been broken all week. Call it stairs with ambition."]],
   lounge: ['BIRDIE', ['Welcome to the Pelican, sugar. Shoes optional, manners required.', 'The band plays what the records tell them. Ask the jukebox.', 'Requests go in the jar. The jar is the jukebox.', 'Skates by the door, please. The floor is older than both of us.']],
+  spire: ['LEO', ['Good evening. The terrace is on twenty-three, and the view is on the house.', 'Skates are welcome. Just not on the marble, if you can help it.', 'The lift is an express. Mind your ears.', 'Sunset is at about half past seven. Daily, without fail.']],
   bait: ['RUDY', ['Ahoy. Mind the bait fridge, it bites back.', "Forty years on the water and I still can't swim. Ask me how.", 'Tides are up, prices are down. Mostly.']],
   arms: ['ZIZI', ['Goggles on, fingers off the glowy ones.', 'Everything here is certified toy-grade. Mostly.', 'Bangs are for the road, not the boardwalk.', 'It only zaps cars and bins. People just get a fright.']],
 };
@@ -351,6 +354,17 @@ export const CLUB_MENU = [
   { id: 'mirror', name: 'MIRRORBALL', note: 'Sky blue with a silver rim and an umbrella. +14 health', price: 6, heal: 14 },
   { id: 'kilowatt', name: 'THE KILOWATT', note: "DJ Kilowatt's own: cherry, lime, a jolt. +16 health", price: 7, heal: 16 },
 ];
+// The Afterglow Bar on the Solstice Terrace (E at the bar, June mixes it)
+export const SKYBAR_MENU = [
+  { id: 'cooler', name: 'CAUSEWAY COOLER', note: 'Lime soda, mint and a lot of ice. +8 health', price: 4, heal: 8 },
+  { id: 'tlager', name: 'TERRACE LAGER', note: 'A cold draught with a proper head on it. +6 health', price: 5, heal: 6 },
+  { id: 'skysour', name: 'SKYLINE SOUR', note: 'Lemon, honey, a twist of orange peel. +10 health', price: 6, heal: 10 },
+  { id: 'sundown', name: 'SUNDOWN SPRITZ', note: 'Blood orange and bubbles, the colour of 19:30. +12 health', price: 7, heal: 12 },
+  { id: 'nightcap', name: 'MIDNIGHT NIGHTCAP', note: 'Violet, smooth, a paper umbrella for the stars. +16 health', price: 9, heal: 16 },
+];
+// lines from the terrace: June at the bar, Leo at the desk downstairs
+export const SKYBAR_GREET = ['JUNE: “Best seat in the house is any seat. What are we drinking?”', 'JUNE: “The sun goes down over the old town. Order now, thank me later.”', 'JUNE: “Last orders are whenever I say they are. Not yet.”'];
+export const LEO_LINES = ['LEO: “The terrace is open till late. The lift is the only way up, and the only way down.”', 'LEO: “If you are waiting for the sunset, take a lounger on the east side.”', 'LEO: “No helicopters on the terrace, I am afraid. We had an incident with a cocktail umbrella.”', 'LEO: “June runs the bar up there. Tell her Leo sent you. She will charge you anyway.”'];
 // The Coconut Shack on Coral Beach (F at the counter, open 7:00 to 20:00)
 export const KIOSK_MENU = [
   { id: 'smoothie', name: 'SUNSET SMOOTHIE', note: 'Mango, strawberry, a scoop of crushed ice. +20 health', price: 6, heal: 20 },

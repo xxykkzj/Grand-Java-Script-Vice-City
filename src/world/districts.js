@@ -3,6 +3,7 @@
 // windows, one draw call, see world/horizon.js) stands in for it, so either district costs the same handful
 // of draw calls from the other side of the bay.
 import { HX, HZ, KEY } from './layout.js';
+import { VIEW } from '../core/util.js';
 
 const rectDist = (x, z, x0, x1, z0, z1) => Math.hypot(Math.max(x0 - x, 0, x - x1), Math.max(z0 - z, 0, z - z1));
 
@@ -25,8 +26,9 @@ export function createDistricts(horizon, L, cityGroup, keyGroup) {
       const p = cam.position;
       const dA = rectDist(p.x, p.z, -HX, HX, -HZ, HZ + 110), dB = rectDist(p.x, p.z, KEY.x0, KEY.x1, KEY.z0, KEY.z1 + 90);
       // a little hysteresis so nothing flickers at the threshold
-      showA = showA ? dA < 250 : dA < 230;
-      showB = showB ? dB < 250 : dB < 230;
+      const f = VIEW.far;
+      showA = showA ? dA < 250 * f : dA < 230 * f;
+      showB = showB ? dB < 250 * f : dB < 230 * f;
       cityGroup.visible = showA; silA.visible = !showA;
       keyGroup.visible = showB; silB.visible = !showB;
     },

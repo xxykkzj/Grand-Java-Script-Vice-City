@@ -60,6 +60,9 @@ export function merge(list) {
 
 // Uniform objects shared by every custom shader.
 export const timeU = { value: 0 };
+// how far the view reaches: 1 normally; the Solstice Terrace (game/spire.js) pushes the tree and lamp
+// cut-offs (far) and the fog (fog) further out while you are up there
+export const VIEW = { far: 1, fog: 1 };
 export const fogU = {
   uFogColor: { value: new THREE.Color() },
   uFogNear: { value: 80 },

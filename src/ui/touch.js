@@ -132,12 +132,14 @@ export function createTouch(game) {
     }
     if (game.swim && game.swim.wet) return game.swim.touchButtons();
     if (act.dancing) return [];
-    if (act.mode === 'sit') return [['KeyF', 'GET UP']];
+    if (act.mode === 'sit') return game.spire && game.spire.seated ? [['Digit1', 'SUNSET'], ['Digit2', 'NIGHT'], ['KeyF', 'GET UP']] : [['KeyF', 'GET UP']];
     const f = act.fHint(), fb = f ? [['KeyF', f[1].toUpperCase()]] : [];
     if (game.inside) {
       const h = game.places.hint(), e = h.find((i) => i[0] === 'E');
       return [...fb, ...(e ? [['KeyE', 'USE']] : [])];
     }
+    // on the Solstice Terrace: the lift down, June's bar
+    if (game.spire && game.spire.on) { const u = game.spire.nearUse(); return [['Space', 'JUMP'], ...(u ? [['KeyE', u.label]] : []), ...fb]; }
     const n = vehicles.nearest(player.pos);
     // armed: FIRE is the big button
     return [...wb.slice(0, 1), ['Space', 'JUMP'], ...(n ? [['KeyE', n.ai ? 'TAKE' : n.kind === 'bike' ? 'RIDE' : 'ENTER']] : []), ...fb, ...wb.slice(1)];

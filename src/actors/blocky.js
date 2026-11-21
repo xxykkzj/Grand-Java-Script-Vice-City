@@ -330,7 +330,7 @@ export function faceDriver(u, reduced = false) {
 
 // ---- shared atlases ---------------------------------------------------------------------------------------
 // the story cast (row per character) and the city's crowd (eight face variants)
-export const CAST_ROW = { SKYE: 0, DEE: 1, GLITZ: 2, GUS: 3, KILO: 4, TAPS: 5, ZIZI: 6, MIMI: 7, DOT: 8, TOKEN: 9, HAZEL: 10, KIKI: 11, RUDY: 12, BIRDIE: 13 };
+export const CAST_ROW = { SKYE: 0, DEE: 1, GLITZ: 2, GUS: 3, KILO: 4, TAPS: 5, ZIZI: 6, MIMI: 7, DOT: 8, TOKEN: 9, HAZEL: 10, KIKI: 11, RUDY: 12, BIRDIE: 13, LEO: 14, JUNE: 15 };
 const CAST_FACES = [
   { iris: '#1f7f86', brow: '#2a2140', freckles: true },                                   // Skye
   { iris: '#6a3a1a', brow: '#b02a6a', lash: true, lip: '#d42f6e', blush: true },           // Dee
@@ -346,6 +346,8 @@ const CAST_FACES = [
   { iris: '#3a2410', brow: '#3a2410', lash: true, lip: '#d0406a', blush: true },            // Kiki, the galleria
   { iris: '#2a5a8a', brow: '#d8d8d8', thick: true, beard: '#e4e4e8' },                       // Rudy, the bait shop
   { iris: '#5a3a20', brow: '#c8c8d0', lash: true, lip: '#b8405a', blush: true },            // Birdie, the Blue Pelican Lounge
+  { iris: '#3a2a1a', brow: '#a8a8b0', thick: true, stache: '#b0b0b8' },                     // Leo, the Solstice Spire's concierge
+  { iris: '#2a6a5a', brow: '#d0502a', lash: true, lip: '#d04050', blush: true, freckles: true },  // June, the Afterglow Bar
 ];
 const CROWD_FACES = [
   { iris: '#4a2a14', brow: '#2a1a12' },

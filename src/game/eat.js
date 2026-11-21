@@ -17,6 +17,7 @@ const KIND = {
   tea: ['tall', '#e0a040'], fizz: ['cocktail', '#4f8dff'], lager: ['beer'],
   laser: ['tall', '#e8ff5a'], ultra: ['cocktail', '#9b5cff'], mirror: ['cocktail', '#7fe0ff'], kilowatt: ['cocktail', '#ff3f6a'], filler: ['beer'],
   smoothie: ['smoothie'], softserve: ['cone'], coconut: ['coconut'],
+  cooler: ['tall', '#8dff5a'], tlager: ['beer'], skysour: ['tall', '#ffd447'], sundown: ['cocktail', '#ff6a3d'], nightcap: ['cocktail', '#7a5cff'],
 };
 const DRINKS = new Set(['can', 'mug', 'tall', 'cocktail', 'beer', 'smoothie', 'shake', 'coconut']);
 const CREAM = '#fff6ec', WHITE = '#ffffff';

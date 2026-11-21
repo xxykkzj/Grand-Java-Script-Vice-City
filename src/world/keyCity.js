@@ -6,11 +6,12 @@
 // see-through), the palms and one set of glow sprites. All of it lives in one group that
 // world/districts.js swaps for a silhouette when the camera is far away.
 import * as THREE from 'three';
-import { box, cyl, tint, merge, rng, PI, nightU, reflU } from '../core/util.js';
+import { box, cyl, tint, merge, rng, PI, nightU, reflU, VIEW } from '../core/util.js';
 import { KEY, KH, KV, KV_W, KEY_JUNCTIONS, MPIER, KEY_ADS } from './key.js';
 import { kitGeometry } from './kits.js';
 import { groundMaterial, palmMesh } from './city.js';
 import { setLampMap } from './lamplight.js';
+import { addSpire } from './spire.js';
 import { addKeyscape, KEY_SHOPS } from './keyscape.js';
 import { streetAtlasMesh } from './streetscape.js';
 import { createStreetTrees } from './streettrees.js';
@@ -222,10 +223,14 @@ export function buildKey(scene, L, renderer, adSigns) {
         S.push(bx(0.9, 0.04, 5, x - 1.6, y + 0.1, z, CREAM), bx(0.9, 0.04, 5, x + 1.6, y + 0.1, z, CREAM), bx(2.3, 0.04, 0.9, x, y + 0.1, z, CREAM));
         for (let k = 0; k < 8; k++) { const a = k * PI / 4; glows.push([x + Math.cos(a) * (pr + 0.4), y + 0.25, z + Math.sin(a) * (pr + 0.4), k % 2 ? '#8dff5a' : '#ffffff', 1.6, 0.35]); N.push(bx(0.2, 0.15, 0.2, x + Math.cos(a) * (pr + 0.4), y + 0.1, z + Math.sin(a) * (pr + 0.4), '#8dff5a')); }
       }
-      const mx = b.door.x, mz = b.cz + (b.cz > b.door.z ? 1 : -1) * (d / 2 - 2.5);
-      S.push(bx(0.15, 9, 0.15, b.x0 + 2.5, b.roofY + 4.5, mz, STEEL)); glows.push([b.x0 + 2.5, b.roofY + 9.2, mz, '#ff3040', 3, 0.3]);
-      P.circle(b.x0 + 2.5, mz, 0.2, b.roofY + 9, b.roofY);
-      void mx;
+      if (b.spire) {
+        // the Solstice Spire: a lit name crown and the Solstice Terrace on the roof (world/spire.js)
+        b.terrace = addSpire({ b, S, N, glows, P, bx, cy, sign, group });
+      } else {
+        const mz = b.cz + (b.cz > b.door.z ? 1 : -1) * (d / 2 - 2.5);
+        S.push(bx(0.15, 9, 0.15, b.x0 + 2.5, b.roofY + 4.5, mz, STEEL)); glows.push([b.x0 + 2.5, b.roofY + 9.2, mz, '#ff3040', 3, 0.3]);
+        P.circle(b.x0 + 2.5, mz, 0.2, b.roofY + 9, b.roofY);
+      }
     } else if (b.style === 'office') {
       S.push(bx(w, h, d, cx, h / 2, cz, b.color, 3));
       for (let y = 3.4 * 3; y < h - 2; y += 3.4 * 3) S.push(bx(w + 0.4, 0.45, d + 0.4, cx, y, cz, b.accent));
@@ -301,7 +306,7 @@ export function buildKey(scene, L, renderer, adSigns) {
       roofClutter(b, 4);
       billboard(nextAd(), cx - w * 0.3, b.roofY, cz, yawF, 14); billboard(nextAd(), cx + w * 0.3, b.roofY, cz, yawF, 14);
     }
-    hut(b);
+    if (!b.spire) hut(b);
     // every part of the lot that stands at street level (below 5 m) goes on the footprint check (layout.js)
     for (const g of [...S.slice(s0), ...N.slice(n0)]) {
       g.computeBoundingBox(); const bb = g.boundingBox;
@@ -561,7 +566,7 @@ export function buildKey(scene, L, renderer, adSigns) {
     lodT = 20;
     let n = 0;
     for (const l of K.lamps) {
-      if (Math.hypot(l.x - cam.position.x, l.z - cam.position.z) > 190) continue;
+      if (Math.hypot(l.x - cam.position.x, l.z - cam.position.z) > 190 * VIEW.far) continue;
       lamps.setMatrixAt(n++, m4.compose(v3.set(l.x, 0, l.z), q.setFromAxisAngle(UP, l.yaw), one));
     }
     lamps.count = glass.count = n;

@@ -1,6 +1,6 @@
 // Neon Coast: boot, world generation with a loading bar, and the main loop.
 import * as THREE from 'three';
-import { timeU, pointScaleU, pushOut, pause, reducedMotion, createGrid, beatU, beatNow, BEAT_LEN, nightU } from './core/util.js';
+import { timeU, pointScaleU, pushOut, pause, reducedMotion, createGrid, beatU, beatNow, BEAT_LEN, nightU, VIEW } from './core/util.js';
 import { createInput } from './core/input.js';
 import { makeLayout, clampToWorld, onLand, onRoad, propsOnRoad, zoneName, FOOTPRINTS, footprintsOnRoad } from './world/layout.js';
 import { checkBeach, BEACH_ZONES } from './world/beach.js';
@@ -55,6 +55,7 @@ import { createAdaptive } from './core/adaptive.js';
 import { createBloom } from './world/bloom.js';
 import { createMotes } from './world/motes.js';
 import { createCinematic } from './game/cinematic.js';
+import { createSpire } from './game/spire.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('gl');
@@ -188,6 +189,9 @@ async function boot() {
   const roofs = game.roofs = createRooftops(game);
   const stunts = game.stunts = createStunts(game);
   const cine = game.cine = createCinematic(game);
+  // the Solstice Spire: the lift to its roof terrace, the guests, the bar, waiting for the sunset
+  const spire = game.spire = createSpire(game, scene);
+  vehicles.onNoLand = () => spire.noLand();
   // a second helicopter waits on the Glasswater Tower helipad downtown
   const padT = L.key.buildings.find((b) => b.name === 'Glasswater Tower');
   vehicles.spawnHeli(padT.pad.x, padT.pad.z, Math.PI / 2, 1, padT.roofY);
@@ -359,6 +363,14 @@ async function boot() {
     musicState: () => ({ ...audio.musicState(), room: sound.room, want: sound.theme }),
     musicAuto: (sec) => audio.musicAuto(sec),
     venueKeys: () => [...Object.keys(L.places), ...Object.keys(L.venues)],
+    // ---- the Solstice Spire (automated checks)
+    spire: () => spire.state(),
+    spireWarp: (x, z) => spire.warp(x, z),
+    spireSettle: () => spire.settle(),
+    spireSeats: () => spire.seats(),
+    spireGuests: (h, w = 'clear') => { env.setWeather(w); env.w.rain = w === 'rain' || w === 'storm' ? 0.8 : 0; env.tod = h; env.target = null; return spire.settle(); },
+    tris: () => renderer.info.render.triangles,
+    view: (far, fog) => { if (far) VIEW.far = far; if (fog) VIEW.fog = fog; return { ...VIEW }; },
     evtGo: (off = 0.6) => { const t = events.target(); if (!t) return null; const v = game.vehicle; if (v) { v.x = t.x + off; v.z = t.z; v.vx = v.vz = 0; } else player.pos.set(t.x + off, 0, t.z); return t; },
   };
   game.signalAt = (n, h) => signal(n, h, timeU.value);
@@ -369,6 +381,7 @@ async function boot() {
     if (!v && swim.wet) { swim.interact(); return; }
     if (act.mode) { act.toggle(); return; }
     if (game.inside) { places.use(); return; }
+    if (!v && spire.on && spire.use()) return;
     if (v) {
       const floor = v.floor || 0;
       if (v.kind === 'heli' && v.y - floor > 0.6) { hud.toast('LAND FIRST', 'HOLD C TO DESCEND'); return; }
@@ -411,6 +424,8 @@ async function boot() {
     if (game.busy === 'fail') { story.key(e); return; }
     // weapons: 1-5 pick one (when not dancing), Q cycles (and holsters)
     const wd = /^(Digit|Numpad)([1-5])$/.exec(e.code);
+    // seated on the Solstice Terrace: 1 waits for the sunset, 2 for the night
+    if (wd && spire.seated && !game.busy && !cheats.open && (wd[2] === '1' || wd[2] === '2')) { spire.wait(wd[2] === '1' ? 'sunset' : 'night'); return; }
     if (wd && !act.dancing && game.started && !game.busy && !cheats.open) { combat.select(+wd[2]); return; }
     // dancing: 1-8 pick a move and hit the beat, arrows step through the moves
     if (act.dancing && !game.busy) {
@@ -515,6 +530,7 @@ async function boot() {
     if (game.mode === 'bike' && game.vehicle) player.ride(game.vehicle);
     peds.update(dt, timeU.value, frameN, vehicles.cars);
     animals.update(dt);
+    if (game.started) spire.update(dt);
     if (game.started) { rules.update(dt); pursuit.update(dt); parking.update(raw); heatHint.update(raw); story.update(dt); story.tickStar(dt); places.update(dt, ctl); venues.tick(dt); events.update(dt); marine.blips(rules.blips); roofs.update(dt); }
     city.tick(timeU.value); city.beachFx.tick(env.rainAmt);
     fx.update(dt);
@@ -531,6 +547,7 @@ async function boot() {
     else if (game.inside) { /* places.update owns the camera indoors */ }
     else if (stunts.cam) stunts.camUpdate(dt);
     else if (cine.active) cine.update(dt);
+    else if (spire.camOn) spire.camUpdate(dt);     // seated on the terrace: the wide view
     else { cam.spec = v && v.spec || null; cam.update(dt, input, game.mode, game.focus(), game.heading(), speed, fx, player.phase); }
     // in first person on foot the courier's own body would sit inside the camera
     cockpit.update(dt, v, cam.first && !cut.active && !game.inside && !!v, ctl.steer);
@@ -557,6 +574,7 @@ async function boot() {
       else if (game.inside) hud.setHint(places.hint());
       else if (!v && swim.wet) hud.setHint(swim.hint());
       else if (!v && act.mode) hud.setHint(act.hint());
+      else if (!v && spire.on) hud.setHint(spire.hint());
       else if (!v) {
         const n = vehicles.nearest(player.pos), f = act.fHint(), wh = combat.hints();
         hud.setHint(n ? [['E', n.ai ? `take the ${n.label} (heat!)` : n.kind === 'bike' ? `ride the ${n.label}` : `enter the ${n.label}`], ...(f ? [f] : []), ...wh, ['V', 'camera view'], ['~ / T', 'cheat console']]
@@ -584,8 +602,9 @@ async function boot() {
     sound.skate = !v && player.onGround && !player.swimming && !cut.active && !act.mode ? Math.min(player.speed / 13.5, 1) : 0;
     sound.rotor = vehicles.heli ? vehicles.heli.spool * (v === vehicles.heli ? 1 : 0.35) : 0;
     sound.rain = env.rainAmt; sound.siren = game.siren || 0; sound.duck = cut.active;
-    sound.room = !game.inside ? 0 : game.inside.key === 'club' ? 2 : game.inside.key === 'lounge' ? 3 : 1;
-    sound.theme = !game.inside ? 'street' : game.busy === 'arcade' ? 'arcadeGame' : THEME_OF[game.inside.key] || null;
+    // up on the Solstice Terrace its own theme plays, like an indoor place (it ignores the street music's auto-off)
+    sound.room = !game.inside ? (spire.on ? 1 : 0) : game.inside.key === 'club' ? 2 : game.inside.key === 'lounge' ? 3 : 1;
+    sound.theme = !game.inside ? (spire.on ? THEME_OF.terrace : 'street') : game.busy === 'arcade' ? 'arcadeGame' : THEME_OF[game.inside.key] || null;
     sound.night = nightU.value; sound.wanted = game.wanted;
     music.update(dt, !!game.inside && game.inside.key === 'lounge' && game.busy !== 'door' && audio.musicOn, game.paused);
     sound.rec = music.rec;

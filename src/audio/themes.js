@@ -353,6 +353,33 @@ export const THEMES = {
     },
   },
 
+  // The Solstice Terrace (and the Spire's lobby): a mellow downtempo sunset groove. A warm pad, offbeat
+  // electric-piano stabs, a round lazy bass, rim clicks and a shaker, a vibes arpeggio, a soft flute-ish line.
+  rooftop: {
+    bpm: 86, swing: 0.35, wet: 0.34, vol: 1,
+    sec: { A: prog('Ebmaj9 | Gm7 | Abmaj7 | Bb7sus4 Bb7'), B: prog('Cm9 | Abmaj9 | Fm9 | Bb7sus4'), C: prog('Abmaj7 | Gm7 | Fm7 | Ebmaj9') },
+    form: ['A', 'A', 'B', 'A', 'C', 'B'],
+    lead: { sc: scale(3, 'maj', 72), motifs: [mot('0:4:4 6:2:2 8:1:4 14:2:2 16:4:10 28:6:4'), mot('2:7:2 4:6:2 6:4:6 16:2:4 20:4:2 22:2:8'), mot('0:9:6 8:7:2 10:6:2 12:4:8 24:2:6'), mot('4:2:2 6:4:2 8:5:6 16:4:4 20:2:2 22:1:2 24:0:8')] },
+    play(e, K) {
+      const { t, s, chord: c, bus, spb, r } = e, night = (e.mood && e.mood.night) || 0;
+      if (s === 0 || (s === 8 && e.bar.length === 2)) K.pad(tones(c, 55, 4), t, spb * (e.bar.length === 2 ? 8 : 16), 0.017, bus, 1350 - night * 350, 'triangle');
+      if ((s === 2 || s === 10) && r() < 0.75) for (const m of tones(c, 60, 3)) K.ep(m, t, spb * 1.4, 0.021, bus, 0.4);
+      const b = low(c);
+      if (s === 0) K.bass(b, t, spb * 5, 0.27, bus, 480);
+      else if (s === 6 && r() < 0.55) K.bass(b + 7, t, spb * 1.5, 0.15, bus, 480);
+      else if (s === 10) K.bass(e.bar.length === 2 ? low(c) : b, t, spb * 3, 0.21, bus, 480);
+      else if (s === 14 && r() < 0.4) K.bass(low(e.next) + (r() < 0.5 ? 2 : -1), t, spb * 1.5, 0.14, bus, 480);
+      if (s === 0) K.kick(t, 0.3, bus);
+      else if (s === 7 && r() < 0.35) K.kick(t, 0.16, bus);
+      else if (s === 10) K.kick(t, 0.2, bus);
+      if (s === 4 || s === 12) K.rim(t, 0.045, bus);
+      if (s % 2 === 0) K.shaker(t, s % 4 === 2 ? 0.014 : 0.008, bus);
+      if (s === 14 && r() < 0.3) K.hat(t, 0.012, bus, true);
+      if (s % 2 === 0 && (e.secKey !== 'A' || e.loop % 2)) K.bell(tones(c, 72, 4)[(s >> 1) % 4], t, spb * 3, 0.009, bus);
+      if (e.secKey !== 'B' || e.loop % 2) melody(e, { ...this.lead, vol: 0.042, drop: 0.2, voice: (m, tt, d, v) => K.tone('triangle', m, tt, d, v, bus, { cut: 2200 - night * 500, att: 0.06, sus: true }) });
+    },
+  },
+
   // Seafoam Galleria: airy mall ambience, a soft bell melody over a slow pad.
   mall: {
     bpm: 84, wet: 0.4, vol: 0.95,
@@ -391,4 +418,4 @@ export const THEMES = {
   },
 };
 // which theme plays in which place (places and venues by key)
-export const THEME_OF = { bar: 'bar', club: 'club', lounge: 'lounge', diner: 'diner', arcade: 'arcade', wear: 'wear', mart: 'mart', arms: 'arms', motel: 'motel', mall: 'mall', bait: 'bait' };
+export const THEME_OF = { bar: 'bar', club: 'club', lounge: 'lounge', diner: 'diner', arcade: 'arcade', wear: 'wear', mart: 'mart', arms: 'arms', motel: 'motel', mall: 'mall', bait: 'bait', spire: 'rooftop', terrace: 'rooftop' };

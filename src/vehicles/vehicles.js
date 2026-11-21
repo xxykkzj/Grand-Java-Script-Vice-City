@@ -432,6 +432,15 @@ export function createVehicles(scene, L, fx, audio) {
     h.y += h.vy * dt;
     // the ground under the skids: the street, or any flat roof, helipad or deck (world/surfaces.js)
     const floor = h.floor = surf.at(h.x, h.z, h.y + 0.6);
+    // the Solstice Terrace is not a helipad: over it the helicopter is held up and eased off the edge
+    const nl = surf.last && surf.last.noLand ? surf.last : null;
+    if (nl && !dead && h.y < nl.y + 6) {
+      const bb = nl.b, dx = h.x - bb.cx, dz = h.z - bb.cz, d = Math.hypot(dx, dz) || 1;
+      h.vy = Math.max(h.vy, (nl.y + 6 - h.y) * 1.5);
+      h.vx += dx / d * 7 * dt; h.vz += dz / d * 7 * dt;
+      if (h.y < nl.y + 2.6) h.y = nl.y + 2.6;
+      if (h.driven && api.onNoLand) api.onNoLand(h);
+    }
     if (h.y <= floor) {
       if (dead && !h.landed) { h.landed = true; if (api.onCrash) api.onCrash(h, -h.vy); }
       h.y = floor; if (h.vy < 0) h.vy = 0; const k = Math.exp(-6 * dt); h.vx *= k; h.vz *= k;

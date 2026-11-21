@@ -5,6 +5,7 @@
 // Rooms are authored around (0, 0, 0) with the door on +z, like game/interiors.js.
 import * as THREE from 'three';
 import { box, cyl, tint, merge, PI, rng } from '../core/util.js';
+import { buildSpire, SPIRE_LOOKS } from './spireroom.js';
 import { shell, stool, plant, rug, pipe, boards, P, fan, fishTank, pulser, pbox, shadeHex } from './dress.js';
 
 const BLK = '#22203a', GOLD = '#ffd166', CHROME = '#d9d6e6', NEON = ['#ff2bd1', '#18f0ff', '#ffe14a', '#8dff5a', '#ff6a3d', '#b388ff'];
@@ -780,4 +781,5 @@ function buildLounge(room) {
 const posterA = (c, W, H) => { P.grad(c, W, H, '#2a3a8a', '#101848'); c.fillStyle = '#ffd166'; c.beginPath(); c.arc(W * 0.5, H * 0.42, H * 0.22, 0, 6.3); c.fill(); c.fillStyle = '#101848'; c.fillRect(W * 0.46, H * 0.2, W * 0.08, H * 0.5); P.text(c, 'MAE CALLOWAY', W / 2, H * 0.8, H * 0.09, '#f6f1e7', { italic: true, max: W * 0.9 }); P.text(c, 'BLUE NOTES · BLUE SKIES', W / 2, H * 0.92, H * 0.05, '#9fd0ff', { max: W * 0.9 }); };
 const posterB = (c, W, H) => { P.grad(c, W, H, '#e8c890', '#c8945e'); c.fillStyle = '#5a3016'; c.beginPath(); c.moveTo(W * 0.3, H * 0.6); c.lineTo(W * 0.5, H * 0.15); c.lineTo(W * 0.7, H * 0.6); c.fill(); c.fillStyle = '#c0303a'; c.fillRect(W * 0.2, H * 0.58, W * 0.6, H * 0.04); P.text(c, 'THE DRIFTWOOD', W / 2, H * 0.75, H * 0.09, '#3a2016', { italic: true, max: W * 0.9 }); P.text(c, 'TRIO', W / 2, H * 0.88, H * 0.1, '#c0303a', { italic: true }); };
 
-export const VENUE_BUILD = { diner: buildDiner, arcade: buildArcade, motel: buildMotel, mall: buildMall, bait: buildBait, lounge: buildLounge };
+export const VENUE_BUILD = { diner: buildDiner, arcade: buildArcade, motel: buildMotel, mall: buildMall, bait: buildBait, lounge: buildLounge, spire: buildSpire };
+Object.assign(VENUE_LOOKS, SPIRE_LOOKS);

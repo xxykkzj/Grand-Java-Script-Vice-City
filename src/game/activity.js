@@ -18,6 +18,7 @@ export function createActivity(game) {
     mode: null, seat: null, move: 0, combo: 0, best: 0, vibe: 0, rival: null, contest: false,
     get sitting() { return A.mode === 'sit'; },
     get dancing() { return A.mode === 'dance'; },
+    get rising() { return A.mode === 'sit' && dir < 0; },          // getting up off a seat
   };
   let k = 0, dir = 0, from = { x: 0, z: 0, yaw: 0 }, idleT = 0, idleK = 0, lastHit = -99, same = 0, lastMove = -1, judgeT = 0, orbitA = 0, camK = 0;
   const camPos = { x: 0, y: 0, z: 0 };
@@ -31,7 +32,7 @@ export function createActivity(game) {
       for (const s of r.seats) { const d = Math.hypot(r.ox + s.x - p.x, r.oz + s.z - p.z); if (d < bd && !s.taken) { bd = d; best = s; } }
       return best && { x: r.ox + best.x, z: r.oz + best.z, y: best.y, yaw: best.yaw, kind: best.kind, ref: best };
     }
-    if (p.y > 0.3) return null;
+    if (p.y > 0.3) return game.spire ? game.spire.seatNear(p) : null;     // up on the Solstice Terrace (game/spire.js)
     const s = L.props.nearest(p.x, p.z, 1.4);
     if (s) return { x: s.x, z: s.z, y: s.y, yaw: s.yaw, kind: s.kind, ref: s.line ? null : s };
     // the beach: anywhere on the sand, facing the way you were facing
@@ -210,7 +211,7 @@ export function createActivity(game) {
     k = clamp(k + dt * (dir > 0 ? 1.8 : 2.2) * dir, 0, 1);
     if (k >= 1) { idleT += dt; if (idleT > 7) { idleT = 0; idleK++; } } else idleT = 0;
     const e = ease(k), m = ease(Math.min(1, k * 1.6));
-    player.pos.x = lerp(from.x, s.x, m); player.pos.z = lerp(from.z, s.z, m); player.pos.y = player.floor;
+    player.pos.x = lerp(from.x, s.x, m); player.pos.z = lerp(from.z, s.z, m); player.pos.y = s.floorY ?? player.floor;
     const yawFrom = dir > 0 ? from.yaw : s.yaw;
     player.yaw = dir > 0 ? yawFrom + angleDelta(yawFrom, s.yaw) * m : s.yaw;
     sitTarget(s, tgt, k >= 1 ? performance.now() / 1000 : undefined);
@@ -252,12 +253,12 @@ export function createActivity(game) {
     reset() {
       if (A.mode === 'dance') stopDance();
       if (A.mode === 'pat') { A.mode = null; player.resetPose(); }
-      if (A.mode === 'sit') { const s = A.seat; endSit(); player.pos.set(from.x, player.floor, from.z); if (s) player.yaw = from.yaw; }
+      if (A.mode === 'sit') { const s = A.seat; endSit(); player.pos.set(from.x, s && s.floorY !== undefined ? s.floorY : player.floor, from.z); if (s) player.yaw = from.yaw; }
       A.contest = false; A.rival = null;
     },
     hint() {
       if (A.mode === 'dance') return [['1-8', 'moves on the beat'], ['← →', 'next / previous move'], ['↑ ↓', 'repeat move'], ['F / WASD', 'stop dancing']];
-      if (A.mode === 'sit') return [['F / E / WASD', 'get up']];
+      if (A.mode === 'sit') return game.spire && game.spire.seated ? game.spire.seatHint() : [['F / E / WASD', 'get up']];
       if (A.mode === 'pat') return [['♥', 'good dog!']];
       return null;
     },

@@ -8,6 +8,7 @@
 //           (audio/music.js streams them), a now-playing card with title, artist and licence
 // Menus reuse the shop panel (game/places.js asks menu(kind) for a provider).
 import { clamp, rng, PI, reducedMotion, angleDelta } from '../core/util.js';
+import { SKYBAR_MENU } from './story.js';
 import { CAST, BARKS, DINER_MENU, DINER_SIT, JUKEBOX, MOTEL_MENU, MOTEL_WAKE, PRETZELS, WISHES, BAIT_MENU, TRIVIA, TRIVIA_RIGHT, TRIVIA_WRONG, LOUNGE_MENU, CLUB_MENU, KIOSK_MENU } from './story.js';
 import { OY } from './interiors.js';
 
@@ -51,6 +52,11 @@ export function createVenues(game) {
     clubbar: {
       title: 'PRISM BAR', label: 'ORDER',
       items: () => CLUB_MENU, greet: () => 'TAPS: “What can I pour you? On the beat, as always.”',
+      pick: (o) => feed(o),
+    },
+    skybar: {
+      title: 'THE AFTERGLOW BAR · FLOOR 23', label: 'ORDER',
+      items: () => SKYBAR_MENU, greet: () => (game.spire ? game.spire.greet() : ''),
       pick: (o) => feed(o),
     },
     kiosk: {
@@ -247,6 +253,7 @@ export function createVenues(game) {
         return true;
       }
       if (k === 'arcade') { openArcade(); return true; }
+      if ((k === 'lift' || k === 'concierge') && game.spire) return game.spire.lobbyUse(k);
       if (k === 'records') {
         stats.songs++;
         if (music && music.skip()) { audio.blip(true); nowPlaying(); }

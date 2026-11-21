@@ -31,7 +31,7 @@ const GLASS = ['#3d7f9e', '#4a6fa8', '#2f8f8a', '#6a5aa8', '#3a8fb0'];
 // venue names in the key (all invented)
 export const KEY_SIGNS = [
   'Hotel Mirabel', 'The Azure Palms', 'Moonlite Motor Inn', 'Seafoam Galleria', 'Starboard Marina', 'Tradewind Docks',
-  'Sunbowl Stadium', 'Fernwood Park', 'Glasswater Tower', 'Halcyon Trust', 'Pelican Point Lofts', 'Mango Grove',
+  'Sunbowl Stadium', 'Fernwood Park', 'Glasswater Tower', 'The Solstice Spire', 'Pelican Point Lofts', 'Mango Grove', 'Afterglow Bar',
 ];
 // 80s billboards and wall ads (all brands made up)
 export const KEY_ADS = [
@@ -71,7 +71,9 @@ export function makeKey(props, solids, surf) {
     if (style === 'tower') b.helipad = true;
   });
   buildings.find((b) => b.cx === -650 && b.cz === -118).name = 'Glasswater Tower';
-  buildings.find((b) => b.cx === -519 && b.cz === -12).name = 'Halcyon Trust';
+  // the Solstice Spire: the waterfront tower facing the old town, the causeway and the sunset. Its roof is the
+  // Solstice Terrace (world/spire.js, game/spire.js), not a helipad: a timber deck behind a glass balustrade
+  { const sp = buildings.find((b) => b.cx === -519 && b.cz === -12); Object.assign(sp, { name: 'The Solstice Spire', spire: true, helipad: false, color: '#3a6f9a' }); }
   buildings.find((b) => b.cx === -630 && b.cz === 27).name = 'Pelican Point Lofts';
 
   // ---------------------------------------------------------------- south of Halcyon Avenue
@@ -175,7 +177,9 @@ export function makeKey(props, solids, surf) {
   // back corner that lets you out on the side nearest a street
   for (const b of buildings) {
     b.roofY = b.h + 0.6;
-    surf.rect(b.x0, b.x1, b.z0, b.z1, b.roofY, 'roof', { b });
+    // the Spire's deck sits 8 cm over the slab; nothing may land on it (vehicles/vehicles.js reads noLand)
+    if (b.spire) b.deckY = b.roofY + 0.08;
+    surf.rect(b.x0, b.x1, b.z0, b.z1, b.spire ? b.deckY : b.roofY, 'roof', b.spire ? { b, noLand: true, terrace: true } : { b });
     if (b.helipad) b.pad = { x: b.cx, z: b.cz, r: Math.min(b.w, b.d) * 0.36 };
     const sides = [[b.cx, b.z1 + 2.4, 0], [b.cx, b.z0 - 2.4, Math.PI], [b.x1 + 2.4, b.cz, Math.PI / 2], [b.x0 - 2.4, b.cz, -Math.PI / 2]];
     const roadD = (x, z) => { let m = 1e9; for (const q of KEY_ROAD_RECTS) m = Math.min(m, Math.hypot(Math.max(q.x0 - x, 0, x - q.x1), Math.max(q.z0 - z, 0, z - q.z1))); return m; };
@@ -184,6 +188,8 @@ export function makeKey(props, solids, surf) {
     // the hut sits in the roof corner on the far side from the street door (or by it, if the roof is small)
     const dx = Math.sign(out[0] - b.cx) || 1, dz = Math.sign(out[1] - b.cz) || 1;
     const hx = b.cx - dx * (b.w / 2 - 3.2), hz = b.cz + (out[2] === 0 || out[2] === Math.PI ? dz : -dz) * (b.d / 2 - 3.2);
+    // (the Spire has no stair door: its lift is the way up and down, game/spire.js)
+    if (b.spire) { b.door = { x: hx, z: hz, y: b.roofY, out: { x: out[0], z: out[1], yaw: out[2] }, b }; continue; }
     b.door = surf.door(hx, hz, b.roofY, { x: out[0], z: out[1], yaw: out[2] }, b);
     props.box(hx, hz, 2.2, 2.2, b.roofY + 2.6, 0, b.roofY - 0.2);
   }

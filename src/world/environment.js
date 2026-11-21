@@ -1,7 +1,7 @@
 // Time of day, lighting, fog, rain and lightning. One clock drives everything:
 // the sky/ocean shaders, the lights, neon brightness and the HUD clock.
 import * as THREE from 'three';
-import { lerp, damp, clamp, fogU, nightU, timeU, glareU, wetU, rainU, reflU, reducedMotion } from '../core/util.js';
+import { lerp, damp, clamp, fogU, nightU, timeU, glareU, wetU, rainU, reflU, reducedMotion, VIEW } from '../core/util.js';
 
 const col = (h) => new THREE.Color(h);
 const lum = (c) => c.r * 0.299 + c.g * 0.587 + c.b * 0.114;
@@ -95,7 +95,7 @@ export function createEnvironment(scene, sky, ocean, city, camera, audio) {
 
   const env = {
     hemi, rain,
-    tod: 19, target: null, speed: 1, indoor: false, flash: 0, cur,
+    tod: 19, target: null, ffRate: null, viewFog: 1, speed: 1, indoor: false, flash: 0, cur,
     glare: 0, weather: 'clear', w: { cloud: 0.12, rain: 0, bolt: 0, fog: 0 }, wxTimer: 2.5, wet: 0,
     nextBolt: 4, pendingThunder: -1, phase: 'DUSK',
     get rainAmt() { return env.indoor ? 0 : env.w.rain; },
@@ -116,7 +116,7 @@ export function createEnvironment(scene, sky, ocean, city, camera, audio) {
       let adv = dt * env.speed / 60;
       if (env.target !== null) {
         const d = (env.target - env.tod + 24) % 24;
-        adv = dt * 7;
+        adv = dt * (env.ffRate ? env.ffRate(d) : 7);      // ffRate: a gentler fast-forward (waiting on the Solstice Terrace)
         if (d <= adv) { adv = d; env.target = null; }
       }
       env.tod = (env.tod + adv) % 24;
@@ -202,6 +202,9 @@ export function createEnvironment(scene, sky, ocean, city, camera, audio) {
 
       // low sun: push the haze back so the beach and the far shore stay crisp instead of washing out
       cur.fogNear *= 1 + 0.9 * env.glare; cur.fogFar *= 1 + 0.35 * env.glare; cur.sunI *= 1 - 0.18 * env.glare;
+      // high up (the Solstice Terrace) the haze is pushed back so both districts, the causeway and the sea read
+      env.viewFog = damp(env.viewFog, VIEW.fog, 1.5, dt);
+      if (env.viewFog > 1.001) { cur.fogNear *= env.viewFog; cur.fogFar *= env.viewFog; }
       fogU.uFogColor.value.copy(scene.fog.color); fogU.uFogNear.value = cur.fogNear; fogU.uFogFar.value = cur.fogFar;
       scene.fog.near = cur.fogNear; scene.fog.far = cur.fogFar;
 
