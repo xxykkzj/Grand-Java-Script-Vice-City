@@ -29,6 +29,8 @@ Dee's bar, the Velvet Flamingo, owes $5,000 by Sunday. Marty Glitz at Club Prism
 
 ## Saving
 
+**Starting money.** A new game starts with **$150,000**, so the point is to explore, buy and try things rather than grind. Saves made before this change get a one-off top-up to $150,000 the next time they are continued.
+
 One autosave slot in the browser's local storage (`neon-coast-save-2`, a few KB of JSON; `game/saves.js`). A reload, a refresh after an update, or a phone throwing the tab away in the background no longer starts you over.
 
 - **What is kept:** the homes you own, the car in each home's parking bay (type and colour) and the home you last slept in; your cash and health, where you are and which way you face, the clock and the weather; the story chapter; the outfits you own and wear, your hair, facial hair and cap; blasters and ammo, the snorkel vest, the Skate Surge best, the stunts found, odd jobs done. In a car or on a bike you come back in the same type of vehicle in the same colour at the same spot; in the helicopter (landed) the same helicopter. Inside a place you come back outside its street door. Settings (controls, subtitles, graphics, resolution, music) are stored on their own as before.

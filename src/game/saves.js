@@ -14,6 +14,7 @@ import { WEATHER } from '../world/environment.js';
 import { MISSIONS, OUTFITS } from './story.js';
 import { DEFAULT_HAIR, fixHair } from './salon.js';
 import { HOMES, HOME_IDS } from './homes.js';
+import { START_CASH } from './rules.js';
 
 export const SAVE_KEY = 'neon-coast-save-2';
 const OLD_KEY = 'neon-coast-save-1';
@@ -26,7 +27,7 @@ const $ = (id) => document.getElementById(id);
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
-export const profileDefaults = () => ({ outfit: 'classic', owned: [], story: 0, gift: {}, arms: {}, armsIntro: 0, vest: 0, motel: null, arcade: 0, hair: { ...DEFAULT_HAIR }, cap: 1, stunts: [], homes: [], garage: {}, lastHome: null });
+export const profileDefaults = () => ({ outfit: 'classic', owned: [], story: 0, gift: {}, arms: {}, armsIntro: 0, vest: 0, motel: null, arcade: 0, hair: { ...DEFAULT_HAIR }, cap: 1, stunts: [], homes: [], garage: {}, lastHome: null, bankroll: 1 });
 const PROFILE_KEYS = Object.keys(profileDefaults());
 
 // FNV-1a over the JSON text: catches a code that got cut short or edited
@@ -42,7 +43,7 @@ const fromB64 = (s) => decodeURIComponent(escape(atob(s)));
 function cleanWorld(w) {
   if (!w || typeof w !== 'object' || Array.isArray(w)) return null;
   const o = {
-    cash: fin(w.cash) ? clamp(Math.floor(w.cash), 0, 1e9) : 250,
+    cash: fin(w.cash) ? clamp(Math.floor(w.cash), 0, 1e9) : START_CASH,
     health: fin(w.health) ? clamp(Math.round(w.health), 1, 100) : 100,
     tod: fin(w.tod) ? ((w.tod % 24) + 24) % 24 : 19,
     weather: typeof w.weather === 'string' && WEATHER[w.weather] ? w.weather : 'clear',
@@ -83,6 +84,7 @@ export function cleanSlot(raw) {
     const g = raw.garage[h.id];
     if (h.bay && g && typeof g.type === 'string' && /^[a-z]{2,16}$/.test(g.type) && typeof g.color === 'string' && /^#[0-9a-f]{6}$/i.test(g.color)) s.garage[h.id] = { type: g.type, color: g.color };
   }
+  s.bankroll = raw.bankroll ? 1 : 0;
   s.lastHome = HOME_IDS.includes(raw.lastHome) && s.homes.includes(raw.lastHome) ? raw.lastHome : null;
   if (raw.motel && fin(raw.motel.cash) && fin(raw.motel.tod)) s.motel = { cash: raw.motel.cash, tod: raw.motel.tod, at: fin(raw.motel.at) ? raw.motel.at : 0 };
   return {
@@ -244,6 +246,8 @@ export function createSaves(game) {
     if (!w) return { where: 'start' };
     const { env, places, player } = g;
     g.money = w.cash; g.health = w.health; g.wanted = 0;
+    // one-off top-up for saves made before the starting bankroll went up to $150,000
+    if (!save.bankroll) { g.money = Math.max(g.money, START_CASH); save.bankroll = 1; }
     if (g.stats) g.stats.jobs = jobs0;
     env.tod = w.tod; env.target = null;
     env.setWeather(w.weather, 3);
@@ -322,7 +326,7 @@ export function createSaves(game) {
   function summary() {
     const w = world || {};
     const parts = [];
-    parts.push('$' + (w.cash ?? 250).toLocaleString('en-US'));
+    parts.push('$' + (w.cash ?? START_CASH).toLocaleString('en-US'));
     if (fin(w.tod)) { const h = Math.floor(w.tod), mm = Math.floor((w.tod - h) * 60); parts.push(String(h).padStart(2, '0') + ':' + String(mm).padStart(2, '0')); }
     if (w.zone) parts.push(w.zone);
     parts.push(save.story < MISSIONS.length ? `CHAPTER ${save.story + 1}: ${MISSIONS[save.story].title}` : 'STORY COMPLETE');

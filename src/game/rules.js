@@ -7,6 +7,9 @@ import { box, merge, clamp, lerp, angleDelta, segBlocked, timeU, PI, reducedMoti
 import { onRoad } from '../world/layout.js';
 import { createGlow } from '../world/glow.js';
 
+// a generous bankroll: the point is to explore and try everything, not to grind for rent
+export const START_CASH = 150000;
+
 const $ = (id) => document.getElementById(id);
 const CASH = [[40, 205], [-205, 112], [228, 116], [-150, -144], [150, -144], [118, 71], [-262, 4], [0, -112]];
 const REASON = {
@@ -17,7 +20,7 @@ const REASON = {
 
 export function createRules(game, scene) {
   const { L, vehicles, player, audio, hud, env, peds, traffic, R, cam } = game;
-  Object.assign(game, { money: 250, health: 100, wanted: 0, cooling: false, mission: null, busy: null, inside: null, stats: { jobs: 0 } });
+  Object.assign(game, { money: START_CASH, health: 100, wanted: 0, cooling: false, mission: null, busy: null, inside: null, stats: { jobs: 0 } });
   const cd = {};
   let unseen = 0, hurtCd = 0, bust = 0, losT = 0, seen = false, frame = 0, jack = null;
 
