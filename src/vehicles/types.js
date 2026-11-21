@@ -92,8 +92,8 @@ export function coupeGeometry() {
     box(0.5, 0.55, 0.12, 0.4, 1.32, -0.78, '#7a1f3a', -0.15), box(0.5, 0.55, 0.12, -0.4, 1.32, -0.78, '#7a1f3a', -0.15),
     box(0.3, 0.2, 0.14, 0.4, 1.66, -0.86, '#7a1f3a'), box(0.3, 0.2, 0.14, -0.4, 1.66, -0.86, '#7a1f3a'),
     shaped(1.7, 0.18, 1.0, 0, 1.06, -1.55, W, (x, y, z) => [x, y > 0 && Math.abs(x) < 0.1 ? y - 0.08 : y, z]),   // rear deck
-    box(1.62, 0.06, 0.06, 0, 1.47, 0.32, CHROME, -0.55), box(0.06, 0.48, 0.06, 0.8, 1.22, 0.45, CHROME, -0.55), box(0.06, 0.48, 0.06, -0.8, 1.22, 0.45, CHROME, -0.55),
-    box(1.5, 0.4, 0.04, 0, 1.24, 0.45, '#5f8fb0', -0.55),                                           // windscreen
+    box(1.62, 0.06, 0.06, 0, 1.47, 0.07, CHROME, -0.55), box(0.06, 0.48, 0.06, 0.8, 1.22, 0.2, CHROME, -0.55), box(0.06, 0.48, 0.06, -0.8, 1.22, 0.2, CHROME, -0.55),
+    box(1.5, 0.4, 0.04, 0, 1.24, 0.2, '#5f8fb0', -0.55), box(1.5, 0.12, 0.3, 0, 1.05, 0.25, TRIM),    // windscreen just ahead of the seats, on the dash
     box(0.07, 0.07, 1.3, 0, 1.0, 0.95, CHROME), box(1.0, 0.03, 0.8, 0, 0.99, 1.4, TRIM),            // bonnet line, vents
     box(1.9, 0.12, 0.12, 0, 0.38, 2.16, CHROME), box(1.9, 0.12, 0.12, 0, 0.38, -2.16, CHROME),
     box(1.88, 0.05, 3.6, 0, 0.7, 0, '#18f0ff'),                                                      // a thin neon-blue swage line
@@ -204,12 +204,23 @@ export function scooterGeometry() {
 // or box, dark wheels. vehicles.js swaps it in past a distance (shorter on Low graphics).
 const BOXY = ['van', 'delivery', 'icecream', 'ambulance', 'garbage', 'bus'];
 export function proxyGeometry(id, full) {
+  // a stand-in with the real model's own silhouette: its length, width and height, and its roof line sampled in
+  // eight slices along the body (a pickup's bed, an SUV's tall cabin, a hatch's short tail, a van's box), so the
+  // swap to the full model up close reads as the same vehicle getting sharper, never as a different type
   const T = VTYPES[id];
   full.computeBoundingBox();
-  const H = full.boundingBox.max.y, L = T.len, Wd = T.w * 0.92, boxy = BOXY.includes(id);
-  const p = [box(Wd, H * 0.42, L * 0.98, 0, H * 0.33, 0, W)];
-  if (boxy) p.push(box(Wd * 0.97, H * 0.46, L * 0.8, 0, H * 0.75, -L * 0.08, id === 'bus' ? '#2c4a66' : W), box(Wd * 0.9, H * 0.3, 0.06, 0, H * 0.72, L * 0.32, GLASS));
-  else p.push(box(Wd * 0.86, H * 0.36, L * 0.48, 0, H * 0.72, -L * 0.06, GLASS), box(Wd * 0.8, 0.06, L * 0.44, 0, H * 0.91, -L * 0.06, W));
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) p.push(box(0.22, H * 0.3, H * 0.3, sx * Wd * 0.47, H * 0.15, sz * L * 0.32, TYRE));
+  const bb = full.boundingBox, H = bb.max.y, z0 = bb.min.z, z1 = bb.max.z, L = z1 - z0, Wd = Math.min(T.w, bb.max.x - bb.min.x) * 0.95, NB = 8;
+  const top = new Array(NB).fill(0), pos = full.attributes.position;
+  for (let i = 0; i < pos.count; i++) { const k = Math.min(NB - 1, Math.max(0, Math.floor((pos.getZ(i) - z0) / L * NB))); if (Math.abs(pos.getX(i)) < Wd * 0.45) top[k] = Math.max(top[k], pos.getY(i)); }
+  const belt = H * (BOXY.includes(id) ? 0.5 : 0.56), p = [box(Wd, belt - H * 0.12, L * 0.98, 0, H * 0.12 + (belt - H * 0.12) / 2, (z0 + z1) / 2, W)];
+  for (let k = 0; k < NB; k++) {
+    const h = top[k], zc = z0 + (k + 0.5) * L / NB;
+    if (h <= belt + 0.05) continue;
+    const cab = h > H * 0.72, hh = h - belt;
+    // the cabin part: glass between the belt and a painted roof; lower humps (a bonnet, a bed rail) in paint
+    if (cab) p.push(box(Wd * 0.9, hh * 0.72, L / NB * 1.02, 0, belt + hh * 0.36, zc, id === 'bus' ? '#2c4a66' : GLASS), box(Wd * 0.88, hh * 0.28, L / NB * 1.02, 0, belt + hh * 0.86, zc, W));
+    else p.push(box(Wd * 0.98, hh, L / NB * 1.02, 0, belt + hh / 2, zc, W));
+  }
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) p.push(box(0.22, H * 0.3, H * 0.3, sx * Wd * 0.47, H * 0.15, (z0 + z1) / 2 + sz * L * 0.32, TYRE));
   return done(p);
 }

@@ -9,7 +9,7 @@ export function createSky(scene) {
     uTop: C(), uMid: C(), uHor: C(), uSunA: C(), uSunB: C(), uGlow: C(),
     uSunDir: { value: new THREE.Vector3(1, 0.1, 0.2).normalize() },
     uMoonDir: { value: new THREE.Vector3(0.55, 0.5, -0.67).normalize() },
-    uSunSize: { value: 0.16 }, uStripe: { value: 1 }, uStars: { value: 0 }, uFlash: { value: 0 }, uCloud: { value: 0 }, uVeil: { value: 0 },
+    uSunSize: { value: 0.16 }, uStripe: { value: 1 }, uStars: { value: 0 }, uFlash: { value: 0 }, uCloud: { value: 0 }, uVeil: { value: 0 }, uBow: { value: 0 },
     uTime: timeU, uFogColor: fogU.uFogColor,
   };
   const mat = new THREE.ShaderMaterial({
@@ -23,7 +23,7 @@ export function createSky(scene) {
       }`,
     fragmentShader: /* glsl */`
       uniform vec3 uTop, uMid, uHor, uSunA, uSunB, uGlow, uSunDir, uMoonDir;
-      uniform float uSunSize, uStripe, uStars, uFlash, uTime, uCloud, uVeil;
+      uniform float uSunSize, uStripe, uStars, uFlash, uTime, uCloud, uVeil, uBow;
       uniform vec3 uFogColor;
       float h2(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
@@ -68,6 +68,21 @@ export function createSky(scene) {
           float cv = smoothstep(th, th + 0.3, cl) * smoothstep(-0.02, 0.1, h);
           vec3 cc = mix(uHor, uMid, 0.4) * (0.7 + 0.45 * cl) + uGlow * 0.25 * pow(max(sd, 0.0), 3.0);
           col = mix(col, cc, cv * 0.93);
+        }
+        // a rainbow after the rain: centred on the anti-solar point (so only the part above the horizon shows, and
+        // none at all when the sun is higher than ~42 degrees), the primary bow at 40.5-42.5 degrees with red outside,
+        // a faint secondary at 50-53.5 degrees with the colours reversed, the sky a touch brighter inside the
+        // primary and darker between the two (Alexander's band). Drawn in the sky, so everything else covers it.
+        if (uBow > 0.003 && h > -0.01) {
+          float th = degrees(acos(clamp(dot(d, -uSunDir), -1.0, 1.0)));
+          float p1 = clamp((th - 40.4) / 2.2, 0.0, 1.0), w1 = smoothstep(40.0, 40.7, th) * smoothstep(42.9, 42.2, th);
+          float p2 = clamp((th - 50.2) / 3.4, 0.0, 1.0), w2 = smoothstep(49.8, 50.6, th) * smoothstep(54.0, 53.2, th);
+          vec3 c1 = clamp(abs(fract(0.78 * (1.0 - p1) + vec3(0.0, 0.667, 0.333)) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
+          vec3 c2 = clamp(abs(fract(0.78 * p2 + vec3(0.0, 0.667, 0.333)) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
+          float fadeH = smoothstep(-0.01, 0.06, h);
+          col += (c1 * w1 * 0.2 + c2 * w2 * 0.075) * uBow * fadeH;
+          col += vec3(0.05) * uBow * fadeH * smoothstep(41.0, 30.0, th) * smoothstep(5.0, 25.0, th);
+          col *= 1.0 - 0.05 * uBow * fadeH * smoothstep(42.6, 43.6, th) * smoothstep(50.2, 49.2, th);
         }
         col += vec3(0.7, 0.78, 1.0) * uFlash;
         gl_FragColor = vec4(col, 1.0);

@@ -202,12 +202,15 @@ export function makeMarker(scene, hex, radius = 1.5, height = 9) {
   const m = new THREE.Mesh(mergeGeometries([col, ring]), new THREE.ShaderMaterial({
     uniforms: { uTime: timeU, uCol: { value: new THREE.Color(hex) } },
     transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false,
-    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: `uniform float uTime; uniform vec3 uCol; varying vec2 vUv;
+    // (fades out with the distance: with no fog of its own a door pillar across the bay used to hang in the haze
+    // like a glowing cone, seen from the Solstice Terrace or the Starlight Wheel)
+    vertexShader: 'varying vec2 vUv; varying float vD; void main(){ vUv = uv; vec4 mv = modelViewMatrix * vec4(position, 1.0); vD = length(mv.xyz); gl_Position = projectionMatrix * mv; }',
+    fragmentShader: `uniform float uTime; uniform vec3 uCol; varying vec2 vUv; varying float vD;
       void main(){
+        if (vD > 170.0) discard;
         float pulse = 0.75 + 0.25 * sin(uTime * 4.0);
         float a = vUv.y < 0.0 ? 0.9 * pulse : pow(1.0 - vUv.y, 2.2) * (0.42 + 0.14 * sin(vUv.y * 26.0 - uTime * 5.0)) * pulse;
-        gl_FragColor = vec4(uCol * a, 1.0);
+        gl_FragColor = vec4(uCol * a * (1.0 - smoothstep(80.0, 170.0, vD)), 1.0);
       }`,
   }));
   m.renderOrder = 4; m.visible = false;

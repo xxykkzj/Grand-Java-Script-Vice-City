@@ -121,6 +121,7 @@ export function createTouch(game) {
     if (b === 'cut') return [['Space', 'NEXT'], ['KeyX', 'SKIP']];
     if (b === 'fail') return [['Enter', 'RETRY'], ['Escape', 'DROP']];
     if (b === 'arcade') return game.venues.touchButtons();
+    if (b === 'ride') return game.pier.touchButtons();
     if (b) return [];
     // weapons (game/combat.js): FIRE, a firework BANG (DROP behind a vehicle) and SWAP, all with auto-aim
     const wb = game.combat ? game.combat.touchButtons() : [];
@@ -140,7 +141,8 @@ export function createTouch(game) {
     }
     // on the Solstice Terrace: the lift down, June's bar
     if (game.spire && game.spire.on) { const u = game.spire.nearUse(); return [['Space', 'JUMP'], ...(u ? [['KeyE', u.label]] : []), ...fb]; }
-    const n = vehicles.nearest(player.pos);
+    const n = vehicles.nearest(player.pos), pu = game.pier && game.pier.nearUse();
+    if (pu) return [...wb.slice(0, 1), ['Space', 'JUMP'], ['KeyE', pu.label], ...fb, ...wb.slice(1)];
     // armed: FIRE is the big button
     return [...wb.slice(0, 1), ['Space', 'JUMP'], ...(n ? [['KeyE', n.ai ? 'TAKE' : n.kind === 'bike' ? 'RIDE' : 'ENTER']] : []), ...fb, ...wb.slice(1)];
   }

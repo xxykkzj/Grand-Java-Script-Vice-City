@@ -416,6 +416,29 @@ export const THEMES = {
       else if (s === 0) for (const m of tones(c, 64, 2)) K.harp(m, t, spb * 14, 0.025, bus);
     },
   },
+
+  // Starlight Pier: a carnival galop on a band-organ sound. Oom-pah bass and chords, a bright piping melody
+  // with quick turns, glockenspiel sparkles, a woodblock and a cymbal splash at the end of a phrase.
+  pier: {
+    bpm: 128, wet: 0.16, vol: 0.85,
+    sec: { A: prog('C | G7 | C | G7'), B: prog('F | C | D7 | G7'), C: prog('Am | E7 | Am | G7'), D: prog('C | F | G7 | C') },
+    form: ['A', 'B', 'A', 'D', 'C', 'C', 'A', 'D'],
+    lead: { sc: scale(0, 'maj', 72), motifs: [mot('0:4:2 2:5:2 4:4:2 6:2:2 8:0:4 12:2:2 14:4:2 16:7:4 20:6:2 22:5:2 24:4:8'), mot('0:7:2 2:9:2 4:7:2 6:4:2 8:5:2 10:4:2 12:2:4 16:4:2 18:2:2 20:1:2 22:2:2 24:0:8'),
+      mot('0:2:1 1:3:1 2:4:2 4:7:4 8:6:1 9:5:1 10:4:2 12:2:4 16:0:2 18:2:2 20:4:2 22:7:2 24:9:4 28:7:4')], drop: 0.06, grace: 0.12 },
+    play(e, K) {
+      const { t, s, chord: c, bus, spb, r } = e, minor = e.secKey === 'C';
+      // oom (bass on the beat) - pah (a short organ chord on the off-beat)
+      if (s === 0 || s === 8) K.bass(low(c, 36) + (s === 8 ? 7 : 0) - (s === 8 && low(c, 36) + 7 > 47 ? 12 : 0), t, spb * 2.6, 0.22, bus, 650, 'triangle');
+      if (s === 4 || s === 12) for (const m of tones(c, 60, 3)) K.tone('square', m, t, spb * 1.4, 0.016, bus, { cut: 1900, att: 0.004 });
+      if (s % 4 === 2 && r() < 0.5) K.tone('square', tones(c, 67, 3)[(s >> 2) % 3], t, spb * 0.8, 0.008, bus, { cut: 2600 });
+      if (s === 0 || s === 8) K.kick(t, 0.22, bus, 120, 50, 0.16);
+      if (s === 4 || s === 12) K.noise(t, 0.05, 0.05, 'bandpass', 3000, bus, { q: 4 });          // woodblock-ish
+      if (e.last && s === 12) K.noise(t, 0.05, 0.6, 'highpass', 6500, bus);                       // a splash at the end of the section
+      if (s % 2 === 0 && r() < (minor ? 0.08 : 0.16)) K.bell(tones(c, 84, 3)[Math.floor(r() * 3)], t, spb * 3, 0.012, bus);
+      // the piping lead: a square through a band-pass with a fast vibrato-ish detune, an octave doubling on the B section
+      melody(e, { ...this.lead, vol: 0.04, oct: minor ? -1 : 0, voice: (m, tt, d, v) => { K.tone('square', m, tt, d, v, bus, { cut: 2400, ftype: 'bandpass', q: 0.8, att: 0.01, sus: true, det: 6 }); if (e.secKey === 'B') K.tone('triangle', m + 12, tt, d, v * 0.5, bus, { att: 0.01 }); } });
+    },
+  },
 };
 // which theme plays in which place (places and venues by key)
-export const THEME_OF = { bar: 'bar', club: 'club', lounge: 'lounge', diner: 'diner', arcade: 'arcade', wear: 'wear', mart: 'mart', arms: 'arms', motel: 'motel', mall: 'mall', bait: 'bait', spire: 'rooftop', terrace: 'rooftop' };
+export const THEME_OF = { bar: 'bar', club: 'club', lounge: 'lounge', diner: 'diner', arcade: 'arcade', wear: 'wear', mart: 'mart', arms: 'arms', motel: 'motel', mall: 'mall', bait: 'bait', spire: 'rooftop', terrace: 'rooftop', pier: 'pier' };

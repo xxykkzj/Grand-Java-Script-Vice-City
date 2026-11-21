@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { damp, clamp, angleDelta, pushOut, PI, reducedMotion } from '../core/util.js';
 import { clampToWorld, PIER, HZ } from '../world/layout.js';
+import { APIER } from '../world/pier.js';
 import { kit, rig, blockyMaterial, faceDriver, castAtlas, CAST_ROW } from '../actors/blocky.js';
 import { pushFromSolids } from '../world/sea.js';
 
@@ -216,6 +217,12 @@ export function createPlayer(scene, L) {
           P.leap = true;
           if (px < PIER.x0 + 1.5) P.vel.x = Math.min(P.vel.x, -3.5); else if (px > PIER.x1 - 1.5) P.vel.x = Math.max(P.vel.x, 3.5); else P.vel.z = Math.max(P.vel.z, 3.5);
         }
+        // ...and the same over the side of Starlight Pier, past its solid rails on the sand
+        const A = APIER;
+        if (P.pos.y > -0.3 && px > A.x0 && px < A.x1 && pz > 163 && pz < A.z1 + 0.5 && (px < A.x0 + 1.5 || px > A.x1 - 1.5 || pz > A.z1 - 1.5)) {
+          P.leap = true;
+          if (px < A.x0 + 1.5) P.vel.x = Math.min(P.vel.x, -3.5); else if (px > A.x1 - 1.5) P.vel.x = Math.max(P.vel.x, 3.5); else P.vel.z = Math.max(P.vel.z, 3.5);
+        }
       }
       // the ground: a roof, a ramp, a deck or a container top (world/surfaces.js), else the street or the sand shelf
       const ground = (x, z) => { const s = L.surf.at(x, z, P.pos.y + 0.6); return s > 0 ? s : P.groundAt ? P.groundAt(x, z) : 0; };
@@ -311,6 +318,20 @@ export function createPlayer(scene, L) {
     // back to the plain standing rig (after dancing or sitting)
     resetPose() { model.body.position.set(0, 0, 0); model.body.rotation.set(0, 0, 0); model.head.rotation.set(0, 0, 0); },
     // sat on the Comet: tucked in behind the screen, leaning and wheelie-ing with the bike
+    // at the wheel of an open car (the convertible): seated on the driver's seat (vehicles/types.js spec.seat),
+    // thighs forward, shins down, hands on the wheel turning with the steering; follows the car's pitch and roll
+    sitIn(v, steer = 0) {
+      const m = model, st = (v.spec && v.spec.seat) || [0.42, 0.66, -0.55], c = Math.cos(v.yaw), sn = Math.sin(v.yaw);
+      const lx = st[0], ly = st[1] - 0.86, lz = st[2] - 0.06;
+      m.root.position.set(v.x + c * lx + sn * lz, v.y + ly, v.z - sn * lx + c * lz);
+      m.root.rotation.set(v.tx || 0, v.yaw, v.tz || 0, 'YXZ');
+      m.body.rotation.set(-0.12, 0, 0); m.body.position.y = 0;
+      m.legL.rotation.set(-1.42, 0, 0.08); m.legR.rotation.set(-1.42, 0, -0.08); knees(1.35, 1.35); drape();
+      const w = clamp(steer, -1, 1) * 0.22;
+      m.armL.rotation.set(-1.15 + w, 0, -0.18); m.armR.rotation.set(-1.15 - w, 0, 0.18);
+      m.head.rotation.set(-0.05, -steer * 0.15, 0);
+      m.root.visible = true; shadow.visible = false;
+    },
     ride(v) {
       const m = model, fx = Math.sin(v.yaw), fz = Math.cos(v.yaw), up = Math.sin(-Math.min(v.tx, 0));
       P.pos.set(v.x, v.y, v.z); P.yaw = v.yaw; P.speed = 0; P.vel.set(0, 0, 0); P.vy = 0; P.onGround = true;

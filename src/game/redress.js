@@ -214,8 +214,10 @@ function mart(room) {
   room.extras.push(tube);
   for (const z of [-2, 0.5]) for (const x of [-3.2, 1.6]) pools.push(disc(x, 0.012, z, 1.6, '#e8fff8', 0.18));
   pools.push(disc(-1.15, 0.012, -3.4, 3.2, '#a8f0ff', 0.25), disc(3.6, 1.65, -0.6, 0.7, '#ff4fa3', 0.35));
-  room.lights = [{ x: -3.2, y: 3.7, z: -2, hex: '#f0fff8', r: 5, k: 0.35 }, { x: 1.6, y: 3.7, z: 0.5, hex: '#f0fff8', r: 5, k: 0.35 }, { x: -1.2, y: 1.3, z: -3.6, hex: '#a8f0ff', r: 4, k: 0.5 }, { x: 5, y: 2.5, z: 0.6, hex: '#ffe0a0', r: 3.5, k: 0.4 }];
-  room.amb = 0.86; room.ambCol = '#f4fff8';
+  room.lights = [{ x: -3.2, y: 3.7, z: -2, hex: '#f0fff8', r: 5, k: 0.3 }, { x: 1.6, y: 3.7, z: 0.5, hex: '#f0fff8', r: 5, k: 0.3 }, { x: -1.2, y: 1.3, z: -3.6, hex: '#a8f0ff', r: 4, k: 0.42 }, { x: 5, y: 2.5, z: 0.6, hex: '#ffe0a0', r: 3.5, k: 0.36 }];
+  // (it used to be the brightest room in town: a softer ambient and a tamer bloom, like Zigzag Threads)
+  room.amb = 0.5; room.ambCol = '#eef8f2';
+  room.bloomK = 0.45;
   also(room, (t, dt, still) => tube.userData.tick(t, still));
 }
 

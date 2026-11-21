@@ -744,7 +744,7 @@ function buildWear(room) {
 // ---- Pelican Pantry 24 ----------------------------------------------------------------------------
 function buildMart(room) {
   const g = [], r = rng(24);
-  shell(g, 6, 4.5, 4, '#e9fbf6', '#bfeee2', ['#f4fff9', '#e2f7ee', '#eafaf2'], '#ffffff', '#5dff9a');
+  shell(g, 6, 4.5, 4, '#d4e8e0', '#a8d6c8', ['#dcefe6', '#cce6da', '#d4ebe0'], '#e6eeea', '#5dff9a');
   // fridge wall: glowing doors full of cans
   for (let i = 0; i < 6; i++) {
     const x = -4.9 + i * 1.5;

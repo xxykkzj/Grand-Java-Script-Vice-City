@@ -17,6 +17,7 @@ import { SKYBAR_GREET, LEO_LINES } from './story.js';
 import { kit, blockyMaterial, instExtras, crowdAtlas, mergeParts, CROWD_FACE_N } from '../actors/blocky.js';
 import { newPose, sitPose } from '../actors/moves.js';
 import { quality } from '../core/quality.js';
+import { setDeckLight } from '../world/lamplight.js';
 
 const FLOORS = 23;
 const SUNSET = 19.5, NIGHT = 22;
@@ -35,6 +36,8 @@ export function createSpire(game, scene) {
   const stats = { up: 0, down: 0, waits: 0, drinks: 0, noLand: 0, clamps: 0 };
   const S = { on: false, wait: null, camK: 0, sitToast: null, leoN: 0, greetN: 0, noLandT: 0, boost: 0 };
   const lobby = () => L.venues.spire;
+  // the terrace's string lights reach the people up there (world/lamplight.js deck term)
+  setDeckLight(0, X - 24.5, Z - 18.5, X + 24.5, Z + 18.5, Y, '#ffc890', 0.3);
 
   // ---------------------------------------------------------------- the roof lift hut's doors
   const steel = new THREE.MeshLambertMaterial({ color: '#c8c4d4' });
@@ -78,23 +81,46 @@ export function createSpire(game, scene) {
       arms.setColorAt(i * 2 + k, col.set(i % 3 === 2 ? sk : top)); xA.b(i * 2 + k, i % 3 === 0 ? top : sk); xA.c(i * 2 + k, sk);
       legs.setColorAt(i * 2 + k, col.set(dress ? sk : lg)); xL.b(i * 2 + k, dress ? sk : lg); xL.c(i * 2 + k, ['#22203a', '#f6f1e7', '#c0303a', '#c9a46a'][(i + k * 0) % 4]);
     }
-    return { i, s, on: false, h: 0.94 + ((i * 37) % 11) * 0.012, seed: i * 1.7, p: newPose() };
+    return { i, s, on: false, h: 0.94 + ((i * 37) % 11) * 0.012, seed: i * 1.7, p: newPose(), x: s.x, z: s.z, yaw: s.yaw, mv: null, gest: null, gT: 3 + i * 1.3 };
   });
   const Rt = new THREE.Matrix4(), Bm = new THREE.Matrix4(), Lm = new THREE.Matrix4(), M = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), sv = new THREE.Vector3();
   const HIP = 0.92, Z0 = new THREE.Matrix4().makeScale(0, 0, 0);
   const local = (x, y, z, rx, ry, rz) => Lm.compose(v.set(x, y, z), q.setFromEuler(e.set(rx, ry, rz)), one);
-  function pose(gst, t) {
-    const o = gst.p, s = gst.s, k = reducedMotion ? 0.3 : 1, w = Math.sin(t * 0.4 + gst.seed);
+  // poses: seated / on a lounger, leaning on the glass (forearms forward on the top rail, hands together), standing
+  // with a drink; all of them breathe, shift their weight and look about; standing guests sip, chat with their
+  // hands, check a watch, laugh. A guest on the move (to the bar and back, arriving from or leaving for the lift)
+  // walks with a proper stride.
+  function pose(gst, t, dt) {
+    const o = gst.p, s = gst.s, k = reducedMotion ? 0.3 : 1, br = Math.sin(t * 1.6 + gst.seed) * 0.012 * k;
+    gst.gT -= dt;
+    if (gst.gT <= 0) { gst.gT = 4 + ((gst.seed * 7.3 + t) % 6); const r = (Math.sin(t * 12.9 + gst.seed * 3.1) + 1) / 2; gst.gest = r < 0.3 ? 'sip' : r < 0.55 ? 'talk' : r < 0.68 ? 'watch' : r < 0.82 ? 'laugh' : null; gst.gLen = gst.gest === 'talk' ? 3 : 1.6; gst.g0 = t; }
+    const ga = gst.gest && t - gst.g0 < gst.gLen ? Math.sin(Math.min(1, (t - gst.g0) / gst.gLen) * PI) : 0;
+    if (gst.mv) {
+      Object.assign(o, { y: 0, x: 0, rx: 0.05, ry: 0, rz: 0, spin: 0, hx: 0, hz: 0 });
+      const ph = gst.mv.d * 4.4; o.lL[0] = Math.sin(ph) * 0.55; o.lR[0] = -o.lL[0]; o.lL[1] = 0.04; o.lR[1] = -0.04;
+      o.aL[0] = -o.lL[0] * 0.6; o.aL[1] = 0; o.aL[2] = 0.1; o.aR[0] = o.lL[0] * 0.6; o.aR[1] = 0; o.aR[2] = -0.1; o.y = Math.abs(Math.cos(ph)) * 0.03; gst.turn = 0; return;
+    }
     if (s.kind === 'sit' || s.kind === 'lounger') {
       sitPose(s.y, 0, o, gst.seed, true);
-      o.hx = 0.05 * Math.sin(t * 0.3 + gst.seed) * k; o.ry = 0;
+      o.hx = 0.05 * Math.sin(t * 0.3 + gst.seed) * k; o.ry = 0; o.y += br;
       if (s.kind === 'lounger') { o.rx = -0.55; o.lL[0] = o.lR[0] = -1.5; o.aL[0] = 0.2; o.aL[2] = 0.45; o.aR[0] = -0.4; o.aR[2] = -0.2; }
-      else if (w > 0.6) { o.aR[0] = -1.6; o.aR[2] = -0.1; }                    // a sip
+      else if (gst.gest === 'sip') { o.aR[0] = -0.5 - 1.6 * ga; o.aR[2] = -0.12; }
+      else if (gst.gest === 'talk') { o.aL[0] = -0.6 - 0.35 * Math.abs(Math.sin(t * 4)) * ga; o.aL[2] = 0.3; }
     } else {
-      Object.assign(o, { y: 0, x: 0, rx: 0.04, ry: 0, rz: 0, spin: 0, hx: 0, hz: 0 });
-      o.lL[0] = o.lR[0] = 0; o.lL[1] = 0.06; o.lR[1] = -0.06;
-      if (s.kind === 'lean') { o.rx = 0.14; o.aL[0] = -1.15; o.aL[1] = 0; o.aL[2] = 0.18; o.aR[0] = -1.15; o.aR[1] = 0; o.aR[2] = -0.18; }
-      else { o.aL[0] = -0.1; o.aL[1] = 0; o.aL[2] = 0.12; o.aR[0] = w > 0.2 ? -1.25 - 0.3 * Math.max(0, w - 0.8) * 5 : -0.25; o.aR[1] = 0; o.aR[2] = -0.25; }
+      Object.assign(o, { y: br, x: 0, rx: 0.04, ry: 0, rz: Math.sin(t * 0.21 + gst.seed) * 0.025 * k, spin: 0, hx: 0, hz: 0 });
+      o.lL[0] = o.lR[0] = 0; o.lL[1] = 0.06 + o.rz; o.lR[1] = -0.06 + o.rz;
+      if (s.kind === 'lean') {
+        // the top rail is ~1.1 m up: the arms reach forward and down to it, the hands meet in front
+        o.rx = 0.2; o.aL[0] = -0.95; o.aL[1] = 0; o.aL[2] = -0.26; o.aR[0] = -0.95; o.aR[1] = 0; o.aR[2] = 0.26;
+        if (gst.gest === 'sip') { o.aR[0] = -0.95 - 0.9 * ga; o.aR[2] = 0.26 - 0.5 * ga; }
+      } else {
+        o.aL[0] = -0.1; o.aL[1] = 0; o.aL[2] = 0.1;
+        o.aR[0] = -0.75; o.aR[1] = 0; o.aR[2] = -0.12;                                   // the drink held at the waist
+        if (gst.gest === 'sip') { o.aR[0] = -0.75 - 1.15 * ga; o.aR[2] = -0.12 + 0.1 * ga; }
+        else if (gst.gest === 'talk') { o.aL[0] = -0.5 - 0.5 * Math.abs(Math.sin(t * 3.6 + gst.seed)) * ga; o.aL[2] = 0.25 + 0.2 * ga; }
+        else if (gst.gest === 'watch') { o.aL[0] = -1.35 * ga; o.aL[2] = -0.75 * ga; o.hx = 0.35 * ga; }
+        else if (gst.gest === 'laugh') { o.y += Math.abs(Math.sin(t * 9)) * 0.025 * ga; o.rx = 0.04 - 0.12 * ga; }
+      }
     }
     o.hz = 0; gst.turn = Math.sin(t * 0.23 + gst.seed * 2) * 0.5 * k;
   }
@@ -102,7 +128,7 @@ export function createSpire(game, scene) {
     const i = gst.i;
     if (!gst.on) { torso.setMatrixAt(i, Z0); head.setMatrixAt(i, Z0); for (const k of [0, 1]) { arms.setMatrixAt(i * 2 + k, Z0); legs.setMatrixAt(i * 2 + k, Z0); } return; }
     const o = gst.p, s = gst.s;
-    Rt.compose(v.set(s.x, Y, s.z), q.setFromEuler(e.set(0, s.yaw, 0)), sv.set(gst.h, gst.h, gst.h));
+    Rt.compose(v.set(gst.x, Y, gst.z), q.setFromEuler(e.set(0, gst.yaw, 0)), sv.set(gst.h, gst.h, gst.h));
     Bm.multiplyMatrices(Rt, local(0, o.y + HIP, 0, o.rx, o.ry, o.rz)); Bm.multiply(M.makeTranslation(0, -HIP, 0));
     torso.setMatrixAt(i, Bm);
     head.setMatrixAt(i, M.multiplyMatrices(Bm, local(0, 1.5, 0, o.hx, gst.turn || 0, o.hz)));
@@ -111,7 +137,29 @@ export function createSpire(game, scene) {
     legs.setMatrixAt(i * 2, M.multiplyMatrices(Bm, local(0.11, HIP, 0, o.lL[0], 0, o.lL[1])));
     legs.setMatrixAt(i * 2 + 1, M.multiplyMatrices(Bm, local(-0.11, HIP, 0, o.lR[0], 0, o.lR[1])));
   }
-  const setGuest = (gst, on) => { gst.on = on; if (gst.s.seat) gst.s.seat.taken = on ? 'guest' : null; };
+  const setGuest = (gst, on) => { gst.on = on; gst.mv = null; gst.x = gst.s.x; gst.z = gst.s.z; gst.yaw = gst.s.yaw; if (gst.s.seat) gst.s.seat.taken = on ? 'guest' : null; };
+  // walking about the deck: through the middle aisle (clear of the furniture), at a stroll
+  const HUT = W(TT.lift.x + 0.4, 0), AISLE = W(-6, 0), BAR = W(TT.barUse.x + 0.6, TT.barUse.z + 0.7);
+  const route = (from, to) => [[from[0], from[1]], [from[0] * 0.5 + AISLE[0] * 0.5, from[1] * 0.4 + AISLE[1] * 0.6], AISLE, [to[0] * 0.5 + AISLE[0] * 0.5, to[1] * 0.4 + AISLE[1] * 0.6], [to[0], to[1]]];
+  function go(g, pts, then) { g.mv = { pts, i: 0, d: 0, then }; if (g.s.seat && g.s.seat.taken === 'guest') g.s.seat.taken = 'guest'; }
+  function stepWalk(g, dt) {
+    const M2 = g.mv, a = M2.pts[M2.i], b = M2.pts[M2.i + 1];
+    if (!b) { const then = M2.then; g.mv = null; if (then === 'leave') setGuest(g, false); else if (then === 'bar') { g.barT = 5; } else { g.x = g.s.x; g.z = g.s.z; g.yaw = g.s.yaw; } return; }
+    const dx = b[0] - g.x, dz = b[1] - g.z, d = Math.hypot(dx, dz), sp = 1.05 * dt;
+    M2.d += sp;
+    if (d <= sp) { g.x = b[0]; g.z = b[1]; M2.i++; } else { g.x += dx / d * sp; g.z += dz / d * sp; g.yaw += angleDelta(g.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-8 * dt)); }
+  }
+  // the guests are solid: the courier is pushed out of them (and out of June behind the bar)
+  function pushPlayer() {
+    const P = player.pos;
+    for (const g of guests) {
+      if (!g.on) continue;
+      const dx = P.x - g.x, dz = P.z - g.z, d = Math.hypot(dx, dz), rr = 0.3 + 0.42;
+      if (d < rr && d > 1e-4) { P.x = g.x + dx / d * rr; P.z = g.z + dz / d * rr; stats.pushes = (stats.pushes || 0) + 1; }
+    }
+    const dx = P.x - june.x, dz = P.z - june.z, d = Math.hypot(dx, dz);
+    if (d < 0.72 && d > 1e-4) { P.x = june.x + dx / d * 0.72; P.z = june.z + dz / d * 0.72; }
+  }
   let guestT = 0, want = 0, drawT = 0;
   function guestsTick(dt, near) {
     want = Math.min(NG, terraceGuests(env.tod, env.weather, env.w.rain));
@@ -120,10 +168,25 @@ export function createSpire(game, scene) {
     if (!S.on || game.inside || cut.active) { for (const g of guests) { const on = g.i < want && !(g.s.seat && g.s.seat.taken === 'player'); if (on !== g.on) setGuest(g, on); } }
     else if (guestT <= 0) {
       guestT = 1.2;
-      const add = guests.find((g) => !g.on && g.i < want && !(g.s.seat && g.s.seat.taken) && unseen(camera, g.s.x, g.s.z, 0, 999) && Math.hypot(g.s.x - player.pos.x, g.s.z - player.pos.z) > 1.4);
-      const drop = [...guests].reverse().find((g) => g.on && g.i >= want && unseen(camera, g.s.x, g.s.z, 0, 999));
-      if (add) setGuest(add, true); else if (drop) setGuest(drop, false);
+      // up here people arrive from the lift hut and walk to their spot, and walk back to it to leave; one at a time
+      // (if the hut is in view, a newcomer still waits until it is not, so nobody pops out of thin air in view)
+      const busy = guests.some((g) => g.mv && (g.mv.then === 'arrive' || g.mv.then === 'leave'));
+      const add = !busy && guests.find((g) => !g.on && g.i < want && !(g.s.seat && g.s.seat.taken) && Math.hypot(g.s.x - player.pos.x, g.s.z - player.pos.z) > 1.4);
+      const drop = !busy && [...guests].reverse().find((g) => g.on && !g.mv && g.i >= want);
+      if (add) { setGuest(add, true); add.x = HUT[0]; add.z = HUT[1]; go(add, route(HUT, [add.s.x, add.s.z]), 'arrive'); stats.arrivals = (stats.arrivals || 0) + 1; }
+      else if (drop) { go(drop, route([drop.x, drop.z], HUT), 'leave'); if (drop.s.seat) drop.s.seat.taken = null; stats.leavers = (stats.leavers || 0) + 1; }
+      // now and then someone standing or leaning goes to the bar for another round, and comes back
+      else if (!guests.some((g) => g.mv && g.mv.then === 'bar') && Math.random() < 0.12) {
+        const g = guests.find((q) => q.on && !q.mv && (q.s.kind === 'stand' || q.s.kind === 'lean') && Math.random() < 0.3);
+        if (g) { go(g, route([g.x, g.z], BAR), 'bar'); stats.barTrips = (stats.barTrips || 0) + 1; }
+      }
     }
+    if (S.on) for (const g of guests) {
+      if (!g.on) continue;
+      if (g.mv) stepWalk(g, dt);
+      else if (g.barT !== undefined) { g.barT -= dt; g.yaw += angleDelta(g.yaw, PI) * (1 - Math.exp(-4 * dt)); if (g.barT <= 0) { g.barT = undefined; go(g, route([g.x, g.z], [g.s.x, g.s.z]), 'back'); } }
+    }
+    if (S.on && !cut.active && !game.busy) pushPlayer();
     const show = near && guests.some((g) => g.on);
     for (const m of [torso, head, arms, legs]) m.visible = show;
     if (!show) return;
@@ -132,7 +195,7 @@ export function createSpire(game, scene) {
     if (!S.on && drawT > 0) return;
     drawT = 0.25;
     const t = timeU.value;
-    for (const g of guests) { if (g.on) pose(g, t); draw(g); }
+    for (const g of guests) { if (g.on) pose(g, t, S.on ? dt : 0.25); draw(g); }
     for (const m of [torso, head, arms, legs]) m.instanceMatrix.needsUpdate = true;
   }
 
@@ -160,7 +223,13 @@ export function createSpire(game, scene) {
     player.pos.y = Y; player.onGround = true; player.vy = 0; player.fallFrom = Y; player.sy = Y;
     cam.yaw = PI / 2; cam.pitch = 0.16; cam.snap(player.pos);
     S.on = true; setBoost(true);
-    if (done) { setHut(0); hud.toast('THE SOLSTICE TERRACE', 'FLOOR 23 · SIT DOWN TO WAIT FOR THE SUNSET'); }
+    if (done) {
+      setHut(0); hud.toast('THE SOLSTICE TERRACE', 'FLOOR 23 · SIT DOWN TO WAIT FOR THE SUNSET');
+      // walk a few metres out onto the deck towards the view, the camera out in front looking back at her (with it
+      // behind her from the start it sat inside the lift hut), then it comes round behind her
+      const [x0, z0] = W(TT.lift.x + 0.3, 0), [x1, z1] = W(TT.lift.x + 6.3, 0);
+      if (game.rules && game.rules.walkOut && !api.checking) game.rules.walkOut(x0, z0, x1, z1, PI / 2, { y: Y, T: 2.4, camOff: 0.55, pitch: 0.2 });
+    }
   }
   function toLobby(done) {
     const r = lobbyRoom();
@@ -363,9 +432,9 @@ export function createSpire(game, scene) {
     },
     // ---- automated checks
     state: () => ({ on: S.on, y: +player.pos.y.toFixed(3), x: +(player.pos.x - X).toFixed(2), z: +(player.pos.z - Z).toFixed(2), deck: Y, inside: game.inside && game.inside.key, busy: game.busy,
-      seated: seated(), wait: S.wait, tod: +env.tod.toFixed(2), guests: guests.filter((g) => g.on).length, want, view: { ...VIEW }, hut: +hutOpen.toFixed(2), stats: { ...stats } }),
+      seated: seated(), wait: S.wait, tod: +env.tod.toFixed(2), guests: guests.filter((g) => g.on).length, moving: guests.filter((g) => g.on && g.mv).length, gpos: guests.filter((g) => g.on).map((g) => [g.i, +(g.x - X).toFixed(2), +(g.z - Z).toFixed(2), g.s.kind, g.mv ? g.mv.then : null]), want, view: { ...VIEW }, hut: +hutOpen.toFixed(2), stats: { ...stats } }),
     // put the courier on the deck at terrace (x, z) (checks only; the lift is the real way up)
-    warp(lx = TT.lift.x + 0.3, lz = 0) { toRoof(true); player.pos.x = X + lx; player.pos.z = Z + lz; return api.state(); },
+    warp(lx = TT.lift.x + 0.3, lz = 0) { api.checking = true; toRoof(true); api.checking = false; player.pos.x = X + lx; player.pos.z = Z + lz; return api.state(); },
     // set the guests for an hour and weather at once (checks)
     settle() { for (const g of guests) setGuest(g, g.i < Math.min(NG, terraceGuests(env.tod, env.weather, env.w.rain))); return guests.filter((g) => g.on).length; },
     seats: () => T.seats.map((s) => ({ x: +(s.x - X).toFixed(2), z: +(s.z - Z).toFixed(2), kind: s.kind, taken: s.taken })),

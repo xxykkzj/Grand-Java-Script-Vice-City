@@ -44,7 +44,7 @@ export function createAudio() {
   const mus = { on: pref !== 'off', keep: pref === 'on', fired: false, until: AUTO_OFF, slow: false };
   const players = [];                 // themes playing now (two while crossfading)
   const savePref = (v) => { try { localStorage.setItem(MUSIC_KEY, v); } catch (e) { /* private mode */ } };
-  let eng, rotor, skate, rain, siren, hum, spray, fire, uw, ufilt, heyT = 0, zapT = 0, splashT = 0;
+  let purr = null, eng, rotor, skate, rain, siren, hum, spray, fire, uw, ufilt, heyT = 0, zapT = 0, splashT = 0;
   const A = {
     muted: false, ready: false,
     start() {
@@ -85,10 +85,24 @@ export function createAudio() {
         return { f, g };
       };
       skate = loop('bandpass', 700, 0.8);
-      rain = loop('highpass', 2600);
+      // rain, in layers on its own bus: a soft broadband wash, a low rumble for storms, droplet ticks scheduled
+      // at random (update()), all through one low-pass that muffles it in a car or indoors
+      rain = { bus: ctx.createGain(), f: ctx.createBiquadFilter(), ticks: 0, tickT: 0, where: 'out', n: 0, last: {} };
+      rain.f.type = 'lowpass'; rain.f.frequency.value = 9000; rain.f.Q.value = 0.5; rain.bus.gain.value = 1;
+      rain.bus.connect(rain.f); rain.f.connect(sfx);
+      { const mkL = (type, freq, q) => { const src = ctx.createBufferSource(); src.buffer = noise; src.loop = true; src.playbackRate.value = 0.5 + Math.random() * 0.1;
+          const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q; const g = ctx.createGain(); g.gain.value = 0;
+          src.connect(f); f.connect(g); g.connect(rain.bus); src.start(); return { f, g }; };
+        rain.wash = mkL('bandpass', 1500, 0.35); rain.hiss = mkL('lowpass', 5200, 0.3); rain.rumble = mkL('lowpass', 160, 0.6); rain.drum = mkL('bandpass', 420, 0.8); }
       spray = loop('bandpass', 1900, 0.5);
       // a burning car: low crackling noise, its level jittered every frame
       fire = loop('bandpass', 700, 0.45);
+      // a cat's purr: low noise pulsed ~24 times a second, breathing in and out (s.purr from actors/cat.js)
+      { const src = ctx.createBufferSource(); src.buffer = noise; src.loop = true;
+        const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 180; f.Q.value = 1.2;
+        const am = ctx.createGain(); am.gain.value = 0.5; const lfo = ctx.createOscillator(); lfo.type = 'triangle'; lfo.frequency.value = 24; const dep = ctx.createGain(); dep.gain.value = 0.5;
+        lfo.connect(dep); dep.connect(am.gain); lfo.start();
+        const g = ctx.createGain(); g.gain.value = 0; src.connect(f); f.connect(am); am.connect(g); g.connect(sfx); src.start(); purr = { g, lfo }; }
       // the low rumble of being under the sea
       uw = loop('lowpass', 220, 0.5);
       // vending machines hum at night: a low sine pair
@@ -216,7 +230,8 @@ export function createAudio() {
       skate.f.frequency.setTargetAtTime((420 + sk * 650) * (1 - 0.2 * skate.calm), t, 0.12);
       rotor.g.gain.setTargetAtTime(s.rotor * 0.55, t, 0.15);
       rotor.lfo.frequency.setTargetAtTime(3 + s.rotor * 11, t, 0.2);
-      rain.g.gain.setTargetAtTime(s.rain * 0.09, t, 0.4);
+      rainLayers(s, t, edt);
+      if (purr) { const br = 0.65 + 0.35 * Math.max(0, Math.sin(t * 2.6)); purr.g.gain.setTargetAtTime((s.purr || 0) * 0.16 * br, t, 0.12); purr.lfo.frequency.setTargetAtTime(22 + Math.sin(t * 2.6) * 3, t, 0.2); }
       spray.g.gain.setTargetAtTime((s.spray || 0) * 0.08, t, 0.2);
       hum.gain.setTargetAtTime((s.hum || 0) * 0.035, t, 0.3);
       siren.gain.setTargetAtTime((s.siren || 0) * 0.07, t, 0.15);
@@ -242,6 +257,8 @@ export function createAudio() {
       if (!mus.on || (id === 'street' && !A.streetOn)) id = null;
       setTheme(id, !mus.on ? 0.5 : mus.slow && !id ? 6 : 1.2);
       mus.slow = false;
+      // Starlight Pier's theme comes and goes with the distance (s.themeK, 0..1 from game/pier.js)
+      { const cp = players.find((p) => !p.out); if (cp && cp.id === 'pier') cp.g.gain.setTargetAtTime((cp.th.vol ?? 1) * Math.max(0.0001, s.themeK ?? 1), t, 0.35); }
       if (A._rec) A._rec.gain.setTargetAtTime(s.duck ? 0.5 : 0.9, t, 0.3);
     },
     club: false,
@@ -267,7 +284,30 @@ export function createAudio() {
     thud(k = 1) { hit(0.3 * k, 0.12, 'lowpass', 500); tone('sine', 110, 50, 0.12, 0.25 * k); },
     shot() { hit(0.5, 0.18, 'lowpass', 1400); tone('square', 160, 40, 0.16, 0.25); },
     boom() { hit(0.95, 1.1, 'lowpass', 1100, 70); tone('sine', 95, 28, 0.7, 0.8); },
-    thunder() { hit(0.5, 2.4, 'lowpass', 260, 60); tone('sine', 55, 30, 1.6, 0.25); },
+    // thunder: d is how far away the strike was (0 overhead .. 1 far): close ones crack first, far ones only rumble.
+    // Muffled with the rain in a car or indoors.
+    thunder(d = 0.5) {
+      if (!ctx) return;
+      const t = ctx.currentTime, k = 1 - d * 0.6, bus = rain ? rain.bus : sfx;
+      if (d < 0.45) { hit(0.35 * (1 - d), 0.35, 'highpass', 1800, 600, t, bus); hit(0.3 * (1 - d), 0.6, 'bandpass', 900, 200, t + 0.05, bus); }
+      hit(0.45 * k, 2.6 + d * 1.5, 'lowpass', 300 - d * 140, 50, t + 0.08, bus); hit(0.25 * k, 3.2, 'lowpass', 140, 40, t + 0.5 + d * 0.5, bus);
+      tone('sine', 52 - d * 10, 28, 1.8 + d, 0.22 * k, 0.1, bus);
+      A.thunders = (A.thunders || 0) + 1; A.lastThunder = { at: +t.toFixed(2), d: +d.toFixed(2) };
+    },
+    // a soft meow (a startled one is shorter and higher): a sawtooth through two vowel-ish band-passes, gliding
+    meow(vol = 1, startled = false) {
+      if (!ctx || vol <= 0) return;
+      const t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain(), f1 = ctx.createBiquadFilter(), f2 = ctx.createBiquadFilter(), out = ctx.createGain();
+      o.type = 'sawtooth'; const d = startled ? 0.28 : 0.6, p = startled ? 1.25 : 1;
+      o.frequency.setValueAtTime(420 * p, t); o.frequency.linearRampToValueAtTime(700 * p, t + d * 0.35); o.frequency.linearRampToValueAtTime(380 * p, t + d);
+      f1.type = 'bandpass'; f1.Q.value = 6; f1.frequency.setValueAtTime(900, t); f1.frequency.linearRampToValueAtTime(1700, t + d * 0.4); f1.frequency.linearRampToValueAtTime(800, t + d);
+      f2.type = 'bandpass'; f2.Q.value = 8; f2.frequency.value = 2900;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05 * vol, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      o.connect(f1); o.connect(f2); f1.connect(g); f2.connect(out); out.gain.value = 0.35; out.connect(g); g.connect(sfx); o.start(t); o.stop(t + d + 0.05);
+      A.meows = (A.meows || 0) + 1;
+    },
+    purrLevel() { return purr ? +purr.g.gain.value.toFixed(4) : 0; },
+    rainState() { return rain ? { where: rain.where, ticks: rain.n, wash: +rain.wash.g.gain.value.toFixed(4), rumble: +rain.rumble.g.gain.value.toFixed(4), drum: +rain.drum.g.gain.value.toFixed(4), filter: Math.round(rain.f.frequency.value), want: rain.last, thunders: A.thunders || 0, lastThunder: A.lastThunder || null } : null; },
     // a pedestrian's "hey!": two quick vowel-ish chirps, pitched per person
     hey(pitch = 1, vol = 1) {
       if (!ctx || ctx.currentTime < heyT) return;
@@ -330,8 +370,42 @@ export function createAudio() {
     },
   };
 
+  // ---- the rain: s.rain (0..1 outdoors, even while you are indoors), s.storm (0..1), s.rainWhere:
+  //   'out' open sky (on foot or on a bike) · 'awning' under an awning / a shelter (drumming on the canopy above)
+  //   'car' in a car (muffled roof drumming) · 'indoor' inside (rain at the windows, far off and dull)
+  // Everything glides (long time constants) so a change of weather or place is a fade, never a step; it stays
+  // well under the music, with no harsh top end (the hiss layer is low-passed).
+  const RAIN_W = { out: { wash: 0.05, hiss: 0.014, drum: 0, cut: 7500, tick: 1, tf: [2200, 6000], tv: 0.022 },
+    awning: { wash: 0.035, hiss: 0.008, drum: 0.03, cut: 5000, tick: 1.2, tf: [700, 1800], tv: 0.03 },
+    car: { wash: 0.03, hiss: 0, drum: 0.05, cut: 900, tick: 1.6, tf: [300, 900], tv: 0.05 },
+    indoor: { wash: 0.022, hiss: 0, drum: 0.004, cut: 520, tick: 0.25, tf: [900, 1600], tv: 0.012 } };
+  function rainLayers(s, t, dt) {
+    const amt = clampN(s.rain || 0, 0, 1), where = RAIN_W[s.rainWhere] ? s.rainWhere : 'out', W = RAIN_W[where], st = clampN(s.storm || 0, 0, 1);
+    rain.where = where;
+    const duck = A.muted ? 0 : 1;
+    rain.wash.g.gain.setTargetAtTime(amt * W.wash * (0.7 + 0.3 * st) * duck, t, 1.2);
+    rain.hiss.g.gain.setTargetAtTime(amt * amt * W.hiss * duck, t, 1.2);
+    rain.drum.g.gain.setTargetAtTime(amt * W.drum * duck, t, 0.6);
+    rain.rumble.g.gain.setTargetAtTime(st * amt * 0.06 * (where === 'indoor' ? 0.5 : 1) * duck, t, 2);
+    rain.wash.f.frequency.setTargetAtTime(1100 + amt * 900, t, 1.5);
+    rain.f.frequency.setTargetAtTime(W.cut, t, 0.35);
+    rain.last = { amt: +amt.toFixed(2), storm: +st.toFixed(2) };
+    // droplet ticks: a random patter, denser in heavy rain; on a canopy or a car roof they become duller knocks
+    if (amt < 0.03) return;
+    rain.tickT -= dt;
+    let budget = 6;
+    while (rain.tickT <= 0 && budget-- > 0) {
+      const rate = (8 + amt * 46) * W.tick;
+      rain.tickT += -Math.log(1 - Math.random()) / rate;
+      const f = W.tf[0] + Math.random() * (W.tf[1] - W.tf[0]), v = W.tv * (0.3 + Math.random() * 0.7) * (0.5 + amt * 0.5);
+      hit(v, 0.012 + Math.random() * (where === 'car' ? 0.05 : 0.025), 'bandpass', f, 0, t + Math.random() * 0.03, rain.bus);
+      rain.n++;
+    }
+    if (rain.tickT < -0.5) rain.tickT = 0;
+  }
+  const clampN = (v, a, b) => (v < a ? a : v > b ? b : v);
   function tone(type, f0, f1, dur, vol, delay = 0, bus = sfx) {
-    if (!ctx) return;
+    if (!ctx || !Number.isFinite(f0) || !Number.isFinite(f1) || !Number.isFinite(vol) || !Number.isFinite(dur)) return;
     const t = ctx.currentTime + delay;
     const o = ctx.createOscillator(), g = ctx.createGain();
     o.type = type; o.frequency.setValueAtTime(f0, t);
@@ -340,7 +414,7 @@ export function createAudio() {
     o.connect(g); g.connect(bus); o.start(t); o.stop(t + dur + 0.02);
   }
   function hit(vol, dur, type, freq, sweepTo = 0, t = 0, bus = sfx) {
-    if (!ctx) return;
+    if (!ctx || !Number.isFinite(vol) || !Number.isFinite(freq) || !Number.isFinite(dur) || !Number.isFinite(t)) return;
     t = t || ctx.currentTime;
     const src = ctx.createBufferSource(); src.buffer = noise;
     const f = ctx.createBiquadFilter(); f.type = type; f.frequency.setValueAtTime(freq, t);

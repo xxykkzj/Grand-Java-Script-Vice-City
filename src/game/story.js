@@ -201,6 +201,7 @@ export const ODD_JOB = {
 
 // One-liners from the people behind the counters.
 export const BARKS = {
+  boutique: ['LEO', ['Laurent, at your service. Velvet Rope Couture dresses for the second act.', 'Step onto the podium. The mirror is honest; I am merely kind.', 'Tailored this morning, pressed this afternoon, admired all night.']],
   wear: ['MIMI', ["Darling! Those shorts are a cry for help. Step up.", 'Zigzag Threads: if it clashes, it matches.', 'New jacket, new you. Same wheels, sadly.']],
   mart: ['GUS', ['Welcome to Pelican Pantry, please do not lean on the slush machine.', 'The hot dogs are from today. Mostly.', "You didn't see a shoebox. There is no shoebox."]],
   bar: ['DEE', ["Skates off the stools, Skye.", 'First fizz is free. The second one is also free. I am bad at business.']],
@@ -255,6 +256,14 @@ export const OUTFITS = [
   { id: 'mirrorball', name: 'MIRRORBALL', note: 'Sequinned lilac party dress. Every light in the room finds you.', price: 320, bottom: 'dress', jacket: '#b8a8ff', trim: '#ffe14a', light: '#ffffff', skirt: '#b8a8ff', len: 0.38, flare: 0.24, sequin: true, boot: '#ffe14a', bag: '#ffe14a' },
   { id: 'sundress', name: 'BOARDWALK SUNDRESS', note: 'Lemon sundress with a tangerine hem. Made for the promenade.', price: 140, bottom: 'dress', jacket: '#ffe36a', trim: '#ff8a3d', light: '#fff6ec', skirt: '#ffe36a', pleat: '#ffd23f', len: 0.52, flare: 0.34, boot: '#fff6ec', bag: '#ff8a3d' },
   { id: 'slacks', name: 'SEA BREEZE SLACKS', note: 'Navy bomber, wide cream trousers. Yacht club, no yacht.', price: 160, bottom: 'trousers', jacket: '#2a4a9a', trim: '#ffd166', light: '#f6f1e7', legs: '#efe6d2', boot: '#f6f1e7', bag: '#ffd166' },
+  // Velvet Rope Couture, upstairs at the Seafoam Galleria (shop: 'boutique'): finer suits and evening wear
+  { id: 'tux', shop: 'boutique', name: 'MIDNIGHT TUXEDO', note: 'Black dinner suit, white shirt, satin trim. Opening night.', price: 650, bottom: 'trousers', jacket: '#1b1830', trim: '#f7f5ef', light: '#ffffff', legs: '#1b1830', boot: '#141220', bag: '#c9a46a' },
+  { id: 'dinner', shop: 'boutique', name: 'WHITE DINNER JACKET', note: 'Ivory jacket, black trousers. Very yacht, very 1986.', price: 720, bottom: 'trousers', jacket: '#f4eedf', trim: '#1b1830', light: '#ffffff', legs: '#1b1830', boot: '#141220', bag: '#1b1830' },
+  { id: 'pastel', shop: 'boutique', name: 'BISCAYNE PASTEL SUIT', note: 'Seafoam suit, sleeves rolled, a pink tee under it. No socks, obviously.', price: 580, bottom: 'trousers', jacket: '#9fe8e0', trim: '#ff8fc4', light: '#ffd6e8', legs: '#9fe8e0', boot: '#f6f1e7', bag: '#ff8fc4' },
+  { id: 'peach', shop: 'boutique', name: 'PEACH DOUBLE-BREASTED', note: 'Six buttons, wide shoulders, a sunset in suit form.', price: 610, bottom: 'trousers', jacket: '#ffb38a', trim: '#fff3d6', light: '#fff3d6', legs: '#ffb38a', boot: '#fff3d6', bag: '#7a3cff' },
+  { id: 'gown', shop: 'boutique', name: 'STARLIGHT GOWN', note: 'Floor-length midnight-violet gown with a scatter of sequins.', price: 900, bottom: 'dress', jacket: '#3a1d8a', trim: '#ffe14a', light: '#f7f5ef', skirt: '#3a1d8a', len: 0.8, flare: 0.16, sequin: true, boot: '#ffe14a', bag: '#ffe14a' },
+  { id: 'ruby', shop: 'boutique', name: 'RUBY COCKTAIL DRESS', note: 'Red satin, gold trim, cut for dancing.', price: 480, bottom: 'dress', jacket: '#c0103a', trim: '#ffcf3a', light: '#fff6ec', skirt: '#c0103a', len: 0.4, flare: 0.22, boot: '#ffcf3a', bag: '#ffcf3a' },
+  { id: 'stage', shop: 'boutique', name: 'GOLD STAGE SEQUINS', note: 'A sequinned gold showstopper. The spotlight finds you by itself.', price: 850, bottom: 'dress', jacket: '#e8c040', trim: '#ff2bd1', light: '#fff6ec', skirt: '#e8c040', len: 0.34, flare: 0.3, sequin: true, boot: '#ff2bd1', bag: '#ff2bd1' },
   { id: 'royale', name: 'FLAMINGO ROYALE', note: "Dee's 1979 roller-disco jacket. Pink and gold.", price: 750, jacket: '#ff5fa8', trim: '#ffcf3a', light: '#fff6ec', bag: '#ffcf3a', gift: 'Finish the story and Dee gives it to you' },
 ];
 
@@ -365,6 +374,14 @@ export const SKYBAR_MENU = [
 // lines from the terrace: June at the bar, Leo at the desk downstairs
 export const SKYBAR_GREET = ['JUNE: “Best seat in the house is any seat. What are we drinking?”', 'JUNE: “The sun goes down over the old town. Order now, thank me later.”', 'JUNE: “Last orders are whenever I say they are. Not yet.”'];
 export const LEO_LINES = ['LEO: “The terrace is open till late. The lift is the only way up, and the only way down.”', 'LEO: “If you are waiting for the sunset, take a lounger on the east side.”', 'LEO: “No helicopters on the terrace, I am afraid. We had an incident with a cocktail umbrella.”', 'LEO: “June runs the bar up there. Tell her Leo sent you. She will charge you anyway.”'];
+// Sugar Tide, the candy-floss and popcorn stand on Starlight Pier (E at the counter, open 10:00 to 00:30)
+export const PIER_MENU = [
+  { id: 'floss', name: 'CANDY FLOSS', note: 'A pink cloud on a stick. Gone before you know it. +10 health', price: 3, heal: 10 },
+  { id: 'popcorn', name: 'BUTTERED POPCORN', note: 'A striped box, warm and salty. Gulls watch it closely. +14 health', price: 4, heal: 14 },
+  { id: 'corndog', name: 'BOARDWALK CORN DOG', note: 'Battered, fried, a stripe of mustard. +25 health', price: 6, heal: 25 },
+  { id: 'lemonade', name: 'PINK LEMONADE', note: 'Squeezed this morning, iced this minute. +8 health', price: 3, heal: 8 },
+];
+export const PIER_GREET = ['MARGO: “Floss is spun fresh, popcorn is popped fresher. What’ll it be?”', 'MARGO: “Ride the wheel after you eat, not before. Trust me on this.”', 'MARGO: “The gulls are not allowed popcorn. They have not been told.”'];
 // The Coconut Shack on Coral Beach (F at the counter, open 7:00 to 20:00)
 export const KIOSK_MENU = [
   { id: 'smoothie', name: 'SUNSET SMOOTHIE', note: 'Mango, strawberry, a scoop of crushed ice. +20 health', price: 6, heal: 20 },

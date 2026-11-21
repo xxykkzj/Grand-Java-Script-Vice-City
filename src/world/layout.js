@@ -4,6 +4,8 @@ import { rng, clamp } from '../core/util.js';
 import { createProps } from './props.js';
 import { createSurfaces, registerRamps } from './surfaces.js';
 import { planBeach } from './beach.js';
+import { APIER, planPier, onAPier } from './pier.js';
+export { APIER };
 import { KEY, MPIER, makeKey, KEY_ROAD_RECTS, KEY_JUNCTIONS, inKey, onMarinaPier, keyZone } from './key.js';
 export { KEY, MPIER };
 
@@ -52,9 +54,11 @@ export const VENUE_DEFS = {
   diner: { name: 'Sunset Strip Diner', title: 'SUNSET STRIP DINER', color: '#ff6a3d', at: 'Sunset Strip Diner', face: 0, along: 0, out: 5.2 },
   arcade: { name: 'Seahorse Arcade', title: 'SEAHORSE ARCADE', color: '#ffe14a', at: 'Seahorse Cinema', face: 0, along: 3, out: 5.2 },
   motel: { name: 'Moonlite Motor Inn', title: 'MOONLITE MOTOR INN · ROOM 7', color: '#ff8fc4', at: 'Moonlite Motor Inn', isle: 'key', face: Math.PI / 2, along: 0, out: 5.2 },
-  mall: { name: 'Seafoam Galleria', title: 'SEAFOAM GALLERIA', color: '#27d8cf', at: 'Seafoam Galleria', isle: 'key', face: Math.PI, along: 5, out: 4.6 },
+  mall: { name: 'Seafoam Galleria', title: 'SEAFOAM GALLERIA', color: '#27d8cf', at: 'Seafoam Galleria', isle: 'key', face: Math.PI, along: 0, out: 6.9 },   // in front of the glass atrium's sliding doors
   lounge: { name: 'The Blue Pelican Lounge', title: 'THE BLUE PELICAN LOUNGE', color: '#4f8dff', at: 'Tidewater Records', face: 0, along: 2, out: 5.2 },
   spire: { name: 'The Solstice Spire', title: 'THE SOLSTICE SPIRE · LOBBY', color: '#ffb35a', at: 'The Solstice Spire', isle: 'key', face: Math.PI, along: 0, out: 4.2 },
+  // upstairs in the Galleria, reached by its escalator (no street door of its own: hidden)
+  boutique: { name: 'Velvet Rope Couture', title: 'VELVET ROPE COUTURE · GALLERIA UPPER LEVEL', color: '#d8b4ff', at: 'Seafoam Galleria', isle: 'key', face: Math.PI, along: 0, out: 6.9, hidden: true, up: 'mall' },
   bait: { name: 'Starboard Bait & Tackle', title: 'STARBOARD BAIT & TACKLE', color: '#8dff5a', at: 'Starboard Marina', isle: 'key', face: -Math.PI / 2, along: 0, out: 5.2 },
 };
 
@@ -194,11 +198,13 @@ export function makeLayout() {
   const props = createProps();
   // the beach (world/beach.js): palm groves, rental clusters, towels, the kiosk, showers, the fire pit...
   const beach = planBeach(props);
+  // Starlight Pier at the east end of the beach (world/pier.js): rails, rides, booths, its lamps
+  planPier(props, { lamps });
   for (const p of beach.palms) palms.push(p);
   for (const u of beach.umbrellas) umbrellas.push(u);
   palms.forEach((p, i) => { p.col = props.circle(p.x, p.z, 0.3 * p.s, 8); p.col.tag = 'palm'; p.col.i = i; });
   for (const t of streetTrees) props.circle(t.x, t.z, 0.28, 6).tag = 'tree';
-  lamps.forEach((l, i) => { l.col = props.circle(l.x, l.z, 0.2, 6.4); l.col.tag = 'lamp'; l.col.i = i; });
+  lamps.forEach((l, i) => { l.col = props.circle(l.x, l.z, 0.2, 6.4); l.col.tag = 'lamp'; l.col.i = i; if (l.pier) l.col.own = 'pier'; });
   const rot = (u, lx, lz) => [u.x + lx * Math.cos(u.yaw) + lz * Math.sin(u.yaw), u.z - lx * Math.sin(u.yaw) + lz * Math.cos(u.yaw)];
   for (const u of umbrellas) {
     props.circle(u.x, u.z, 0.12, 2.6);
@@ -333,6 +339,9 @@ export const FOOTPRINTS = [];
 export const footprint = (what, x, z, r = 0.15) => { FOOTPRINTS.push({ what, x, z, r }); };
 // Ground-level boxes (x0..x1, z0..z1) of building bodies and their street-side parts (walkways, stairs,
 // canopies, sign poles, fins) in Solano Key (keyCity.js): none may overlap a carriageway.
+// the street doors of the places you can walk into (keyCity.js, city.js): the door check (debug.doorCheck) wants
+// every door ring within ~2 m (along the wall) of one, its beacon clear of the building and off the road
+export const DOORS = [];
 export const FOOTBOXES = [];
 export const footBox = (what, x0, x1, z0, z1) => { FOOTBOXES.push({ what, x0, x1, z0, z1 }); };
 // nothing on wheels gets within ~3 m of the old town's seawall (vehicles keep their noses off it), so the
@@ -388,7 +397,7 @@ export const EDGE_SIGNS = ['Halcyon Causeway · Solano Key', 'Lumina Point · Ro
 export const onIsland = (x, z) => Math.abs(x) <= HX && Math.abs(z) <= HZ;
 export const onCauseway = (x, z, m = 0) => x < -HX + m && x > KEY.x1 - m && z > CAUSEWAY.z0 - m && z < CAUSEWAY.z1 + m;
 // dry ground you can stand on: either island, the causeway, either pier
-export const onLand = (x, z) => onIsland(x, z) || inKey(x, z) || onCauseway(x, z, 0.5) || onMarinaPier(x, z, 0.5) || (x > PIER.x0 - 1 && x < PIER.x1 + 1 && z > 0 && z < PIER.z1 + 1);
+export const onLand = (x, z) => onIsland(x, z) || inKey(x, z) || onCauseway(x, z, 0.5) || onMarinaPier(x, z, 0.5) || (x > PIER.x0 - 1 && x < PIER.x1 + 1 && z > 0 && z < PIER.z1 + 1) || onAPier(x, z, 1);
 
 // Keep something inside the walkable world (both islands inside their seawalls, the piers and the causeway).
 // w (default 0: stay dry) is a set of bits for things that may leave it by water:
@@ -413,13 +422,15 @@ export function clampToWorld(o, m, w = 0) {
   if (o.x > HX - e) { if (w & 4) edgeHit = 'wall'; else { o.x = HX - e; hit = true; } }
   if (o.z < -HZ + e) { if (w & 4) edgeHit = 'wall'; else { o.z = -HZ + e; hit = true; } }
   if (o.z > HZ - m) {
-    const onPier = o.x > PIER.x0 + m - 0.4 && o.x < PIER.x1 - m + 0.4;
+    // two piers run out to sea: Driftwood Pier and, at the east end of the beach, Starlight Pier
+    const Q = Math.abs(o.x - (APIER.x0 + APIER.x1) / 2) < Math.abs(o.x - (PIER.x0 + PIER.x1) / 2) ? APIER : PIER;
+    const onPier = o.x > Q.x0 + m - 0.4 && o.x < Q.x1 - m + 0.4;
     if (!onPier) {
-      if (o.z > HZ + 12) { if (w & 2) edgeHit = 'pier'; else { o.x = clamp(o.x, PIER.x0 + m - 0.4, PIER.x1 - m + 0.4); hit = true; } }   // off the side of the pier
+      if (o.z > HZ + 12) { if (w & 2) edgeHit = 'pier'; else { o.x = clamp(o.x, Q.x0 + m - 0.4, Q.x1 - m + 0.4); hit = true; } }   // off the side of the pier
       else if (w & 1) { /* the beach runs on into the sea */ }
-      else if (o.z > HZ + 0.5) { o.x = clamp(o.x, PIER.x0 + m - 0.4, PIER.x1 - m + 0.4); hit = true; }
+      else if (o.z > HZ + 0.5) { o.x = clamp(o.x, Q.x0 + m - 0.4, Q.x1 - m + 0.4); hit = true; }
       else { o.z = HZ - m; hit = true; }
-    } else if (o.z > PIER.z1 - m) { if (w & 2) edgeHit = 'pier'; else { o.z = PIER.z1 - m; hit = true; } }
+    } else if (o.z > Q.z1 - m) { if (w & 2) edgeHit = 'pier'; else { o.z = Q.z1 - m; hit = true; } }
   }
   return hit;
 }
@@ -445,6 +456,7 @@ export function zoneName(x, z) {
   if (onCauseway(x, z, 2)) return 'HALCYON CAUSEWAY';
   const k = keyZone(x, z);
   if (k) return k;
+  if (onAPier(x, z, 3)) return APIER.name;
   if (z > HZ && x > PIER.x0 - 3 && x < PIER.x1 + 3 && z < PIER.z1 + 3) return 'DRIFTWOOD PIER';
   if (!onIsland(x, z)) return 'OPEN WATER';
   if (z > 78) return 'CORAL BEACH';

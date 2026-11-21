@@ -1,7 +1,9 @@
 // Time of day, lighting, fog, rain and lightning. One clock drives everything:
 // the sky/ocean shaders, the lights, neon brightness and the HUD clock.
 import * as THREE from 'three';
-import { lerp, damp, clamp, fogU, nightU, timeU, glareU, wetU, rainU, reflU, reducedMotion, VIEW } from '../core/util.js';
+import { lerp, damp, clamp, fogU, nightU, timeU, glareU, wetU, rainU, reflU, reducedMotion, VIEW, pointScaleU } from '../core/util.js';
+import { HX, HZ } from './layout.js';
+import { KEY } from './key.js';
 
 const col = (h) => new THREE.Color(h);
 const lum = (c) => c.r * 0.299 + c.g * 0.587 + c.b * 0.114;
@@ -73,31 +75,106 @@ export function createEnvironment(scene, sky, ocean, city, camera, audio) {
   const rgeo = new THREE.BufferGeometry();
   rgeo.setAttribute('position', new THREE.BufferAttribute(rp, 3));
   rgeo.setAttribute('aEnd', new THREE.BufferAttribute(re, 1));
-  const rainU_ = { uTime: timeU, uCam: { value: new THREE.Vector3() }, uAmt: { value: 0 } };
+  const LN = 8, lightPos = []; for (let i = 0; i < LN; i++) lightPos.push(new THREE.Vector3(0, -999, 0));
+  const rainU_ = { uTime: timeU, uCam: { value: new THREE.Vector3() }, uAmt: { value: 0 }, uLights: { value: lightPos }, uNight: nightU };
   const rain = new THREE.LineSegments(rgeo, new THREE.ShaderMaterial({
     uniforms: rainU_, transparent: true, depthWrite: false, fog: false,
     vertexShader: /* glsl */`
-      attribute float aEnd; uniform float uTime; uniform vec3 uCam; varying float vA;
+      attribute float aEnd; uniform float uTime, uNight; uniform vec3 uCam; uniform vec3 uLights[${LN}]; varying float vA; varying vec3 vLit;
       void main(){
         vec3 p = position;
         p.y = mod(p.y - uTime * 42.0, 40.0) + uCam.y - 14.0;
         p.xz = mod(p.xz - uCam.xz, 60.0) - 30.0 + uCam.xz;
         p.y += aEnd * 1.1; p.x += aEnd * 0.18;
         vA = 0.25 + aEnd * 0.3;
+        // streaks light up as they fall past a street lamp (the nearest few lamps, passed in by the CPU)
+        float gl = 0.0;
+        for (int i = 0; i < ${LN}; i++) { vec3 d = p - uLights[i]; gl += exp(-dot(d, d) * 0.035); }
+        vLit = vec3(1.0, 0.82, 0.55) * min(gl, 1.5) * uNight;
         gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
       }`,
     fragmentShader: /* glsl */`
-      uniform float uAmt; varying float vA;
-      void main(){ gl_FragColor = vec4(0.78, 0.85, 1.0, vA * uAmt); }`,
+      uniform float uAmt; varying float vA; varying vec3 vLit;
+      void main(){ gl_FragColor = vec4(vec3(0.78, 0.85, 1.0) + vLit, min(1.0, vA * uAmt * (1.0 + vLit.r * 1.6))); }`,
   }));
   rain.frustumCulled = false; rain.visible = false; rain.renderOrder = 6;
   scene.add(rain);
 
+  // splashes on the ground round the camera and drips off the awnings and bus shelters: one point cloud,
+  // animated in the vertex shader (the splashes wrap round the camera like the rain; the drips' spots are
+  // picked on the CPU twice a second from the shopfronts nearby). Street level only, never over the sea.
+  const NS = 220, ND = 64, sp = new Float32Array((NS + ND) * 3), sk = new Float32Array(NS + ND), ss = new Float32Array(NS + ND);
+  for (let i = 0; i < NS + ND; i++) { sp[i * 3] = Math.random() * 26; sp[i * 3 + 1] = 0; sp[i * 3 + 2] = Math.random() * 26; sk[i] = i < NS ? 0 : 1; ss[i] = Math.random(); }
+  const sgeo = new THREE.BufferGeometry();
+  sgeo.setAttribute('position', new THREE.BufferAttribute(sp, 3)); sgeo.setAttribute('aKind', new THREE.BufferAttribute(sk, 1)); sgeo.setAttribute('aSeed', new THREE.BufferAttribute(ss, 1));
+  const splU = { uTime: timeU, uCam: rainU_.uCam, uAmt: { value: 0 }, uScale: pointScaleU, uNight: nightU,
+    uIsle: { value: new THREE.Vector4(HX, HZ, (KEY.x0 + KEY.x1) / 2, (KEY.x1 - KEY.x0) / 2) }, uKeyZ: { value: (KEY.z1 - KEY.z0) / 2 } };
+  const splash = new THREE.Points(sgeo, new THREE.ShaderMaterial({
+    uniforms: splU, transparent: true, depthWrite: false, fog: false,
+    vertexShader: /* glsl */`
+      attribute float aKind, aSeed; uniform float uTime, uAmt, uScale, uKeyZ; uniform vec3 uCam; uniform vec4 uIsle;
+      varying float vA; varying float vK; varying float vLife;
+      void main(){
+        vec3 p = position; float life;
+        if (aKind < 0.5) {
+          float cyc = uTime * (1.6 + aSeed) + aSeed * 13.0, n = floor(cyc); life = fract(cyc);
+          vec2 o = fract(vec2(sin(n * 12.9 + aSeed * 78.2), sin(n * 39.3 + aSeed * 11.7)) * 43758.5) * 26.0;
+          p.xz = uCam.xz - 13.0 + o; p.y = 0.03;
+          bool land = (abs(p.x) < uIsle.x - 1.0 && abs(p.z) < uIsle.y - 0.5) || (abs(p.x - uIsle.z) < uIsle.w - 1.0 && abs(p.z) < uKeyZ - 1.0);
+          vA = land ? (1.0 - life) * step(aSeed, uAmt * 1.1) : 0.0;
+        } else {
+          float cyc = uTime / (0.8 + aSeed * 0.9) + aSeed * 7.0; life = fract(cyc);
+          p.y = position.y * (1.0 - life * life);
+          vA = position.y > 0.5 ? smoothstep(0.0, 0.08, life) * (0.6 + 0.4 * step(0.3, uAmt)) : 0.0;
+        }
+        vK = aKind; vLife = life;
+        vec4 mv = viewMatrix * vec4(p, 1.0);
+        float dist = -mv.z;
+        vA *= smoothstep(26.0, 8.0, dist) * step(0.5, dist);
+        gl_Position = projectionMatrix * mv;
+        gl_PointSize = aKind < 0.5 ? (0.12 + life * 0.3) * uScale / max(dist, 0.5) : 0.09 * uScale / max(dist, 0.5);
+      }`,
+    fragmentShader: /* glsl */`
+      uniform float uNight; varying float vA; varying float vK; varying float vLife;
+      void main(){
+        vec2 q = gl_PointCoord - 0.5; float r = length(q);
+        float a = vK < 0.5 ? smoothstep(0.5, 0.38, r) * smoothstep(0.18, 0.34, r) * 0.6 : smoothstep(0.5, 0.15, length(q * vec2(2.2, 0.7)));
+        gl_FragColor = vec4(mix(vec3(0.75, 0.8, 0.9), vec3(0.95, 0.9, 0.8), uNight * 0.5), a * vA * 0.55);
+      }`,
+  }));
+  splash.frustumCulled = false; splash.visible = false; splash.renderOrder = 6;
+  scene.add(splash);
+  let dripT = 0;
+  // where the drips fall from: the shop awnings' front edges, the bus shelter roofs, nearest the camera
+  function placeDrips() {
+    const c = camera.position, out = [];
+    const near = (env.dripSpots || []).filter((d) => Math.abs(d[0] - c.x) < 22 && Math.abs(d[2] - c.z) < 22);
+    near.sort((a, b) => Math.hypot(a[0] - c.x, a[2] - c.z) - Math.hypot(b[0] - c.x, b[2] - c.z));
+    for (let i = 0; i < ND; i++) {
+      const d = near[i % Math.max(1, Math.min(near.length, 12))], o = (NS + i) * 3;
+      if (!d) { sp[o + 1] = 0; continue; }
+      sp[o] = d[0] + (Math.random() - 0.5) * d[3]; sp[o + 1] = d[1]; sp[o + 2] = d[2] + (Math.random() - 0.5) * d[4];
+    }
+    sgeo.attributes.position.needsUpdate = true;
+  }
+  // the rain streaks glow round the nearest lamps
+  let lampT = 0;
+  function nearLamps() {
+    const c = camera.position, L = env.lampList || [];
+    const best = [];
+    for (const l of L) { if (l.dead) continue; const d = Math.abs(l.x - c.x) + Math.abs(l.z - c.z); if (d > 60) continue; best.push([d, l]); }
+    best.sort((a, b) => a[0] - b[0]);
+    for (let i = 0; i < LN; i++) { const l = best[i] && best[i][1]; if (l) lightPos[i].set(l.x + Math.sin(l.yaw) * 1.45, 5.6, l.z + Math.cos(l.yaw) * 1.45); else lightPos[i].set(0, -999, 0); }
+  }
+
   const env = {
-    hemi, rain,
+    hemi, rain, splash, lightPos,
     tod: 19, target: null, ffRate: null, viewFog: 1, speed: 1, indoor: false, flash: 0, cur,
     glare: 0, weather: 'clear', w: { cloud: 0.12, rain: 0, bolt: 0, fog: 0 }, wxTimer: 2.5, wet: 0,
     nextBolt: 4, pendingThunder: -1, phase: 'DUSK',
+    // the rainbow: armed by a real shower, it shows once the rain has stopped and the clouds thin with the sun up
+    // and lower than the bow's 42 degrees; fades in over ~10 s, stays a few minutes, fades out. bow.force: debug
+    bow: { k: 0, armed: false, life: 0, force: false, shown: 0 },
     get rainAmt() { return env.indoor ? 0 : env.w.rain; },
     jump(mode) { env.target = STOPS.find((s) => s[0] === mode)[1]; },
     // N key: fast-forward to the next named part of the day
@@ -147,7 +224,8 @@ export function createEnvironment(scene, sky, ocean, city, camera, audio) {
       }
       const W = WEATHER[env.weather], w = env.w;
       for (const key in w) w[key] = damp(w[key], W[key], 0.22, dt);
-      if (w.rain > 0.05) env.wet = Math.min(1, env.wet + dt * w.rain / 5); else env.wet = Math.max(0, env.wet - dt / 50);
+      // the ground soaks up quickly and dries slowly (about a minute and a half), the puddles last
+      if (w.rain > 0.05) env.wet = Math.min(1, env.wet + dt * w.rain / 5); else env.wet = Math.max(0, env.wet - dt / 90);
       wetU.value = env.wet; rainU.value = env.indoor ? 0 : w.rain;
 
       const cover = w.cloud * 0.5 + w.rain * 0.3;
@@ -179,19 +257,32 @@ export function createEnvironment(scene, sky, ocean, city, camera, audio) {
         if (env.nextBolt <= 0) {
           env.nextBolt = 3 + Math.random() * 7;
           if (!reducedMotion) env.flash = 1;
-          env.pendingThunder = 0.25 + Math.random() * 0.9;
+          // sound travels ~343 m/s: a strike 100 m to 3.5 km away rumbles in 0.3 to 10 s later
+          env.boltDist = Math.random(); env.pendingThunder = 0.3 + env.boltDist * env.boltDist * 9.7; env.bolts = (env.bolts || 0) + 1; env.lastBolt = timeU.value;
         }
       }
-      if (env.pendingThunder >= 0) { env.pendingThunder -= dt; if (env.pendingThunder < 0) audio.thunder(); }
+      if (env.pendingThunder >= 0) { env.pendingThunder -= dt; if (env.pendingThunder < 0) { audio.thunder(env.boltDist ?? 0.5); env.thunderLag = timeU.value - env.lastBolt; } }
       // flicker: a second, weaker pulse shortly after the first
       env.flash = Math.max(0, env.flash - dt * 2.6);
       const fl = reducedMotion || env.indoor ? 0 : env.flash * (0.55 + 0.45 * Math.sin(env.flash * 22));
       rain.visible = w.rain > 0.02 && !env.indoor; rainU_.uAmt.value = w.rain; rainU_.uCam.value.copy(camera.position);
+      splash.visible = rain.visible && camera.position.y < 14; splU.uAmt.value = w.rain;
+      if (splash.visible) { dripT -= dt; if (dripT <= 0) { dripT = 0.5; placeDrips(); } }
+      if (rain.visible) { lampT -= dt; if (lampT <= 0) { lampT = 0.4; nearLamps(); } }
 
       const su = sky.uniforms, ou = ocean.uniforms, veil = Math.max(w.fog, w.cloud * 0.85);
       su.uTop.value.copy(cur.top); su.uMid.value.copy(cur.mid); su.uHor.value.copy(cur.hor);
       su.uSunA.value.copy(cur.sunA); su.uSunB.value.copy(cur.sunB); su.uGlow.value.copy(cur.glow);
       su.uSunDir.value.copy(sunDir); su.uMoonDir.value.copy(moonDir); su.uSunSize.value = cur.size; su.uStripe.value = cur.stripe;
+      { const B = env.bow, alt = Math.asin(clamp(sunDir.y, -1, 1)) * 180 / Math.PI, LIFE = 150;
+        if (w.rain > 0.3) { B.armed = true; B.dry = 0; }
+        const sky = alt > 2 && alt < 41 && w.fog < 0.3 && w.cloud < 0.75 && !env.indoor;
+        if (B.armed && w.rain < 0.08) { B.dry = (B.dry || 0) + dt; if (B.dry > 60) B.armed = false; }   // no sun for it in time: gone
+        if (!B.on && (B.force || (B.armed && w.rain < 0.08 && sky))) { B.on = true; B.armed = false; B.life = 0; B.shown++; }
+        if (B.on) { B.life += dt; if (B.life > LIFE + 30 || (w.rain > 0.3 && !B.force)) { B.on = false; B.force = false; } }
+        const want = B.on && B.life < LIFE && sky ? (1 - w.cloud * 0.5) * (1 - w.fog) * (1 - clamp(w.rain * 4, 0, 0.8)) : 0;
+        B.k = damp(B.k, want, want > B.k ? 0.3 : 0.18, dt);
+        su.uBow.value = B.k * clamp((alt - 2) / 4, 0, 1) * clamp((41 - alt) / 3, 0, 1); B.alt = +alt.toFixed(1); }
       su.uStars.value = cur.stars; su.uFlash.value = fl * 0.5; su.uCloud.value = w.cloud * (1 - w.fog * 0.7); su.uVeil.value = veil;
       sky.mesh.position.copy(camera.position);
       ocean.mesh.position.set(Math.round(camera.position.x / 40) * 40, ocean.mesh.position.y, Math.round(camera.position.z / 40) * 40);

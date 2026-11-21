@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { timeU, pointScaleU, pushOut, pause, reducedMotion, createGrid, beatU, beatNow, BEAT_LEN, nightU, VIEW } from './core/util.js';
 import { createInput } from './core/input.js';
-import { makeLayout, clampToWorld, onLand, onRoad, propsOnRoad, zoneName, FOOTPRINTS, footprintsOnRoad } from './world/layout.js';
+import { makeLayout, clampToWorld, onLand, onRoad, propsOnRoad, zoneName, FOOTPRINTS, FOOTBOXES, DOORS, footprintsOnRoad } from './world/layout.js';
 import { checkBeach, BEACH_ZONES } from './world/beach.js';
 import { createEat } from './game/eat.js';
 import { buildKey } from './world/keyCity.js';
@@ -56,6 +56,8 @@ import { createBloom } from './world/bloom.js';
 import { createMotes } from './world/motes.js';
 import { createCinematic } from './game/cinematic.js';
 import { createSpire } from './game/spire.js';
+import { createPier } from './game/pier.js';
+import { createCat } from './actors/cat.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('gl');
@@ -136,8 +138,17 @@ async function boot() {
   const player = createPlayer(scene, L);
   const cam = createFollowCamera(camera, L.solids);
   const env = createEnvironment(scene, sky, ocean, city, camera, audio);
+  // rain details: the lamps the streaks light up round, the awning edges and shelter roofs that drip
+  env.lampList = [...L.lamps, ...(L.key.lamps || [])];
+  env.dripSpots = [];
+  for (const b of L.buildings) if (b.row > 0) env.dripSpots.push([b.cx, 2.85, b.z1 + 1.5, b.w * 0.6, 0.2]);
+  for (const [x, z, yaw] of L.busStops || []) env.dripSpots.push([x + Math.sin(yaw) * 0.6, 2.5, z + Math.cos(yaw) * 0.6, 3.0, 0.2]);
   const input = createInput(canvas);
   const hud = createHud(L, groundCanvas, renderer, keyCity.groundCanvas);
+  // the old town's street doors: the five places' entrances (city.js builds them on the building's centre line) and
+  // the shopfront doors the venues there use (layout.js VENUE_DEFS along)
+  for (const k in L.places) { const p = L.places[k]; p.nx = 0; p.nz = 1; DOORS.push({ what: p.name + ' entrance', x: p.b.cx, z: p.b.z1 }); }
+  for (const k in L.venues) { const p = L.venues[k]; if (p.isle !== 'key' && !p.hidden) DOORS.push({ what: p.name + ' shopfront door', x: p.b.cx + p.along, z: p.b.z1 }); }
   const motes = createMotes(scene, L, camera, env);
   // graphics quality: the bloom, the neon pools on the street, the shoreline foam, the moths and fireflies
   const applyQuality = () => {
@@ -192,6 +203,10 @@ async function boot() {
   // the Solstice Spire: the lift to its roof terrace, the guests, the bar, waiting for the sunset
   const spire = game.spire = createSpire(game, scene);
   vehicles.onNoLand = () => spire.noLand();
+  // Starlight Pier: the wheel ride, the candy stand, the pier crowd, its music
+  const pier = game.pier = createPier(game, scene);
+  // Marmalade, the cat on the windowsill in the midtown alley
+  const cat = game.cat = createCat(game, scene);
   // a second helicopter waits on the Glasswater Tower helipad downtown
   const padT = L.key.buildings.find((b) => b.name === 'Glasswater Tower');
   vehicles.spawnHeli(padT.pad.x, padT.pad.z, Math.PI / 2, 1, padT.roofY);
@@ -368,12 +383,46 @@ async function boot() {
     spireWarp: (x, z) => spire.warp(x, z),
     spireSettle: () => spire.settle(),
     spireSeats: () => spire.seats(),
+    // every door ring: on the sidewalk (not the road), its beacon clear of the building and its street-side parts,
+    // within ~2 m (along the wall) of a door on the façade. [] when all is well
+    doorCheck: (all = false) => {
+      const out = [];
+      for (const p of [...Object.values(L.places), ...Object.values(L.venues)].filter((q) => !q.hidden)) {
+        const b = p.b, nx = p.nx ?? 0, nz = p.nz ?? 1, R = 1.4, res = { door: p.key };
+        if (onRoad(p.x, p.z, 1.0)) res.road = true;
+        const hit = [...L.solids.map((q) => ({ what: q.b ? 'building ' + (q.b.name || '') : 'solid', ...q })), ...FOOTBOXES.filter((f) => !/^door:/.test(f.what))].find((q) => p.x + R > q.x0 && p.x - R < q.x1 && p.z + R > q.z0 && p.z - R < q.z1);
+        if (hit) res.beaconIn = hit.what;
+        let best = 1e9;
+        for (const d of DOORS) { const lat = Math.abs((p.x - d.x) * nz - (p.z - d.z) * nx), dep = (p.x - d.x) * nx + (p.z - d.z) * nz; if (dep > -0.5 && dep < 9) best = Math.min(best, lat); }
+        res.doorLat = +best.toFixed(2);
+        if (best > 2) res.noDoor = true;
+        if (all || res.road || res.beaconIn || res.noDoor) out.push(res);
+      }
+      return out;
+    },
+    pier: () => pier.state(),
+    cat: () => ({ ...cat.state(), purrGain: audio.purrLevel(), meows: audio.meows || 0 }),
+    catGo: () => { const s = cat.spot; player.pos.set(s.x, 0, s.z); player.vel.set(0, 0, 0); return s; },
+    rainAudio: () => audio.rainState(),
+    // force a rainbow now (optionally at hour h; it needs the sun up and lower than 41 degrees: early morning, late afternoon)
+    rainbow: (h) => { if (h !== undefined) { env.tod = h; env.target = null; } env.bow.force = true; return { ...env.bow }; },
+    bow: () => ({ ...env.bow, k: +env.bow.k.toFixed(3), u: +sky.uniforms.uBow.value.toFixed(3) }),
+    rain: () => ({ weather: env.weather, rain: +env.w.rain.toFixed(2), wet: +env.wet.toFixed(3), bolts: env.bolts || 0, thunderLag: env.thunderLag ?? null, peds: peds.rainStats(), splash: env.splash.visible, under: underCover(player.pos) }),
+    pierRideTo: (t) => pier.rideTo(t),
+    pierGuests: (h, w = 'clear') => { env.setWeather(w); env.w.rain = w === 'rain' ? 0.6 : w === 'storm' ? 1 : 0; env.tod = h; env.target = null; return pier.settle(); },
     spireGuests: (h, w = 'clear') => { env.setWeather(w); env.w.rain = w === 'rain' || w === 'storm' ? 0.8 : 0; env.tod = h; env.target = null; return spire.settle(); },
     tris: () => renderer.info.render.triangles,
     view: (far, fog) => { if (far) VIEW.far = far; if (fog) VIEW.fog = fog; return { ...VIEW }; },
     evtGo: (off = 0.6) => { const t = events.target(); if (!t) return null; const v = game.vehicle; if (v) { v.x = t.x + off; v.z = t.z; v.vx = v.vz = 0; } else player.pos.set(t.x + off, 0, t.z); return t; },
   };
   game.signalAt = (n, h) => signal(n, h, timeU.value);
+  // under an awning or a shelter (the rain sound drums on the canopy): the shopfronts of the back streets, the hotel
+  // canopies, the bus shelters
+  const covers = [];
+  for (const b of L.buildings) covers.push([b.x0 + 1, b.x1 - 1, b.z1, b.z1 + (b.row > 0 ? 2.6 : 3.4)]);
+  for (const [x, z] of L.busStops || []) covers.push([x - 1.7, x + 1.7, z - 0.9, z + 0.9]);
+  const underCover = (p) => p.y < 2.2 && covers.some((c) => p.x > c[0] && p.x < c[1] && p.z > c[2] && p.z < c[3]);
+  game.underCover = underCover;
 
   function interact() {
     const v = game.vehicle;
@@ -382,6 +431,8 @@ async function boot() {
     if (act.mode) { act.toggle(); return; }
     if (game.inside) { places.use(); return; }
     if (!v && spire.on && spire.use()) return;
+    if (!v && pier.use()) return;
+    if (!v && cat.canPat() && cat.pat()) return;
     if (v) {
       const floor = v.floor || 0;
       if (v.kind === 'heli' && v.y - floor > 0.6) { hud.toast('LAND FIRST', 'HOLD C TO DESCEND'); return; }
@@ -419,6 +470,8 @@ async function boot() {
       else if (e.code === 'KeyX' || e.code === 'Escape') cut.skip();
       return;
     }
+    // riding the Starlight Wheel: its own keys (look, wait, skip, step out); the music and time keys still work
+    if (game.busy === 'ride') { if (pier.key(e) !== 'pass') return; }
     if (game.busy === 'shop') { places.key(e); return; }
     if (game.busy === 'arcade') { venues.key(e); return; }
     if (game.busy === 'fail') { story.key(e); return; }
@@ -528,9 +581,17 @@ async function boot() {
     damage.update(dt);
     combat.update(dt);
     if (game.mode === 'bike' && game.vehicle) player.ride(game.vehicle);
+    // an open car (the convertible): Skye herself sits at the wheel; closed cars show the driver figure through the
+    // glass (actors/peds.js); in first person the body would be inside the camera
+    else if (game.vehicle && game.vehicle.kind === 'car') {
+      const ov = game.vehicle;
+      if (ov.type === 'coupe' && !cam.first && !cut.active) player.sitIn(ov, ctl.steer); else player.model.root.visible = false;
+    }
     peds.update(dt, timeU.value, frameN, vehicles.cars);
     animals.update(dt);
     if (game.started) spire.update(dt);
+    pier.update(dt);
+    cat.update(dt);
     if (game.started) { rules.update(dt); pursuit.update(dt); parking.update(raw); heatHint.update(raw); story.update(dt); story.tickStar(dt); places.update(dt, ctl); venues.tick(dt); events.update(dt); marine.blips(rules.blips); roofs.update(dt); }
     city.tick(timeU.value); city.beachFx.tick(env.rainAmt);
     fx.update(dt);
@@ -544,6 +605,7 @@ async function boot() {
     if (game.deathCam) rules.deathCam(camera, Math.min(raw, 0.05));
     else if (cut.active) cut.update(dt);
     else if (game.shotCam) { const s = game.shotCam; camera.position.set(s[0], s[1], s[2]); camera.lookAt(s[3], s[4], s[5]); }   // debug.shot(): a fixed camera for checks
+    else if (game.busy === 'ride' && pier.camOn) pier.camUpdate(dt);      // in a gondola of the Starlight Wheel
     else if (game.inside) { /* places.update owns the camera indoors */ }
     else if (stunts.cam) stunts.camUpdate(dt);
     else if (cine.active) cine.update(dt);
@@ -554,6 +616,9 @@ async function boot() {
     vehicles.firstPerson = cam.first && !cut.active && !game.inside && !!v;
     const hideBody = cam.first && !cut.active && !game.inside && game.mode === 'foot';
     if (player.model.root.visible === hideBody && !player.hidden) player.model.root.visible = !hideBody;
+    // high up (the Solstice Terrace, the Starlight Wheel: the view boost is on) the near plane moves out, so the
+    // depth buffer has the precision for the ground, the roads and their markings hundreds of metres away
+    { const nr = VIEW.far > 1.05 && !game.inside ? 0.5 : 0.12; if (camera.near !== nr) { camera.near = nr; camera.updateProjectionMatrix(); } }
     pointScaleU.value = renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360));
     lampU.uLampOn.value = game.inside ? 0 : 1;
     env.update(dt);
@@ -570,15 +635,16 @@ async function boot() {
     if (game.started) {
       if (game.busy === 'shop') hud.setHint(places.hint());
       else if (game.busy === 'arcade') hud.setHint(venues.hint());
+      else if (game.busy === 'ride') hud.setHint(pier.hint());
       else if (game.busy) hud.setHint(game.busy === 'cut' ? [['Space / Enter', 'next line'], ['X', 'skip scene']] : game.busy === 'fail' ? [['Enter', 'retry from checkpoint'], ['Esc', 'walk away']] : []);
       else if (game.inside) hud.setHint(places.hint());
       else if (!v && swim.wet) hud.setHint(swim.hint());
       else if (!v && act.mode) hud.setHint(act.hint());
       else if (!v && spire.on) hud.setHint(spire.hint());
       else if (!v) {
-        const n = vehicles.nearest(player.pos), f = act.fHint(), wh = combat.hints();
-        hud.setHint(n ? [['E', n.ai ? `take the ${n.label} (heat!)` : n.kind === 'bike' ? `ride the ${n.label}` : `enter the ${n.label}`], ...(f ? [f] : []), ...wh, ['V', 'camera view'], ['~ / T', 'cheat console']]
-          : [...(f ? [f] : []), ...wh, ['WASD', 'skate'], ['Shift', 'sprint'], ['Space', 'jump'], ['Drag', 'look'], ['V', 'camera view'], ['~ / T', 'cheat console']]);
+        const n = vehicles.nearest(player.pos), f = act.fHint(), wh = combat.hints(), pu = pier.nearUse(), ch = cat.hint(), ph = pu ? [['E', pu.hint]] : ch ? [ch] : [];
+        hud.setHint(n && !pu && !ch ? [['E', n.ai ? `take the ${n.label} (heat!)` : n.kind === 'bike' ? `ride the ${n.label}` : `enter the ${n.label}`], ...(f ? [f] : []), ...wh, ['V', 'camera view'], ['~ / T', 'cheat console']]
+          : [...ph, ...(f ? [f] : []), ...wh, ['WASD', 'skate'], ['Shift', 'sprint'], ['Space', 'jump'], ['Drag', 'look'], ['V', 'camera view'], ['~ / T', 'cheat console']]);
       } else if (v.kind === 'car') hud.setHint([['E', 'exit ' + (v.label || 'car')], ['WASD', 'drive'], ['Space', 'handbrake'], ...combat.hints(), ['V', 'camera view']]);
       else if (v.kind === 'bike') hud.setHint([['E', 'get off'], ['W', 'throttle (wheelie from low speed)'], ['A D', 'lean'], ['S', 'brake'], ...combat.hints(), ['V', 'camera view']]);
       else if (v.kind === 'tank') hud.setHint([['E', 'exit tank'], ['WASD', 'drive'], ['Drag', 'aim turret'], ['Click / F', 'fire'], ['V', 'camera view']]);
@@ -601,10 +667,14 @@ async function boot() {
     sound.under = sea.under;
     sound.skate = !v && player.onGround && !player.swimming && !cut.active && !act.mode ? Math.min(player.speed / 13.5, 1) : 0;
     sound.rotor = vehicles.heli ? vehicles.heli.spool * (v === vehicles.heli ? 1 : 0.35) : 0;
-    sound.rain = env.rainAmt; sound.siren = game.siren || 0; sound.duck = cut.active;
+    // the rain you hear: the outdoor amount even indoors (muffled at the windows), and where you are
+    sound.rain = env.w.rain; sound.storm = env.weather === 'storm' ? env.w.bolt : 0;
+    sound.rainWhere = game.inside ? 'indoor' : v && v.kind !== 'bike' ? 'car' : !v && underCover(player.pos) ? 'awning' : 'out';
+    sound.siren = game.siren || 0; sound.duck = cut.active; sound.purr = cat.purring && !game.inside ? cat.S.purr * Math.max(0, 1 - Math.hypot(camera.position.x - cat.sill.x, camera.position.z - cat.sill.z) / 12) : 0;
     // up on the Solstice Terrace its own theme plays, like an indoor place (it ignores the street music's auto-off)
     sound.room = !game.inside ? (spire.on ? 1 : 0) : game.inside.key === 'club' ? 2 : game.inside.key === 'lounge' ? 3 : 1;
-    sound.theme = !game.inside ? (spire.on ? THEME_OF.terrace : 'street') : game.busy === 'arcade' ? 'arcadeGame' : THEME_OF[game.inside.key] || null;
+    sound.themeK = !game.inside && !spire.on && pier.music > 0.01 ? pier.music : 1;
+    sound.theme = !game.inside ? (spire.on ? THEME_OF.terrace : pier.music > 0.01 ? 'pier' : 'street') : game.busy === 'arcade' ? 'arcadeGame' : THEME_OF[game.inside.key] || null;
     sound.night = nightU.value; sound.wanted = game.wanted;
     music.update(dt, !!game.inside && game.inside.key === 'lounge' && game.busy !== 'door' && audio.musicOn, game.paused);
     sound.rec = music.rec;

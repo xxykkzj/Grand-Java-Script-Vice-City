@@ -1,6 +1,6 @@
 // DOM HUD. Top-left: a round minimap that turns with the camera, the district name and the
 // current objective. Top-right: cash, health, wanted stars and the clock. Also hints, toast, perf panel.
-import { HX, HZ, PIER, CAUSEWAY, KEY, MPIER, zoneName } from '../world/layout.js';
+import { HX, HZ, PIER, CAUSEWAY, KEY, MPIER, APIER, zoneName } from '../world/layout.js';
 import { WEATHER } from '../world/environment.js';
 
 const $ = (id) => document.getElementById(id);
@@ -35,7 +35,7 @@ export function createHud(L, groundCanvas, renderer, keyCanvas) {
   if (keyCanvas) b.drawImage(keyCanvas, OX + KEY.x0, OZ + KEY.z0, KEY.x1 - KEY.x0, KEY.z1 - KEY.z0);
   b.globalAlpha = 1;
   b.fillStyle = 'rgba(20,8,48,.35)'; b.fillRect(OX - HX, OZ - HZ, HX * 2, HZ * 2); b.fillRect(OX + KEY.x0, OZ + KEY.z0, KEY.x1 - KEY.x0, KEY.z1 - KEY.z0);
-  b.fillStyle = '#b98a5e'; b.fillRect(OX + PIER.x0, OZ + PIER.z0, PIER.x1 - PIER.x0, PIER.z1 - PIER.z0); b.fillRect(OX + MPIER.x0, OZ + MPIER.z0, MPIER.x1 - MPIER.x0, MPIER.z1 - MPIER.z0);
+  b.fillStyle = '#b98a5e'; b.fillRect(OX + PIER.x0, OZ + PIER.z0, PIER.x1 - PIER.x0, PIER.z1 - PIER.z0); b.fillRect(OX + MPIER.x0, OZ + MPIER.z0, MPIER.x1 - MPIER.x0, MPIER.z1 - MPIER.z0); b.fillRect(OX + APIER.x0, OZ + APIER.z0, APIER.x1 - APIER.x0, APIER.z1 - APIER.z0);
   b.fillStyle = '#3b3548'; b.fillRect(OX + CAUSEWAY.x0, OZ + CAUSEWAY.z0, -HX - CAUSEWAY.x0, CAUSEWAY.z1 - CAUSEWAY.z0);
   b.strokeStyle = 'rgba(233,216,196,.7)'; b.lineWidth = 1.5; b.strokeRect(OX - HX - 0.5, OZ - HZ - 0.5, HX * 2 + 1, HZ * 2 + 1); b.strokeRect(OX + KEY.x0 - 0.5, OZ + KEY.z0 - 0.5, KEY.x1 - KEY.x0 + 1, KEY.z1 - KEY.z0 + 1);
   for (const s of L.buildings) {

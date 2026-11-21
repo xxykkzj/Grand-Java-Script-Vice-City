@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { box, cyl, tint, merge, rng, PI, nightU, reflU, VIEW } from '../core/util.js';
 import { KEY, KH, KV, KV_W, KEY_JUNCTIONS, MPIER, KEY_ADS } from './key.js';
+import { VENUE_DEFS, DOORS } from './layout.js';
 import { kitGeometry } from './kits.js';
 import { groundMaterial, palmMesh } from './city.js';
 import { setLampMap } from './lamplight.js';
@@ -300,6 +301,18 @@ export function buildKey(scene, L, renderer, adSigns) {
       sign(b.name, faceX + fx * 4.4 || cx, 12.4, faceZ + fz * 4.4 || cz, yawF, 16);
       N.push(onFace(0, 10.9, 4.5, 24.4, 0.14, 0.14, '#ff2bd1'), onFace(0, 9.5, 4.5, 24.4, 0.14, 0.14, '#18f0ff'));
       glows.push([faceX + fx * 6 || cx, 9, faceZ + fz * 6 || cz, '#ff5fa8', 20, 0.05]);
+      // the way in: automatic sliding glass doors in the atrium's front, a lit canopy over them, planters either side
+      S.push(onFace(0, 1.45, 4.06, 5.6, 2.9, 0.1, '#bfe4f2'), onFace(-1.4, 1.45, 4.12, 0.06, 2.9, 0.1, '#c8c4d4'), onFace(1.4, 1.45, 4.12, 0.06, 2.9, 0.1, '#c8c4d4'), onFace(0, 1.45, 4.13, 0.1, 2.9, 0.12, '#a8a2b8'),
+        onFace(-2.9, 1.5, 4.12, 0.3, 3.0, 0.25, '#f6f1e7'), onFace(2.9, 1.5, 4.12, 0.3, 3.0, 0.25, '#f6f1e7'), onFace(0, 3.05, 4.12, 6.1, 0.25, 0.25, '#f6f1e7'),
+        onFace(0, 0.02, 4.7, 6.4, 0.04, 1.2, '#2a2140'), onFace(0, 0.03, 4.7, 5.8, 0.04, 1.0, '#27d8cf'),
+        onFace(0, 3.45, 4.7, 7.4, 0.2, 1.3, '#27d8cf'), onFace(0, 3.62, 4.7, 7.6, 0.14, 1.4, '#f6f1e7'));
+      for (const o of [-3.3, 3.3]) S.push(onFace(o, 3.0, 5.25, 0.08, 0.9, 0.08, '#c8c4d4'));
+      N.push(onFace(0, 3.35, 5.37, 7.4, 0.07, 0.07, '#ff2bd1'), onFace(0, 3.56, 5.42, 7.6, 0.06, 0.06, '#18f0ff'), onFace(0, 2.92, 4.2, 5.4, 0.05, 0.05, '#ffe9b0'));
+      for (const o of [-4.6, 4.6]) {
+        S.push(onFace(o, 0.4, 5.0, 1.2, 0.8, 1.2, '#f6f1e7'), onFace(o, 0.82, 5.0, 1.26, 0.06, 1.26, '#27d8cf'), onFace(o, 1.25, 5.0, 0.9, 0.8, 0.9, '#3f9f6a', 0), onFace(o, 1.8, 5.0, 0.5, 0.5, 0.5, '#5fbf7a'));
+        P.box(faceX + fx * 5.0 + (fx ? 0 : o), faceZ + fz * 5.0 + (fz ? 0 : o), 1.2, 1.2, 1.0);
+      }
+      glows.push([faceX + fx * 5.0 || cx, 3.1, faceZ + fz * 5.0 || cz, '#ffe9c0', 7, 0.25]); DOORS.push({ what: 'Seafoam Galleria sliding doors', x: faceX + fx * 4.1 || cx, z: faceZ + fz * 4.1 || cz });
       slabRoof(b, '#efe0ea');
       for (let i = -2; i <= 2; i++) S.push(bx(6, 0.8, 6, cx + i * 18, b.roofY + 0.4, cz, '#7fb8d0', 2));
       for (let i = -2; i <= 2; i++) P.box(cx + i * 18, cz, 6, 6, b.roofY + 0.8, 0, b.roofY);
@@ -312,6 +325,33 @@ export function buildKey(scene, L, renderer, adSigns) {
       g.computeBoundingBox(); const bb = g.boundingBox;
       if (bb.min.y < 5) footBox(`${b.style}: ${b.name || b.cx + ',' + b.cz}`, bb.min.x, bb.max.x, bb.min.z, bb.max.z);
     }
+  }
+
+  // ---------------------------------------------------------------- the venues' street doors
+  // Every place you can walk into on the key gets a door that reads from the street: glass double doors in a
+  // frame on the façade at its ring, a lit canopy with a neon edge, a lamp either side, a step and a mat.
+  for (const k in VENUE_DEFS) {
+    const d = VENUE_DEFS[k];
+    if (d.isle !== 'key' || k === 'mall' || d.hidden) continue;
+    const b = K.buildings.find((q) => q.name === d.at); if (!b) continue;
+    const nx = Math.round(Math.sin(d.face)), nz = Math.round(Math.cos(d.face));
+    const fxp = nx ? (nx > 0 ? b.x1 : b.x0) : b.cx + d.along, fzp = nz ? (nz > 0 ? b.z1 : b.z0) : b.cz + d.along;
+    // a frame in façade coordinates: o along the wall, out from it
+    const at = (o, out) => [fxp + nx * out + (nx ? 0 : o), fzp + nz * out + (nz ? 0 : o)];
+    const pb = (o, y, out, ww, hh, dd, hex) => { const [x, z] = at(o, out); return bx(nx ? dd : ww, hh, nx ? ww : dd, x, y, z, hex); };
+    const col = d.color;
+    if (k !== 'spire') {
+      S.push(pb(0, 1.4, 0.06, 2.6, 2.8, 0.1, '#9fd0e8'), pb(0, 1.4, 0.12, 0.08, 2.8, 0.1, '#c8c4d4'), pb(-1.38, 1.45, 0.12, 0.18, 2.95, 0.22, '#f6f1e7'), pb(1.38, 1.45, 0.12, 0.18, 2.95, 0.22, '#f6f1e7'),
+        pb(0, 2.95, 0.12, 2.95, 0.2, 0.24, '#f6f1e7'), pb(-0.55, 1.2, 0.14, 0.05, 0.4, 0.06, '#d4d6de'), pb(0.55, 1.2, 0.14, 0.05, 0.4, 0.06, '#d4d6de'),
+        pb(0, 0.06, 0.8, 3.0, 0.12, 1.4, '#e8e0d8'), pb(0, 0.125, 0.8, 1.8, 0.02, 0.9, '#2a2140'),
+        pb(0, 3.35, 1.0, 3.8, 0.18, 1.9, col), pb(0, 3.5, 1.0, 3.9, 0.1, 2.0, '#f6f1e7'));
+      N.push(pb(0, 3.26, 1.97, 3.8, 0.06, 0.06, col), pb(0, 2.98, 0.26, 2.6, 0.04, 0.04, '#ffe9b0'));
+      for (const o of [-1.9, 1.9]) { S.push(pb(o, 2.2, 0.1, 0.18, 0.32, 0.18, '#2a2140')); N.push(pb(o, 2.2, 0.2, 0.14, 0.22, 0.06, '#ffe9b0')); const [gx, gz] = at(o, 0.5); glows.push([gx, 2.2, gz, '#ffe0b0', 3.2, 0.2]); }
+      const [cx2, cz2] = at(0, 1.1); glows.push([cx2, 3.0, cz2, '#ffe9c0', 6, 0.2]);
+      footBox(`door: ${d.name}`, ...(() => { const [ax, az] = at(-2, 0), [bx2, bz2] = at(2, 2.0); return [Math.min(ax, bx2), Math.max(ax, bx2), Math.min(az, bz2), Math.max(az, bz2)]; })());
+    }
+    const [dx, dz] = at(0, 0.1);
+    DOORS.push({ what: d.name + (k === 'spire' ? ' revolving door' : ' glass doors'), x: dx, z: dz });
   }
 
   // ---------------------------------------------------------------- the Sunbowl
@@ -539,7 +579,9 @@ export function buildKey(scene, L, renderer, adSigns) {
   setLampMap('key', K.lampMap.tex, KEY.x0, KEY.z0, W, H);
   group.add(ground);
   const skirt = new THREE.Mesh(new THREE.BoxGeometry(W, 3, H), new THREE.MeshLambertMaterial({ color: '#c9a878' }));
-  skirt.position.set(KEY.x0 + W / 2, -1.52, KEY.z0 + H / 2);
+  // (its top sits 30 cm under the ground: at 2 cm the two fought for the depth buffer from high up, and roads
+  // seen from the Solstice Terrace flickered between asphalt and the skirt's sand colour)
+  skirt.position.set(KEY.x0 + W / 2, -1.8, KEY.z0 + H / 2);
   group.add(skirt);
 
   // ---------------------------------------------------------------- street lights (Quaternius) with see-through glass

@@ -423,7 +423,7 @@ const window_ = (bg, items) => (c, W, H) => {
 };
 function buildMall(room) {
   const g = [], B = room.boards = boards(2048), HX = 9, HZ = 7, H = 6.5, pools = room.pools, hi = room.hiPools;
-  shell(g, HX, HZ, H, '#f3eee6', '#e3f1ec', ['#fbe3ee', '#fbe3ee', '#fdeef3'], '#e8f6fa', '#27d8cf');
+  shell(g, HX, HZ, H, '#ddd4c8', '#c4dcd4', ['#e8c6d6', '#e8c6d6', '#ecd2de'], '#cfe2e8', '#27d8cf');
   // terrazzo inlay: pink and teal bands round the fountain and out to the door
   for (const [r0, c0] of [[3.4, '#ff8fc4'], [3.7, '#27c9bf']]) for (let i = 0; i < 28; i++) { const a = i / 28 * PI * 2; g.push(box(0.8, 0.012, 0.12, Math.cos(a) * r0, 0.006, -0.5 + Math.sin(a) * r0, c0, 0, -a + PI / 2)); }
   g.push(box(0.12, 0.012, 3.3, -0.6, 0.006, 4.4, '#ff8fc4'), box(0.12, 0.012, 3.3, 0.6, 0.006, 4.4, '#27c9bf'));
@@ -487,9 +487,13 @@ function buildMall(room) {
   // the escalator up the right side (out of order: Kiki's word for it is stairs with ambition)
   g.push(box(1.4, 0.3, 7.2, 7.8, 1.5, -1.2, '#c9c0d8', Math.atan2(3.2, 6.2)), box(0.08, 1.0, 7.2, 7.08, 2.0, -1.2, '#d8f4fa', Math.atan2(3.2, 6.2)), box(0.08, 1.0, 7.2, 8.52, 2.0, -1.2, '#d8f4fa', Math.atan2(3.2, 6.2)),
     box(0.1, 0.08, 7.3, 7.08, 2.5, -1.2, BLK, Math.atan2(3.2, 6.2)), box(0.1, 0.08, 7.3, 8.52, 2.5, -1.2, BLK, Math.atan2(3.2, 6.2)), box(1.6, 0.1, 1.6, 7.8, 0.05, 2.4, CHROME));
-  for (let i = 0; i < 18; i++) { const k = i / 18; g.push(box(1.3, 0.03, 0.08, 7.8, 0.12 + k * 3.1, 1.9 - k * 6.1, '#3a3550')); }
-  g.push(cyl(0.02, 0.02, 1.0, 4, 7.8, 0.5, 3.0, CHROME), cyl(0.15, 0.15, 0.02, 8, 7.8, 0.01, 3.0, CHROME));
-  B.add(0.7, 0.45, 7.8, 1.2, 3.02, 0, (c, W, Hh) => { P.fill(c, W, Hh, '#ffe14a'); P.frame(c, W, Hh, '#22203a', 4); P.text(c, 'OUT OF', W / 2, Hh * 0.33, Hh * 0.26, '#22203a'); P.text(c, 'ORDER', W / 2, Hh * 0.7, Hh * 0.3, '#ff3f5a'); });
+  // (working again: the steps run, and it takes you up to Velvet Rope Couture on the upper level)
+  const stepG = [];
+  for (let i = 0; i < 19; i++) { const k = i / 18; stepG.push(box(1.3, 0.03, 0.08, 7.8, 0.12 + k * 3.1, 1.9 - k * 6.1, '#3a3550')); }
+  const steps = pulser(stepG, 'none');
+  room.extras.push(steps);
+  B.add(0.9, 0.5, 7.8, 1.3, 3.02, 0, (c, W, Hh) => { P.fill(c, W, Hh, '#2a1a40'); P.frame(c, W, Hh, '#d8b4ff', 4); P.text(c, '▲ UPPER LEVEL', W / 2, Hh * 0.33, Hh * 0.24, '#ffe14a'); P.text(c, 'VELVET ROPE COUTURE', W / 2, Hh * 0.72, Hh * 0.17, '#d8b4ff', { max: W * 0.9 }); });
+  g.push(box(0.06, 1.3, 0.06, 7.8, 0.65, 3.0, CHROME));
   blocks.push({ x0: 6.9, x1: 9, z0: -4.6, z1: 3.3 });
   // Kiki's pretzel cart: striped canopy, a glass warmer, wheels, her menu
   g.push(box(1.6, 0.9, 0.8, -2.8, 0.55, 3.2, '#ff8fc4'), box(1.7, 0.06, 0.9, -2.8, 1.02, 3.2, '#f6f1e7'), box(1.2, 0.45, 0.55, -2.8, 1.28, 3.2, '#d8f4f2'), box(1.22, 0.04, 0.57, -2.8, 1.52, 3.2, CHROME),
@@ -502,8 +506,8 @@ function buildMall(room) {
   for (const [x, z] of fronts) pools.push(disc(x, 0.012, z, 1.7, '#ffe0b0', 0.35));
   pools.push(disc(-8.96, 1.4, -1.8, 1.6, '#ffb0d0', 0.18, 'x'), disc(-2.8, 1.04, 3.2, 0.8, '#ffd9a0', 0.4));
   Object.assign(room, {
-    hx: HX, hz: HZ, h: H, geo: g, rim: '#3a4a5a', amb: 0.8, ambCol: '#f4fbff', clerk: 'KIKI',
-    lights: [{ x: 0, y: 6, z: -0.5, hex: '#ffffff', r: 11, k: 0.45 }, { x: -5.6, y: 1.6, z: -6, hex: '#ff9ad8', r: 4, k: 0.4 }, { x: 0, y: 1.6, z: -6, hex: '#a8e8ff', r: 4, k: 0.4 }, { x: 5.6, y: 1.6, z: -6, hex: '#a8ffb8', r: 4, k: 0.4 },
+    hx: HX, hz: HZ, h: H, geo: g, rim: '#3a4a5a', amb: 0.46, ambCol: '#eef6fa', clerk: 'KIKI', bloomK: 0.4,
+    lights: [{ x: 0, y: 6, z: -0.5, hex: '#ffffff', r: 11, k: 0.34 }, { x: -5.6, y: 1.6, z: -6, hex: '#ff9ad8', r: 4, k: 0.4 }, { x: 0, y: 1.6, z: -6, hex: '#a8e8ff', r: 4, k: 0.4 }, { x: 5.6, y: 1.6, z: -6, hex: '#a8ffb8', r: 4, k: 0.4 },
       { x: -8, y: 1.6, z: 1, hex: '#ffc8a0', r: 5, k: 0.35 }],
     blocks, seats, me: [1.4, 2.8], cast: { KIKI: [-2.8, 2.45, 0] },
     uses: [{ x: -2.8, z: 4.3, r: 1.3, kind: 'cart', hint: "buy a pretzel from Kiki", clerk: 'KIKI', cam: [1.4, 1.9, 2.0] }, { x: 0.3, z: 2.2, r: 1.3, kind: 'fountain', hint: 'toss a coin in the fountain ($1)' }],
@@ -514,7 +518,71 @@ function buildMall(room) {
       splashT = Math.max(0, splashT - dt);
       if (still) water.material.color.setScalar(0.9 + splashT * 0.3);
       else water.material.color.setScalar(0.75 + 0.2 * Math.sin(t * 3.1) + splashT * 0.6);
+      const sk = ((t * (still ? 0.15 : 0.45)) % 1) / 18; steps.position.set(0, sk * 3.1, -sk * 6.1);
     },
+  });
+  room.uses.push({ x: 7.8, z: 3.6, r: 1.3, kind: 'escalator', hint: 'ride the escalator up to Velvet Rope Couture' });
+}
+
+// ---- Velvet Rope Couture: the formal-wear boutique on the Galleria's upper level ---------------------------
+// Plum carpet, cream panelling with gold, a crystal chandelier, rails of suits and gowns on mannequins, a fitting
+// podium in a three-way mirror (the Zigzag Threads try-on: game/places.js), Laurent at the counter, and the glass
+// railing at the front overlooking the atrium (painted), where the escalator comes up.
+function buildBoutique(room) {
+  const g = [], B = room.boards = boards(1024), HX = 6.5, HZ = 5, H = 4.2, pools = room.pools, hi = room.hiPools;
+  const GOLDC = '#c9a046', CREAMW = '#d8cbb8';
+  shell(g, HX, HZ, H, '#5a2a4a', '#4a2240', [CREAMW, '#cfc0aa', '#d4c6b0'], '#a8987f', '#d8b4ff');
+  for (const x of [-HX + 0.03, HX - 0.03]) g.push(box(0.04, 0.08, HZ * 2, x, 1.0, 0, GOLDC), box(0.04, 0.08, HZ * 2, x, 3.6, 0, GOLDC));
+  g.push(box(HX * 2, 0.08, 0.04, 0, 1.0, -HZ + 0.03, GOLDC), box(HX * 2, 0.08, 0.04, 0, 3.6, -HZ + 0.03, GOLDC));
+  rug(g, 6.5, 4.5, 0, -0.5, '#7a3a6a', '#c9a046', '#5a2a4a', 'diamonds');
+  // the chandelier: tiers of crystal drops round a gold ring
+  g.push(cyl(0.05, 0.05, 0.8, 6, 0, H - 0.4, -0.5, GOLDC), cyl(0.9, 0.9, 0.06, 16, 0, H - 0.85, -0.5, GOLDC), cyl(0.55, 0.55, 0.06, 14, 0, H - 1.15, -0.5, GOLDC));
+  for (let i = 0; i < 16; i++) { const a = i / 16 * PI * 2; g.push(box(0.05, 0.22, 0.05, Math.cos(a) * 0.9, H - 1.0, -0.5 + Math.sin(a) * 0.9, '#e8f4ff')); if (i % 2) g.push(box(0.05, 0.2, 0.05, Math.cos(a) * 0.55, H - 1.3, -0.5 + Math.sin(a) * 0.55, '#e8f4ff')); }
+  hi.push(cone(0, H - 1.1, -0.5, 0.6, 2.6, 2.9, '#ffe9c0', 0.12));
+  pools.push(disc(0, 0.012, -0.5, 2.6, '#ffe0b0', 0.22));
+  // rails of suits along the left wall: dark, ivory, pastel; shoulders and lapels in a lighter shade
+  g.push(box(0.06, 0.06, 6.5, -HX + 0.55, 2.1, -0.4, GOLDC));
+  const SUITS = ['#1b1830', '#f4eedf', '#9fe8e0', '#ffb38a', '#1b1830', '#3a4a6a', '#f4eedf', '#c8a0d8'];
+  for (let i = 0; i < 14; i++) { const z = -3.4 + i * 0.47, c = SUITS[i % SUITS.length]; g.push(box(0.12, 0.9, 0.42, -HX + 0.55, 1.6, z, c), box(0.13, 0.4, 0.08, -HX + 0.62, 1.85, z + 0.08, shadeHex(c, 1.25)), box(0.14, 0.1, 0.44, -HX + 0.55, 2.03, z, shadeHex(c, 0.85))); }
+  // gowns on three mannequins along the right wall
+  [['#3a1d8a', '#ffe14a', -2.4], ['#c0103a', '#ffcf3a', -0.4], ['#e8c040', '#ff2bd1', 1.6]].forEach(([c, t, z]) => {
+    g.push(cyl(0.32, 0.34, 0.1, 12, HX - 0.9, 0.05, z, GOLDC), cyl(0.03, 0.03, 0.6, 6, HX - 0.9, 0.4, z, GOLDC));
+    g.push(tint(new THREE.CylinderGeometry(0.16, 0.42, 1.0, 12).translate(HX - 0.9, 0.72, z), c), box(0.32, 0.45, 0.2, HX - 0.9, 1.45, z, c), box(0.34, 0.05, 0.22, HX - 0.9, 1.22, z, t), box(0.14, 0.2, 0.14, HX - 0.9, 1.8, z, '#e8dccc'), tint(new THREE.SphereGeometry(0.12, 8, 6).translate(HX - 0.9, 2.0, z), '#e8dccc'));
+  });
+  // accessories case: bow ties, sunglasses, a fedora, pearls, a clutch, under glass
+  g.push(box(2.2, 0.95, 0.7, 2.2, 0.47, 3.4, '#4a2240'), box(2.24, 0.04, 0.74, 2.2, 0.97, 3.4, GOLDC), box(2.1, 0.3, 0.6, 2.2, 1.14, 3.4, '#bfe4f2'));
+  g.push(box(0.2, 0.08, 0.06, 1.4, 1.03, 3.4, '#1b1830'), box(0.28, 0.05, 0.08, 1.85, 1.02, 3.4, '#101018'), cyl(0.15, 0.17, 0.08, 10, 2.35, 1.04, 3.4, '#5a4a3a'), cyl(0.09, 0.09, 0.08, 10, 2.35, 1.1, 3.4, '#3a2a20'));
+  for (let i = 0; i < 9; i++) g.push(tint(new THREE.SphereGeometry(0.022, 5, 4).translate(2.7 + Math.cos(i * 0.7) * 0.12, 1.02, 3.4 + Math.sin(i * 0.7) * 0.08), '#fff6ec'));
+  g.push(box(0.26, 0.12, 0.06, 3.05, 1.04, 3.4, '#ff2bd1'));
+  // the counter at the back right, a velvet sofa, palms
+  g.push(box(2.4, 1.0, 0.8, 3.6, 0.5, -3.6, '#4a2240'), box(2.5, 0.06, 0.9, 3.6, 1.03, -3.6, GOLDC), box(0.4, 0.3, 0.3, 4.3, 1.21, -3.6, '#22203a'));
+  g.push(box(2.2, 0.42, 0.8, -1.0, 0.21, 3.6, '#7a2a5a'), box(2.2, 0.6, 0.2, -1.0, 0.6, 4.0, '#7a2a5a'), box(0.2, 0.55, 0.8, -2.1, 0.35, 3.6, '#7a2a5a'), box(0.2, 0.55, 0.8, 0.1, 0.35, 3.6, '#7a2a5a'));
+  plant(g, -HX + 0.7, 4.2, 1.5, GOLDC, '#2f7f5a', 0); plant(g, HX - 0.7, -4.3, 1.4, GOLDC, '#2f7f5a', 0);
+  // the fitting podium and its three-way mirror (back left)
+  g.push(cyl(1.0, 1.1, 0.2, 18, -2.4, 0.1, -2.9, '#7a3a6a'), cyl(0.9, 0.9, 0.03, 18, -2.4, 0.215, -2.9, GOLDC));
+  for (const [x, ry] of [[-3.6, 0.5], [-2.4, 0], [-1.2, -0.5]]) g.push(box(1.1, 2.5, 0.06, x, 1.45, -4.6 + Math.abs(ry) * 0.6, '#8fa8bc', 0, ry), box(1.2, 0.1, 0.08, x, 2.75, -4.59 + Math.abs(ry) * 0.6, GOLDC, 0, ry));
+  // the front: a glass railing over the atrium (painted beyond it), the escalator coming up at the right
+  g.push(box(HX * 2 - 3, 1.0, 0.04, -1.4, 0.55, HZ - 0.32, '#d8f4fa'), box(HX * 2 - 3, 0.06, 0.08, -1.4, 1.07, HZ - 0.32, GOLDC));
+  B.add(HX * 2, 3.0, 0, 1.6, HZ - 0.05, PI, (c, W, Hh) => {
+    P.grad(c, W, Hh, '#cfe2e8', '#9ec4cc');
+    c.fillStyle = '#ddd4c8'; c.fillRect(0, Hh * 0.62, W, Hh * 0.38);
+    c.fillStyle = '#d9e8ec'; c.beginPath(); c.ellipse(W * 0.5, Hh * 0.78, W * 0.14, Hh * 0.08, 0, 0, 6.3); c.fill();
+    c.fillStyle = '#5fd3e6'; c.beginPath(); c.ellipse(W * 0.5, Hh * 0.77, W * 0.11, Hh * 0.055, 0, 0, 6.3); c.fill();
+    for (let i = 0; i < 5; i++) { c.fillStyle = ['#ff2bd1', '#27a8c8', '#3aaa5a', '#ff4fa3', '#ff8a3d'][i]; c.fillRect(W * (0.05 + i * 0.19), Hh * 0.36, W * 0.15, Hh * 0.22); c.fillStyle = '#fff6ec'; c.fillRect(W * (0.06 + i * 0.19), Hh * 0.3, W * 0.13, Hh * 0.05); }
+    P.text(c, 'THE ATRIUM BELOW', W * 0.5, Hh * 0.12, Hh * 0.06, '#5a6a7a');
+  });
+  B.add(2.6, 0.6, 0, 3.7, -HZ + 0.06, 0, (c, W, Hh) => { P.fill(c, W, Hh, '#2a1a30'); P.frame(c, W, Hh, GOLDC, 5); P.text(c, 'VELVET ROPE COUTURE', W / 2, Hh * 0.42, Hh * 0.3, '#ffe9b0', { italic: true, max: W * 0.92 }); P.text(c, 'EVENING · TAILORING · ACCESSORIES', W / 2, Hh * 0.78, Hh * 0.13, '#d8b4ff', { max: W * 0.9 }); });
+  g.push(box(1.4, 0.3, 2.4, 5.4, 0.15, 3.8, '#c9c0d8'), box(0.08, 1.0, 2.4, 4.68, 0.6, 3.8, '#d8f4fa'));
+  const seats = [{ x: -1.5, z: 3.55, y: 0.45, yaw: PI, kind: 'bench' }, { x: -0.5, z: 3.55, y: 0.45, yaw: PI, kind: 'bench' }];
+  const blocks = [{ x0: -HX, x1: -HX + 0.9, z0: -3.8, z1: 3.0 }, { x0: HX - 1.3, x1: HX, z0: -2.9, z1: 2.1 }, { x0: 2.3, x1: 4.9, z0: -4.1, z1: -3.1 }, { x0: 1.0, x1: 3.4, z0: 3.0, z1: 3.8 }, { x0: -2.2, x1: 0.2, z0: 3.15, z1: 4.2 }, { x0: -4.3, x1: -0.6, z0: -5, z1: -4.2 }, { x0: 4.6, x1: 6.2, z0: 2.6, z1: 5.0 }];
+  Object.assign(room, {
+    hx: HX, hz: HZ, h: H, geo: g, rim: '#4a2a4a', amb: 0.5, ambCol: '#fff0e0', clerk: 'LEO', bloomK: 0.4,
+    lights: [{ x: 0, y: 3.2, z: -0.5, hex: '#fff0d8', r: 7, k: 0.42 }, { x: -2.4, y: 3.2, z: -3, hex: '#ffe0f0', r: 4, k: 0.4 }, { x: 4.5, y: 2.6, z: -0.4, hex: '#ffd8a0', r: 4, k: 0.3 }, { x: -5, y: 2.6, z: 0, hex: '#e8e0ff', r: 4, k: 0.3 }],
+    blocks, seats, me: [0, 2.6], cast: { LEO: [3.6, -4.3, 0] },
+    use: { x: -2.4, z: -2.5, r: 1.4 },
+    uses: [{ x: -2.4, z: -2.5, r: 1.4, kind: 'fitting', hint: 'try on suits and evening wear' }],
+    wide: [4.6, 2.8, 3.6, -1.0, 1.2, -2],
+    idle(t, dt, still) { const n = room.npc.LEO, k = still ? 0.3 : 1; n.armR.rotation.set(-0.5, 0, -0.15); n.armL.rotation.set(-0.5, 0, 0.15); n.head.rotation.y = Math.sin(t * 0.4) * 0.5 * k; },
   });
 }
 
@@ -781,5 +849,5 @@ function buildLounge(room) {
 const posterA = (c, W, H) => { P.grad(c, W, H, '#2a3a8a', '#101848'); c.fillStyle = '#ffd166'; c.beginPath(); c.arc(W * 0.5, H * 0.42, H * 0.22, 0, 6.3); c.fill(); c.fillStyle = '#101848'; c.fillRect(W * 0.46, H * 0.2, W * 0.08, H * 0.5); P.text(c, 'MAE CALLOWAY', W / 2, H * 0.8, H * 0.09, '#f6f1e7', { italic: true, max: W * 0.9 }); P.text(c, 'BLUE NOTES · BLUE SKIES', W / 2, H * 0.92, H * 0.05, '#9fd0ff', { max: W * 0.9 }); };
 const posterB = (c, W, H) => { P.grad(c, W, H, '#e8c890', '#c8945e'); c.fillStyle = '#5a3016'; c.beginPath(); c.moveTo(W * 0.3, H * 0.6); c.lineTo(W * 0.5, H * 0.15); c.lineTo(W * 0.7, H * 0.6); c.fill(); c.fillStyle = '#c0303a'; c.fillRect(W * 0.2, H * 0.58, W * 0.6, H * 0.04); P.text(c, 'THE DRIFTWOOD', W / 2, H * 0.75, H * 0.09, '#3a2016', { italic: true, max: W * 0.9 }); P.text(c, 'TRIO', W / 2, H * 0.88, H * 0.1, '#c0303a', { italic: true }); };
 
-export const VENUE_BUILD = { diner: buildDiner, arcade: buildArcade, motel: buildMotel, mall: buildMall, bait: buildBait, lounge: buildLounge, spire: buildSpire };
+export const VENUE_BUILD = { boutique: buildBoutique, diner: buildDiner, arcade: buildArcade, motel: buildMotel, mall: buildMall, bait: buildBait, lounge: buildLounge, spire: buildSpire };
 Object.assign(VENUE_LOOKS, SPIRE_LOOKS);

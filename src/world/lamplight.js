@@ -12,7 +12,13 @@ export const lampU = {
   uLampOld: { value: null }, uLampKey: { value: null },
   uLampROld: { value: new THREE.Vector4(0, 0, 1, 1) }, uLampRKey: { value: new THREE.Vector4(0, 0, 1, 1) },
   uLampOn: { value: 1 }, uNight: nightU, uGlare: glareU,
+  // raised decks with their own lights (the Solstice Terrace's string lights 79 m up, Starlight Pier's bulbs and
+  // lamps out over the sea): x0, z0, x1, z1 of the deck, its floor height and a warm light colour * strength.
+  // Characters on a deck pick it up relative to the floor they stand on (not to the street), plus a soft fill.
+  uDeck: { value: [new THREE.Vector4(0, 0, -1, -1), new THREE.Vector4(0, 0, -1, -1)] }, uDeckY: { value: [0, 0] },
+  uDeckC: { value: [new THREE.Color(0, 0, 0), new THREE.Color(0, 0, 0)] },
 };
+export function setDeckLight(i, x0, z0, x1, z1, y, hex, k) { lampU.uDeck.value[i].set(x0, z0, x1, z1); lampU.uDeckY.value[i] = y; lampU.uDeckC.value[i].set(hex).multiplyScalar(k); }
 // called by city.js / keyCity.js once their lamp maps exist (x0, z0, width, depth of the canvas in metres)
 export function setLampMap(which, tex, x0, z0, w, h) {
   lampU[which === 'key' ? 'uLampKey' : 'uLampOld'].value = tex;
@@ -34,7 +40,7 @@ export function lampPatch(sh) {
       #endif
       vLWP = (modelMatrix * lw).xyz;
     }`);
-  sh.fragmentShader = 'varying vec3 vLWP; uniform sampler2D uLampOld, uLampKey; uniform vec4 uLampROld, uLampRKey; uniform float uLampOn, uNight, uGlare;\n'
+  sh.fragmentShader = 'varying vec3 vLWP; uniform sampler2D uLampOld, uLampKey; uniform vec4 uLampROld, uLampRKey; uniform float uLampOn, uNight, uGlare; uniform vec4 uDeck[2]; uniform float uDeckY[2]; uniform vec3 uDeckC[2];\n'
     + sh.fragmentShader.replace('#include <opaque_fragment>', `
     {
       float lk = uLampOn * uNight * (1.0 - 0.85 * uGlare);
@@ -44,6 +50,13 @@ export function lampPatch(sh) {
         float ik = step(0.0, uk.x) * step(uk.x, 1.0) * step(0.0, uk.y) * step(uk.y, 1.0);
         vec3 lampL = texture2D(uLampOld, clamp(uo, 0.0, 1.0)).rgb * io * (1.0 - ik) + texture2D(uLampKey, clamp(uk, 0.0, 1.0)).rgb * ik;
         float hk = mix(1.0, 0.78, clamp(vLWP.y / 1.8, 0.0, 1.0)) * (1.0 - smoothstep(3.0, 5.5, vLWP.y));
+        // on a raised, lit deck: its own light, by the height above that deck
+        for (int d = 0; d < 2; d++) {
+          vec4 R = uDeck[d]; float hy = vLWP.y - uDeckY[d];
+          float inD = step(R.x, vLWP.x) * step(vLWP.x, R.z) * step(R.y, vLWP.z) * step(vLWP.z, R.w) * step(-0.4, hy) * (1.0 - smoothstep(3.2, 5.0, hy));
+          lampL += uDeckC[d] * inD * mix(1.0, 0.85, clamp(hy / 1.8, 0.0, 1.0));
+          hk = max(hk, inD * mix(1.0, 0.8, clamp(hy / 1.8, 0.0, 1.0)));
+        }
         vec3 before = outgoingLight;
         float b0 = dot(before, vec3(0.299, 0.587, 0.114));
         outgoingLight += diffuseColor.rgb * lampL * lk * hk * (1.0 - 0.55 * clamp(b0, 0.0, 1.0)) * ${LAMP_GAIN_CHAR.toFixed(2)};

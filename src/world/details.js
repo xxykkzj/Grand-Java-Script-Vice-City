@@ -4,6 +4,7 @@
 // Gulls and boats move, so they get one draw call each.
 import * as THREE from 'three';
 import { box, cyl, tint, merge, rng, PI, timeU } from '../core/util.js';
+import { pierDetails } from './pier.js';
 import { PIER, ADS, SIDE_X, offRoad, inJunction, footprint } from './layout.js';
 import { KEY_ADS } from './key.js';
 import { beachGeometry } from './beach.js';
@@ -293,6 +294,7 @@ export function addDetails(L, S, N, glows, addWin, signs) {
   // the rest of the beach (kiosk, rental stand, boardwalks, showers, bins, fire pit, sandcastles, kayaks,
   // towels, dune grass, shells, surfboards): world/beach.js
   beachGeometry(L.beach, S);
+  pierDetails(L, S, N, glows, { bench: (x, z, yaw) => { bench(x, z, yaw); const b = L.loose[L.loose.length - 1]; return b && b.kind === 'bench' && Math.abs(b.hx - x) < 0.01 ? b : null; } });
   glows.push([L.beach.fire.x, 0.9, L.beach.fire.z, '#ff9a3d', 7, 0]);
   for (const x of [20, -200, 230]) {
     for (const [ox, oz] of [[-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]]) S.push(box(0.1, 2.6, 0.1, x + ox, 1.3, 124 + oz, CREAM));

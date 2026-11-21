@@ -9,7 +9,7 @@
 // Menus reuse the shop panel (game/places.js asks menu(kind) for a provider).
 import { clamp, rng, PI, reducedMotion, angleDelta } from '../core/util.js';
 import { SKYBAR_MENU } from './story.js';
-import { CAST, BARKS, DINER_MENU, DINER_SIT, JUKEBOX, MOTEL_MENU, MOTEL_WAKE, PRETZELS, WISHES, BAIT_MENU, TRIVIA, TRIVIA_RIGHT, TRIVIA_WRONG, LOUNGE_MENU, CLUB_MENU, KIOSK_MENU } from './story.js';
+import { CAST, BARKS, DINER_MENU, DINER_SIT, JUKEBOX, MOTEL_MENU, MOTEL_WAKE, PRETZELS, WISHES, BAIT_MENU, TRIVIA, TRIVIA_RIGHT, TRIVIA_WRONG, LOUNGE_MENU, CLUB_MENU, KIOSK_MENU, PIER_MENU, PIER_GREET } from './story.js';
 import { OY } from './interiors.js';
 
 const $ = (id) => document.getElementById(id);
@@ -57,6 +57,11 @@ export function createVenues(game) {
     skybar: {
       title: 'THE AFTERGLOW BAR · FLOOR 23', label: 'ORDER',
       items: () => SKYBAR_MENU, greet: () => (game.spire ? game.spire.greet() : ''),
+      pick: (o) => feed(o),
+    },
+    pier: {
+      title: 'SUGAR TIDE · STARLIGHT PIER', label: 'BUY',
+      items: () => PIER_MENU, greet: () => PIER_GREET[n++ % PIER_GREET.length],
       pick: (o) => feed(o),
     },
     kiosk: {
@@ -237,8 +242,31 @@ export function createVenues(game) {
     nowPlaying,
     get cardShown() { return !!np && !np.hidden; },
     // E at a use spot: true when handled here
+    // the Galleria's escalator: up from the atrium to Velvet Rope Couture, or back down (a short ride, X skips)
+    escalator(up = true) {
+      const from = game.inside, cut = game.cut, places = game.places;
+      if (!from) return false;
+      const r0 = from.room, O = { x: r0.ox, z: r0.oz }, OYc = player.pos.y;
+      stats.escalator = (stats.escalator || 0) + 1;
+      const done = () => { if (up) places.enterRoom('boutique', 0, 2.6); else places.enterRoom('mall', 7.8, 4.4); player.yaw = up ? PI : 0; hud.toast(up ? 'VELVET ROPE COUTURE' : 'SEAFOAM GALLERIA', up ? 'UPPER LEVEL · STEP ONTO THE PODIUM TO TRY THINGS ON' : 'BACK DOWN IN THE ATRIUM'); };
+      if (!up) { cut.fade(true); game.busy = 'door'; setTimeout(() => { done(); game.busy = null; setTimeout(() => cut.fade(false), 60); }, 340); return true; }
+      game.act.reset();
+      cut.run([
+        { dur: 2.6, start() { cut.setFov(50); },
+          tick(k, dt) {
+            const e = k * k * (3 - 2 * k), lz = 2.6 - e * 6.2, ly = Math.max(0, Math.min(3.2, (2.0 - lz) / 6.1 * 3.1));
+            player.pos.set(O.x + 7.8, OYc + ly, O.z + lz); player.yaw = PI; player.speed = 0; player.animate(dt, 0, null);
+            camera.position.set(O.x + 4.2, OYc + 2.6 + ly * 0.6, O.z + lz + 4.0); camera.lookAt(O.x + 7.8, OYc + ly + 1.2, O.z + lz);
+            if (r0.idle) r0.idle(game.dt ? performance.now() / 1000 : 0, dt, false);
+            if (k > 0.85) cut.fade(true);
+          } },
+      ], done, true);
+      return true;
+    },
     use(p, u) {
       const k = u.kind || p.key;
+      if (k === 'escalator') return api.escalator(true);
+      if (k === 'fitting') { game.places.openShop('boutique'); return true; }
       if (k === 'jukebox') {
         jukeI++; stats.songs++; audio.blip(true);
         if (p.room.setJuke) p.room.setJuke(jukeI);

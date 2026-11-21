@@ -16,12 +16,19 @@ const statLine = (o) => `${o.kind === 'throw' ? 'BLAST ' + o.radius + ' M' : 'RA
 export function createPlaces(game, scene, camera) {
   const { L, player, hud, audio, env, cam, cut, save } = game;
   // the story places and the venues (game/venues.js) share the rings, the walk-in and the way out
-  const list = [...Object.values(L.places), ...Object.values(L.venues || {})], rooms = {};
+  const list = [...Object.values(L.places), ...Object.values(L.venues || {})].filter((p) => !p.hidden), rooms = {};
   const byKey = (k) => L.places[k] || (L.venues && L.venues[k]);
   // a door faces along (nx, nz): +z for everything on Lumina Boulevard
   const N = (p) => [p.nx ?? 0, p.nz ?? 1];
   const faceYaw = (p) => { const [nx, nz] = N(p); return Math.atan2(nx, nz); };
   const outside = (p, d = 3.4) => { const [nx, nz] = N(p); return [p.x + nx * d, p.z + nz * d]; };
+  // out of the door: a short walk from the ring onto the sidewalk with the camera looking back from the street,
+  // then she turns along the street and the camera comes round behind her (never inside a canopy or an atrium)
+  const walkOutOf = (p) => {
+    if (!game.rules || !game.rules.walkOut) return;
+    const [nx, nz] = N(p), [x1, z1] = outside(p), side = Math.atan2(nx, nz) + PI / 2;
+    game.rules.walkOut(p.x, p.z, x1, z1, side, { camOff: -0.35 });
+  };
   // the use spots in a room (E): r.uses, or the single r.use; the nearest one in reach
   const usesOf = (r) => r.uses || (r.use ? [r.use] : []);
   const nearUse = (r) => { let best = null, bd = 1e9; for (const u of usesOf(r)) { const d = Math.hypot(player.pos.x - r.ox - u.x, player.pos.z - r.oz - u.z); if (d < u.r && d < bd) { bd = d; best = u; } } return best; };
@@ -32,12 +39,13 @@ export function createPlaces(game, scene, camera) {
   const local = { x: 0, z: 0 };
   let shop = null, sel = 0, msg = '', heatCd = 0, barkN = 0, vend = null;
 
+  const isWear = (k) => k === 'wear' || k === 'boutique';
   const worn = () => OUTFITS.find((o) => o.id === save.outfit) || OUTFITS[0];
   const owns = (o) => !o.price || save.owned.includes(o.id) || (o.gift && save.gift[o.id]);
   player.model.setOutfit(worn());
 
   const room = (p) => rooms[p.key] || (rooms[p.key] = buildRoom(p, scene, game));
-  const bark = (key) => { const b = BARKS[key]; return `${CAST[b[0]].name}: “${b[1][barkN++ % b[1].length]}”`; };
+  const bark = (key) => { const b = BARKS[key]; return `${key === 'boutique' ? 'LAURENT' : CAST[b[0]].name}: “${b[1][barkN++ % b[1].length]}”`; };
 
   function setInside(p, x, z) {
     const r = p.room = room(p);
@@ -123,7 +131,7 @@ export function createPlaces(game, scene, camera) {
   }
   function after(p, ev) {
     if (!ev) return;
-    if (ev.leave) putOutside(...outside(p), faceYaw(p));
+    if (ev.leave) { putOutside(...outside(p), faceYaw(p)); walkOutOf(p); }
     ev.done();
   }
   // a conversation when you are already inside
@@ -134,19 +142,21 @@ export function createPlaces(game, scene, camera) {
   }
   function leave() {
     const p = game.inside;
+    // upstairs rooms (Velvet Rope Couture) lead back down into the room below, not out to the street
+    if (p.up) { game.venues.escalator(false); return; }
     game.busy = 'door'; cut.fade(true);
-    setTimeout(() => { putOutside(...outside(p), faceYaw(p)); game.busy = null; setTimeout(() => cut.fade(false), 60); }, 320);
+    setTimeout(() => { putOutside(...outside(p), faceYaw(p)); game.busy = null; walkOutOf(p); setTimeout(() => cut.fade(false), 60); }, 320);
   }
 
   // ---- shops
   const el = { box: $('shop'), t: $('shopt'), l: $('shopl'), f: $('shopf') };
   // a venue menu (game/venues.js): { title, items(), pick(item, i), label, foot, greet() }
   const prov = () => (game.venues ? game.venues.menu(shop) : null);
-  const items = () => { const v = prov(); return v ? v.items() : shop === 'wear' ? OUTFITS : shop === 'vend' ? VEND[vend.brand] || VEND.coolwave : shop === 'arms' ? ARMS : SNACKS; };
+  const items = () => { const v = prov(); return v ? v.items() : shop === 'wear' ? OUTFITS.filter((o) => !o.shop) : shop === 'boutique' ? OUTFITS.filter((o) => o.shop === 'boutique') : shop === 'vend' ? VEND[vend.brand] || VEND.coolwave : shop === 'arms' ? ARMS : SNACKS; };
   function render() {
-    const wear = shop === 'wear', arms = shop === 'arms', list = items(), inv = game.arms, v = prov();
+    const wear = isWear(shop), arms = shop === 'arms', list = items(), inv = game.arms, v = prov();
     if (sel >= list.length) sel = 0;
-    el.t.textContent = v ? v.title : wear ? 'ZIGZAG THREADS' : shop === 'vend' ? (BRANDS[vend.brand] || BRANDS.coolwave).name : SHOP_NAME[shop] || 'PELICAN PANTRY 24';
+    el.t.textContent = v ? v.title : shop === 'boutique' ? 'VELVET ROPE COUTURE' : wear ? 'ZIGZAG THREADS' : shop === 'vend' ? (BRANDS[vend.brand] || BRANDS.coolwave).name : SHOP_NAME[shop] || 'PELICAN PANTRY 24';
     el.l.textContent = '';
     list.forEach((o, i) => {
       const li = document.createElement('li'), b = document.createElement('b'), s = document.createElement('span'), pr = document.createElement('i');
@@ -156,7 +166,7 @@ export function createPlaces(game, scene, camera) {
       if (arms) s.textContent += ` ${statLine(o)}${inv.owned[o.id] ? ` · CARRYING ${inv.ammo[o.id]}` : ''}`;
       if (i === sel) li.className = 'sel';
       // tap / click: the first tap picks, a tap on the picked line buys or wears it
-      li.addEventListener('click', () => { if (!shop) return; if (sel === i) buy(); else { sel = i; msg = ''; audio.step(1); if (wear) player.model.setOutfit(OUTFITS[i]); render(); } });
+      li.addEventListener('click', () => { if (!shop) return; if (sel === i) buy(); else { sel = i; msg = ''; audio.step(1); if (wear) player.model.setOutfit(items()[i]); render(); } });
       li.append(b, pr, s); el.l.appendChild(li);
     });
     if (v) { el.f.textContent = msg || (game.input.touchMode ? `Tap to choose · tap again or ${v.label} · DONE to leave` : v.foot || `W/S choose · Enter ${v.label.toLowerCase()} · Esc done`); return; }
@@ -166,9 +176,9 @@ export function createPlaces(game, scene, camera) {
   function openShop(kind) {
     shop = kind; game.busy = 'shop'; const v = prov();
     msg = v ? v.greet() : kind === 'vend' ? 'IT HUMS AT YOU EXPECTANTLY' : bark(kind);
-    sel = kind === 'wear' ? Math.max(0, OUTFITS.findIndex((o) => o.id === save.outfit)) : 0;
+    sel = isWear(kind) ? Math.max(0, items().findIndex((o) => o.id === save.outfit)) : 0;
     el.box.hidden = false; render();
-    const bb = el.box.querySelector('[data-k="Enter"]'); if (bb) bb.textContent = v ? v.label : kind === 'wear' ? 'WEAR / BUY' : 'BUY';
+    const bb = el.box.querySelector('[data-k="Enter"]'); if (bb) bb.textContent = v ? v.label : isWear(kind) ? 'WEAR / BUY' : 'BUY';
     audio.blip(true);
   }
   function closeShop() {
@@ -198,8 +208,8 @@ export function createPlaces(game, scene, camera) {
   function buy() {
     const v = prov();
     if (v) { const m = v.pick(items()[sel], sel); if (!shop) return; msg = m || ''; return render(); }
-    if (shop === 'wear') {
-      const o = OUTFITS[sel];
+    if (isWear(shop)) {
+      const o = items()[sel];
       if (save.outfit === o.id) { msg = 'YOU ARE WEARING IT'; return render(); }
       if (!owns(o)) {
         if (game.money < o.price) { msg = `NOT ENOUGH CASH: ${o.name} IS $${o.price}`; audio.blip(false); return render(); }
@@ -246,7 +256,7 @@ export function createPlaces(game, scene, camera) {
       else if (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'KeyE' || e.code === 'Space') return buy();
       else return;
       msg = ''; audio.step(1);
-      if (shop === 'wear') player.model.setOutfit(OUTFITS[sel]);
+      if (isWear(shop)) player.model.setOutfit(items()[sel]);
       render();
     },
     // pick a menu line directly (automated checks): select line i and press it
@@ -263,7 +273,7 @@ export function createPlaces(game, scene, camera) {
       else openShop(p.key);
     },
     hint() {
-      if (shop) return [['W S', 'choose'], ['Enter', shop === 'wear' ? 'wear / buy' : 'buy'], ['Esc', 'done']];
+      if (shop) return [['W S', 'choose'], ['Enter', isWear(shop) ? 'wear / buy' : 'buy'], ['Esc', 'done']];
       const p = game.inside, r = p.room;
       const ah = game.act.hint();
       if (ah) return ah;
@@ -298,7 +308,7 @@ export function createPlaces(game, scene, camera) {
       if (game.busy === 'arcade' && game.venues) { game.venues.arcadeUpdate(dt); return; }
       if (shop) {
         const u = shopUse || r.use;
-        if (shop === 'wear') {
+        if (isWear(shop)) {
           player.pos.set(r.ox + u.x, OY + 0.22, r.oz + u.z - 0.4); player.yaw += angleDelta(player.yaw, 0.25 + (reducedMotion ? 0 : Math.sin(timeU.value * 0.9) * 0.5)) * (1 - Math.exp(-5 * dt));
           frameFitting(r.ox + u.x, OY + 0.22, r.oz + u.z - 0.4);
         } else {

@@ -78,6 +78,11 @@ function createLampMap(L) {
 }
 const clampN = (v, a, b) => (v < a ? a : v > b ? b : v);
 export const LAMP_GAIN = 1.7;
+// value noise for the puddle mask (ground shader)
+const PUDDLE_GLSL = `float phash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float pnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(phash(i), phash(i + vec2(1.0, 0.0)), f.x), mix(phash(i + vec2(0.0, 1.0)), phash(i + vec2(1.0, 1.0)), f.x), f.y); }
+`;
 
 // The ground material: albedo from a painted canvas, lamp pools at night, and (in the rain) darker asphalt,
 // a sky sheen, lamp streaks and rain speckle, all in the one fragment shader. x0/z0/W/H: the rectangle the
@@ -92,10 +97,17 @@ export function groundMaterial(tex, lampTex, x0, z0, W, H, streaks) {
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, { uWet: wetU, uRain: rainU, uNight: nightU, uGlare: glareU, uTime: timeU, uSkyC: reflU.sky, uSunC: reflU.sun, uSunD: reflU.dir, uLampMap: { value: lampTex } });
     sh.vertexShader = 'varying vec3 vWP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vWP = (modelMatrix * vec4(position, 1.0)).xyz;');
-    sh.fragmentShader = 'uniform float uWet, uRain, uNight, uGlare, uTime; uniform vec3 uSkyC, uSunC, uSunD; uniform sampler2D uLampMap; varying vec3 vWP;\n' + sh.fragmentShader
+    sh.fragmentShader = 'uniform float uWet, uRain, uNight, uGlare, uTime; uniform vec3 uSkyC, uSunC, uSunD; uniform sampler2D uLampMap; varying vec3 vWP;\n' + PUDDLE_GLSL + sh.fragmentShader
       .replace('#include <map_fragment>', /* glsl */`#include <map_fragment>
         float wetK = uWet * (0.5 + 0.5 * smoothstep(0.45, 0.12, dot(diffuseColor.rgb, vec3(0.333))));
-        diffuseColor.rgb *= 1.0 - 0.4 * wetK;`)
+        // puddles: a two-octave noise mask on the paved (darker) ground. They grow as it rains and shrink as it
+        // dries (the threshold follows uWet), so the last ones to go are the deepest
+        float pud = 0.0;
+        if (uWet > 0.02) {
+          float pn = pnoise(vWP.xz * 0.16) * 0.65 + pnoise(vWP.xz * 0.53 + 7.3) * 0.35;
+          pud = smoothstep(0.74 - 0.2 * uWet, 0.79 - 0.2 * uWet, pn) * smoothstep(0.1, 0.45, uWet) * smoothstep(0.62, 0.3, dot(diffuseColor.rgb, vec3(0.333)));
+        }
+        diffuseColor.rgb *= (1.0 - 0.4 * wetK) * (1.0 - 0.45 * pud);`)
       .replace('#include <opaque_fragment>', /* glsl */`
         vec3 lampL = texture2D(uLampMap, vec2((vWP.x - ${x0.toFixed(1)}) / ${W.toFixed(1)}, (vWP.z - ${z0.toFixed(1)}) / ${H.toFixed(1)})).rgb;
         // street-light and neon pools: they fade in as the sky darkens (not while the sunset is still lighting
@@ -121,6 +133,17 @@ export function groundMaterial(tex, lampTex, x0, z0, W, H, streaks) {
             }
           }` : 'refl += lampL * lampC * 0.6 * pow(1.0 - max(dot(V, N), 0.0), 2.0);'}
           refl += uSunC * pow(max(dot(N, normalize(uSunD + V)), 0.0), 140.0);
+          // in a puddle the ground is a mirror: a stronger sky, and the street lights and neon pools on the lamp map
+          // smeared away from the camera into long streaks (a light behind the puddle reflects in it), rippling in the rain
+          if (pud > 0.01) {
+            vec2 away = normalize(vWP.xz - cameraPosition.xz + vec2(1e-4)), side = vec2(-away.y, away.x);
+            float rip = 0.8 + 0.2 * sin(vWP.x * 9.0 + uTime * 7.0) * sin(vWP.z * 8.0 - uTime * 6.0) * uRain;
+            vec3 st = vec3(0.0);
+            for (int k = 1; k <= 4; k++) { float d = float(k) * 1.9; vec2 q = vWP.xz + away * d + side * sin(uTime * 3.0 + d) * 0.12 * uRain;
+              st += texture2D(uLampMap, vec2((q.x - ${x0.toFixed(1)}) / ${W.toFixed(1)}, (q.y - ${z0.toFixed(1)}) / ${H.toFixed(1)})).rgb * (1.1 - float(k) * 0.18); }
+            vec3 sky = uSkyC * (0.25 + 0.55 * pow(1.0 - max(V.y, 0.0), 3.0));
+            refl += pud * (sky + st * vec3(1.0, 0.85, 0.7) * uNight * 0.16 * rip) / max(wetK, 0.35);
+          }
           vec2 cell = floor(vWP.xz * 2.5);
           refl += vec3(0.55, 0.6, 0.7) * step(0.991, fract(sin(dot(cell, vec2(12.9898, 78.233)) + floor(uTime * 9.0) * 3.7) * 43758.5453)) * uRain * 0.5;
           outgoingLight += refl * wetK;
@@ -142,7 +165,7 @@ export function buildGround(scene, L, renderer) {
   const ground = new THREE.Mesh(geo, groundMaterial(tex, lampMap.tex, -HX, -HZ, HX * 2, HZ * 2, true));
   // sandy skirt so the island has an edge where it meets the water
   const skirt = new THREE.Mesh(new THREE.BoxGeometry(HX * 2, 3, HZ * 2), new THREE.MeshLambertMaterial({ color: '#c9a878' }));
-  skirt.position.y = -1.52;
+  skirt.position.y = -1.8;                  // top 30 cm under the ground (no depth fight from high up)
   // both belong to the old town's district group (world/districts.js hides them from far away)
   L.groundMeshes = [ground, skirt];
   return canvas;

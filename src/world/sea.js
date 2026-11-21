@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { clamp } from '../core/util.js';
 import { HX, HZ, PIER, CAUSEWAY, KEY, MPIER } from './layout.js';
+import { APIER } from './pier.js';
 
 export const WL = -0.6;
 export const FLOAT_Y = WL - 1.14;        // feet-level of a swimmer treading at the surface (hips ~0.18 under)
@@ -55,7 +56,7 @@ export function bedAt(x, z) {
   }
   return b;
 }
-export const onDeck = (x, z) => (x > PIER.x0 && x < PIER.x1 && z > PIER.z0 && z < PIER.z1) || (x > MPIER.x0 && x < MPIER.x1 && z > MPIER.z0 && z < MPIER.z1);
+export const onDeck = (x, z) => (x > PIER.x0 && x < PIER.x1 && z > PIER.z0 && z < PIER.z1) || (x > MPIER.x0 && x < MPIER.x1 && z > MPIER.z0 && z < MPIER.z1) || (x > APIER.x0 && x < APIER.x1 && z > HZ - 1 && z < APIER.z1);
 // water depth at a point (0 on land: the island, the pier deck, the causeway deck)
 export function depthAt(x, z) {
   if (Math.abs(x) <= HX && Math.abs(z) <= HZ) return 0;
@@ -91,7 +92,7 @@ export function pushFromSolids(p, r, feetY = -2) {
   };
   out(WALLR.x0, WALLR.x1, WALLR.z0, WALLR.z1);
   out(KEY.x0 - 0.8, KEY.x1 + 0.8, KEY.z0 - 0.8, KEY.z1 + 0.8);
-  if (feetY < -0.25) { out(PIER.x0 - 0.15, PIER.x1 + 0.15, PIER.z0 - 1, PIER.z1 + 0.2); out(MPIER.x0 - 0.15, MPIER.x1 + 0.15, MPIER.z0 - 1, MPIER.z1 + 0.2); }
+  if (feetY < -0.25) { out(PIER.x0 - 0.15, PIER.x1 + 0.15, PIER.z0 - 1, PIER.z1 + 0.2); out(MPIER.x0 - 0.15, MPIER.x1 + 0.15, MPIER.z0 - 1, MPIER.z1 + 0.2); out(APIER.x0 - 0.15, APIER.x1 + 0.15, HZ - 1, APIER.z1 + 0.2); }
   const C = CAUSEWAY;
   out(C.x0, -HX, C.z0 - 0.5, C.z1 + 0.5);
   return hit;

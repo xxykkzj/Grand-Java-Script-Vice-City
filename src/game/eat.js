@@ -17,6 +17,7 @@ const KIND = {
   tea: ['tall', '#e0a040'], fizz: ['cocktail', '#4f8dff'], lager: ['beer'],
   laser: ['tall', '#e8ff5a'], ultra: ['cocktail', '#9b5cff'], mirror: ['cocktail', '#7fe0ff'], kilowatt: ['cocktail', '#ff3f6a'], filler: ['beer'],
   smoothie: ['smoothie'], softserve: ['cone'], coconut: ['coconut'],
+  floss: ['floss'], popcorn: ['popcorn'], corndog: ['corndog'], lemonade: ['tall', '#ff9ac0'],
   cooler: ['tall', '#8dff5a'], tlager: ['beer'], skysour: ['tall', '#ffd447'], sundown: ['cocktail', '#ff6a3d'], nightcap: ['cocktail', '#7a5cff'],
 };
 const DRINKS = new Set(['can', 'mug', 'tall', 'cocktail', 'beer', 'smoothie', 'shake', 'coconut']);
@@ -52,6 +53,10 @@ function model(kind, c) {
     case 'swirl': g.push(cyl(0.06, 0.06, 0.028, 12, 0, 0, 0, '#d89a5a', PI / 2), cyl(0.05, 0.05, 0.004, 12, 0, 0, 0.016, WHITE, PI / 2), box(0.08, 0.006, 0.004, 0, 0, 0.019, '#a0622a')); break;
     case 'taffy': g.push(box(0.05, 0.026, 0.026, 0, 0, 0, '#ff8fc4'), box(0.052, 0.006, 0.027, 0, 0, 0, WHITE));
       for (const s of [-1, 1]) g.push(tint(new THREE.ConeGeometry(0.016, 0.022, 6).rotateZ(s * PI / 2).translate(s * 0.035, 0, 0), '#ff8fc4')); break;
+    case 'floss': g.push(box(0.012, 0.22, 0.012, 0, 0.0, 0, '#f6f1e7')); sph(0.075, 0, 0.15, 0, '#ffb6d9', 1.1); sph(0.05, 0.04, 0.2, 0.02, '#ffc8e2'); sph(0.05, -0.04, 0.12, -0.02, '#ff9ccc'); break;
+    case 'popcorn': for (let i = 0; i < 6; i++) g.push(box(0.03, 0.12, 0.012, -0.035 + (i % 3) * 0.035, 0.0, i < 3 ? 0.04 : -0.04, i % 2 ? '#ff3f3a' : WHITE)); g.push(box(0.012, 0.12, 0.08, 0.05, 0, 0, '#ff3f3a'), box(0.012, 0.12, 0.08, -0.05, 0, 0, WHITE));
+      for (let i = 0; i < 9; i++) sph(0.018, -0.03 + (i % 3) * 0.03, 0.065 + (i % 2) * 0.01, -0.03 + Math.floor(i / 3) * 0.03, '#fff3c8'); break;
+    case 'corndog': g.push(box(0.01, 0.12, 0.01, 0, -0.04, 0, '#e8d0a0'), cyl(0.026, 0.022, 0.14, 8, 0, 0.08, 0, '#d89040'), box(0.006, 0.12, 0.006, 0.024, 0.09, 0, '#ffd21a')); sph(0.026, 0, 0.15, 0, '#d89040'); break;
     default: g.push(box(0.06, 0.06, 0.06, 0, 0, 0, c || WHITE));
   }
   const geo = merge(g);

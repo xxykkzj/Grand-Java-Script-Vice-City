@@ -11,6 +11,7 @@
 // Pure data at the top (no imports from layout.js, which imports this file).
 import * as THREE from 'three';
 import { box, cyl, tint, rng, PI, nightU, timeU } from '../core/util.js';
+import { APIER } from './pier.js';
 
 export const SAND = { x0: -288, x1: 288, z0: 78, z1: 150 };
 export const COURT = { x0: -49, x1: -31, z0: 98, z1: 107, net: -40 };
@@ -18,7 +19,7 @@ export const KIOSK = { x: -92, z: 86, name: 'COCONUT SHACK' };            // the
 export const KIOSK_SPOT = { x: KIOSK.x - 1.3, z: KIOSK.z + 2.55 };         // stand here and press F (the queue is to the right)
 export const RENTAL = { x: 64, z: 87 };
 export const FIRE = { x: -8, z: 128 };
-export const BOARDWALKS = [{ x: -172, z0: 78, z1: 108 }, { x: -15, z0: 78, z1: 114 }, { x: 182, z0: 78, z1: 110 }];
+export const BOARDWALKS = [{ x: -172, z0: 78, z1: 108 }, { x: -15, z0: 78, z1: 114 }, { x: 182, z0: 78, z1: 110 }, { x: APIER.cx, z0: 78, z1: APIER.z0 }];
 export const SHOWERS = [[-36, 81.5], [128, 81.5], [236, 81.5]];
 export const SWIM = { x0: -140, x1: -20, z: 180 };                          // the buoy line marks the swimming area
 export const SANDCASTLES = [[-140, 136], [-133.5, 138.5], [60, 136]];
@@ -26,8 +27,8 @@ export const YOGA = { x: -215, z: 127 };
 // umbrella clusters: [x, z, cols, rows, colour]
 const CLUSTERS = [[-240, 103, 2, 2, '#ff5fa8'], [-88, 106, 2, 2, '#27d8cf'], [70, 106, 3, 1, '#ffd447'], [205, 108, 2, 2, '#ff8a4c']];
 // palm groves near the promenade and the dunes: [x, z, palms]
-const GROVES = [[-262, 87, 3], [-196, 85, 2], [-133, 86, 3], [-58, 88, 2], [150, 86, 3], [216, 88, 2], [268, 85, 2]];
-const TOWELS = [[-205, 119, 0.15], [-160, 126, -0.2], [-70, 127, 0.1], [-24, 121, -0.1], [132, 123, 0.25], [176, 126, -0.15], [250, 121, 0.05], [-255, 129, -0.1]];
+const GROVES = [[-262, 87, 3], [-196, 85, 2], [-133, 86, 3], [-58, 88, 2], [150, 86, 3], [216, 88, 2], [287, 86, 2]];
+const TOWELS = [[-205, 119, 0.15], [-160, 126, -0.2], [-70, 127, 0.1], [-24, 121, -0.1], [132, 123, 0.25], [176, 126, -0.15], [239, 134, 0.05], [-255, 129, -0.1]];
 const KAYAKS = [[112, 142.6, 0.06, 'kayak', '#ff6a3d'], [115.6, 142.4, -0.04, 'kayak', '#27d8cf'], [119.2, 142.7, 0.05, 'sup', '#ffd447'], [122.4, 142.5, 0, 'sup', '#ff4fa3'], [126, 142.6, -0.06, 'kayak', '#9b7bff']];
 const BOARDS = [[-205, 98], [-203.6, 98.4], [-202.2, 98.1], [165, 118], [166.3, 118.4]];
 const BINS = [[-168.6, 80.4], [-11.6, 80.4], [185.6, 80.4], [-96.5, 84.6], [68.5, 84.6]];
@@ -43,7 +44,9 @@ export const BEACH_ZONES = [
   Zr('fire pit', FIRE.x - 4, FIRE.x + 4, FIRE.z - 4, FIRE.z + 4, 'fire'),
   Zr('kiosk and its queue', KIOSK.x - 3.5, KIOSK.x + 3.5, KIOSK.z - 2.5, KIOSK.z + 10, 'kiosk'),
   // the wet sand at the waterline (the pier foot between them keeps its benches and planters)
-  Zr('shoreline wet strip', -300, 27.5, 145, 162), Zr('shoreline wet strip', 52.5, 300, 145, 162),
+  Zr('shoreline wet strip', -300, 27.5, 145, 162), Zr('shoreline wet strip', 52.5, APIER.x0 - 1.5, 145, 162), Zr('shoreline wet strip', APIER.x1 + 1.5, 300, 145, 162),
+  // Starlight Pier (world/pier.js): nothing of the beach's on its deck, nothing of the pier's off it
+  Zr('Starlight Pier', APIER.x0 - 1, APIER.x1 + 1, APIER.z0 - 1, 162, 'pier'),
 ];
 export const zoneAt = (x, z, m = 0, own = null) => BEACH_ZONES.find((q) => q.own !== own && x > q.x0 - m && x < q.x1 + m && z > q.z0 - m && z < q.z1 + m) || null;
 const onSand = (x, z) => z > SAND.z0 && z < 162 && Math.abs(x) < 300;
@@ -119,7 +122,7 @@ export function checkBeach(L) {
     if (o.tag === 'palm') continue;
     if (o.c) t(o.tag || 'prop', o.x, o.z, o.r, o.own); else t(o.tag || 'box', (o.x0 + o.x1) / 2, (o.z0 + o.z1) / 2, Math.min(o.x1 - o.x0, o.z1 - o.z0) / 2, o.own);
   }
-  for (const b of L.loose) t(b.kind, b.hx, b.hz, b.r || 0.3);
+  for (const b of L.loose) t(b.kind, b.hx, b.hz, b.r || 0.3, b.own);
   if (L.beach) for (const it of L.beach.items) t(it.kind, it.x, it.z, Math.min(it.r, 0.6), it.own);
   for (const s of L.solids) if (!s.b && !s.stand) t('solid', (s.x0 + s.x1) / 2, (s.z0 + s.z1) / 2, 0, (s.x1 - s.x0) < 5 && (s.z1 - s.z0) < 5 && s.h === 6 ? 'hut' : null);
   return bad;

@@ -391,8 +391,9 @@ export function addStreetscape(L, S, N, glows, quads) {
   };
   const stops = [];
   for (const [x, z, yaw] of [[-180, 6.1, PI], [10, 6.1, PI], [190, 6.1, PI], [-75, -77.9, 0], [65, -77.9, 0], [235, -77.9, 0]]) {
-    for (const dx of [0, 4, -4, 8, -8]) if (shelter(x + dx, z, yaw)) { stops.push([x + dx, z]); break; }
+    for (const dx of [0, 4, -4, 8, -8]) if (shelter(x + dx, z, yaw)) { stops.push([x + dx, z, yaw]); break; }
   }
+  L.busStops = stops;        // people wait out the rain under them (actors/peds.js)
 
   // --- bike racks, planters and newspaper boxes along the inner sidewalks
   const rack = (x, z) => {

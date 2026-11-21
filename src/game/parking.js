@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 // More things to drive: a precomputed list of valid parking slots (kerbside parking lanes along the
 // avenues and side streets, the stadium car park, and footpath edges for the Comets) and a small pool of
 // spare cars and bikes. When you are on foot and nothing vacant is within reach, a spare is parked in the
@@ -78,13 +79,25 @@ export function createParking(game) {
     for (const [x, z] of [[s.x, s.z], ...pts]) if (vehicles.all().some((v) => v !== me && !v.off && vehicles.bodyDist(v, x, z) < 1.4)) return false;
     return true;
   }
+  // can nobody see (x, z)? Never within `near` of the camera, never inside the view frustum (a car that appears or
+  // vanishes in the car park while you walk up to it read as a car changing its type), unless it is far beyond the
+  // haze; behind a building from street level counts as hidden too
+  const _v = new THREE.Vector3();
+  function hiddenSpot(x, z, near = 12) {
+    const c = camera.position, d = Math.hypot(x - c.x, z - c.z);
+    if (d < near) return false;
+    if (d > 330) return true;
+    _v.set(x, 1, z).project(camera);
+    const inView = _v.z < 1 && Math.abs(_v.x) < 1.15 && Math.abs(_v.y) < 1.2;
+    return !inView && (d > 40 || unseen(camera, x, z, 12));
+  }
   // move a spare into the best free slot near (x, z)
   function topUp(x, z, force = false) {
     let best = null, bd = 1e9;
     for (const s of slots) {
       const d = Math.hypot(s.x - x, s.z - z);
       if (d < MIN_D || d > MAX_D || d > bd) continue;
-      if (!force && !unseen(camera, s.x, s.z, 12)) continue;
+      if (!force && !hiddenSpot(s.x, s.z)) continue;
       if (taken(s)) continue;
       bd = d; best = s;
     }
@@ -96,7 +109,7 @@ export function createParking(game) {
     if (!c) {
       // the farthest spare nobody is using and nobody can see
       let far = -1;
-      for (const p of pool) { if (p.kind !== want || !vacant(p)) continue; const d = Math.hypot(p.x - x, p.z - z); if (d > 140 && d > far && unseen(camera, p.x, p.z, 40)) { far = d; c = p; } }
+      for (const p of pool) { if (p.kind !== want || !vacant(p)) continue; const d = Math.hypot(p.x - x, p.z - z); if (d > 140 && d > far && hiddenSpot(p.x, p.z, 120)) { far = d; c = p; } }
     }
     if (!c || (c.kind === 'car' && !fits(best, c.len, c))) return false;
     Object.assign(c, { off: false, x: best.x, z: best.z, y: 0, yaw: best.yaw, vx: 0, vy: 0, vz: 0, spin: 0, tvx: 0, tvz: 0, park: { x: best.x, z: best.z, yaw: best.yaw }, wreck: false, burn: 0 });

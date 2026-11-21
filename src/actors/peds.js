@@ -91,6 +91,24 @@ export function createPeds(scene, R, grid, game) {
     K.B(0.135, 0.025, 0.165, 0, -0.6, 0.015, W, 'tread', { alt: 2, b: 0 })]), (N + BN) * 4);
   const hat = mk(mergeParts([K.B(0.26, 0.1, 0.25, 0, 0.32, 0, W, 'weave', { b: 0.012 }), K.B(0.265, 0.03, 0.255, 0, 0.285, 0, W, 'rib', { alt: 1, b: 0 }),
     K.B(0.38, 0.022, 0.36, 0, 0.275, 0, W, 'weave', P0)]), N + BN);
+  // umbrellas for the rain: one instanced canopy + shaft (instance colour = canopy), only drawn while it rains
+  const umbG = (() => {
+    const c = new THREE.ConeGeometry(0.62, 0.26, 8, 1, true).toNonIndexed(); c.translate(0, 0.86, 0);
+    const g = c; g.deleteAttribute('uv');
+    const col = new Float32Array(g.attributes.position.count * 3);
+    for (let i = 0; i < g.attributes.position.count; i += 3) { const k = Math.floor(i / 3) % 2 ? 1 : 0.78; for (let j = 0; j < 3; j++) col.set([k, k, k], (i + j) * 3); }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const shaft = new THREE.CylinderGeometry(0.014, 0.014, 0.95, 4).toNonIndexed(); shaft.translate(0, 0.5, 0); shaft.deleteAttribute('uv');
+    shaft.setAttribute('color', new THREE.BufferAttribute(new Float32Array(shaft.attributes.position.count * 3).fill(0.25), 3));
+    const hook = new THREE.BoxGeometry(0.03, 0.08, 0.03).toNonIndexed(); hook.translate(0, 0.04, 0); hook.deleteAttribute('uv');
+    hook.setAttribute('color', new THREE.BufferAttribute(new Float32Array(hook.attributes.position.count * 3).fill(0.2), 3));
+    return mergeParts([g, shaft, hook]);
+  })();
+  const umb = new THREE.InstancedMesh(umbG, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), N);
+  umb.frustumCulled = false; scene.add(umb);
+  const UMB_C = ['#ff3f6a', '#27d8cf', '#ffd447', '#22203a', '#9b7bff', '#ff8a4c', '#f6f1e7', '#2f6fb0', '#8dff9a', '#ff5fa8'];
+  for (let i = 0; i < N; i++) umb.setColorAt(i, new THREE.Color(UMB_C[i % UMB_C.length]));
+  let rainK = 0;
   // drivers' arms: upper arm + forearm per arm, 4 instances per vehicle slot, one extra draw call (placed in update())
   const arms = mk(mergeParts([K.B(0.1, 1, 0.1, 0, -0.5, 0, W, 'weave', P0)]), DRIVERS * 4);
   instExtras(arms);
@@ -112,6 +130,7 @@ export function createPeds(scene, R, grid, game) {
     for (const k of [0, 1]) { limb.setColorAt(i * 4 + k, col.set(legs)); xL.b(i * 4 + k, shorts ? skin : legs); xL.c(i * 4 + k, shoe); }
     for (const k of [2, 3]) { limb.setColorAt(i * 4 + k, col.set(shirt)); xL.b(i * 4 + k, long ? shirt : skin); xL.c(i * 4 + k, skin); }
     hat.setColorAt(i, col.set(pick(HAT))); xHat.b(i, pick(SHIRT));
+    p.umb = Math.random() < 0.62; p.hurry = 0.5 + Math.random() * 0.7;
     p.hat = Math.random() < 0.4; p.h = 0.9 + Math.random() * 0.2; p.w = 0.88 + Math.random() * 0.3; p.voice = 0.75 + Math.random() * 0.6;
     for (const m of [torso, head, limb, hat]) m.instanceColor.needsUpdate = true;
   }
@@ -193,13 +212,16 @@ export function createPeds(scene, R, grid, game) {
     const g = p.evt && p.state !== DOWN ? p.evt.gesture : null;
     const fist = p.state === FIST || g === 'fist' ? -2.4 + Math.sin((p.t || p.phase) * 16) * 0.35 : g === 'wave' ? -2.7 + Math.sin(p.phase * 4) * 0.35 : g === 'point' ? -1.5 : g === 'bag' ? -0.5 : p.leash && p.state === WALK ? -0.75 : 0;
     const flail = p.state === DOWN ? 2.6 : p.state === LIE ? 2.9 : 0;
+    // in the rain: an umbrella held up in the right hand (walking, waiting, standing about); none on the beach
+    const brolly = i < N && p.umb && rainK > 0.15 && (p.state === WALK || p.state === WAIT) && !g && p.flee <= 0 && !(p.hang && p.hang.kind === 'shelter');
+    if (i < N) { if (brolly) { Lm.compose(v.set(-0.24 * p.w, 1.33, 0.2), q.setFromEuler(eu.set(0.08, 0, -0.05)), sc.set(1, 1, 1)); umb.setMatrixAt(i, M.multiplyMatrices(B, Lm)); } else umb.setMatrixAt(i, ZERO); }
     part(torso, i, 0, 0.84, 0, 0.06 * k, 0, p.w, 1);
     part(head, i, 0, 1.5, 0, 0, 0, 1, 1);
     part(limb, i * 4, 0.1 * p.w, 0.86, 0, s, 0, 1, 1.38);
     part(limb, i * 4 + 1, -0.1 * p.w, 0.86, 0, -s, 0, 1, 1.38);
     part(limb, i * 4 + 2, 0.27 * p.w, 1.38, 0, fist || -s - flail, g === 'wave' ? 0.4 : 0.08, 0.85, 1);
-    part(limb, i * 4 + 3, -0.27 * p.w, 1.38, 0, s - flail, -0.08, 0.85, 1);
-    if (p.hat && p.state !== LIE) part(hat, i, 0, 1.5, 0, 0, 0, 1, 1); else hat.setMatrixAt(i, ZERO);
+    part(limb, i * 4 + 3, -0.27 * p.w, 1.38, 0, brolly ? -1.05 : s - flail, -0.08, 0.85, 1);
+    if (p.hat && p.state !== LIE && !brolly) part(hat, i, 0, 1.5, 0, 0, 0, 1, 1); else hat.setMatrixAt(i, ZERO);
     if (p.state === LIE || gy < -0.3) shadow.setMatrixAt(i, ZERO); else shadow.setMatrixAt(i, M.makeTranslation(p.x, gy + 0.03, p.z));
   }
 
@@ -236,7 +258,8 @@ export function createPeds(scene, R, grid, game) {
       p.ox += dx / d * 5.2 * dt; p.oz += dz / d * 5.2 * dt; p.v = 5.2;
       p.yaw += angleDelta(p.yaw, Math.atan2(dx, dz)) * (1 - Math.exp(-10 * dt));
     } else {
-      // shuffle about a little and face the group's centre
+      // shuffle about a little and face the group's centre (under a shelter: stay put out of the rain)
+      if (H.still) { H.wx = H.wz = 0; }
       H.t -= dt;
       if (H.t <= 0) { H.t = 3 + Math.random() * 7; H.wx = (Math.random() - 0.5) * 1.6; H.wz = (Math.random() - 0.5) * 1.6; }
       const dx = H.wx - p.ox, dz = H.wz - p.oz, d = Math.hypot(dx, dz);
@@ -458,6 +481,8 @@ export function createPeds(scene, R, grid, game) {
         else if (p.t > 24) { p.b = p.a; p.d = e.len; p.state = WALK; }     // give up and wander on
       } else {
         p.v = run ? p.runSpeed || 5.2 : e.cross ? Math.max(p.speed, 3.1) : p.speed;
+        // caught in the rain without an umbrella: hurry, some break into a jog
+        if (rainK > 0.2 && !(p.umb && rainK > 0.15)) p.v *= 1 + rainK * p.hurry;
         p.v *= p.slow;
         p.d += p.v * dt;
         if (p.d >= e.len) {
@@ -559,6 +584,13 @@ export function createPeds(scene, R, grid, game) {
   const spots = {
     club: { cx: P.club.x, cz: 40.5, list: [] }, bar: { cx: P.bar.x, cz: 40.5, list: [] }, beach: { list: [] },
   };
+  // out of the rain: under the bus shelters and the shop awnings along the back streets
+  spots.shelter = { list: [] };
+  for (const [x, z, yaw] of game.L.busStops || []) for (const o of [-1.0, 0, 1.0]) {
+    const s2 = Math.sin(yaw), c2 = Math.cos(yaw), lx = o, lz = 0.1;
+    spots.shelter.list.push({ x: x + c2 * lx + s2 * lz, z: z - s2 * lx + c2 * lz, cx: x + s2 * 3, cz: z + c2 * 3, still: true });
+  }
+  for (const b of game.L.buildings) if (b.row > 0 && !b.place && b.w > 12) for (const o of [-0.25, 0.22]) spots.shelter.list.push({ x: b.cx + b.w * o, z: b.z1 + 0.85, cx: b.cx + b.w * o, cz: b.z1 + 5, still: true });
   for (const k of ['club', 'bar']) for (let i = 0; i < 12; i++) {
     const s = spots[k], side = i % 2 ? 1 : -1;
     s.list.push({ x: s.cx + side * (2.8 + Math.random() * 6.5), z: 38 + Math.random() * 4.6, cx: s.cx, cz: 40.5 });
@@ -582,13 +614,13 @@ export function createPeds(scene, R, grid, game) {
   };
   function despawn(p) {
     p.off = true; p.hang = null; p.state = WALK; p.tilt = 0;
-    for (const m of [torso, head, hat, shadow]) m.setMatrixAt(p.i, ZERO);
+    for (const m of [torso, head, hat, shadow, umb]) m.setMatrixAt(p.i, ZERO);
     for (let k = 0; k < 4; k++) limb.setMatrixAt(p.i * 4 + k, ZERO);
   }
   function spawn(p) {
     const { night, day } = mood(), r = Math.random(), K = inKeyF();
     // (the beach has its own crowd now, on a timetable: actors/beachgoers.js)
-    const kind = K ? null : night && r < 0.5 ? (r < 0.3 ? 'club' : 'bar') : null;
+    const kind = K ? null : rainK > 0.3 && r < 0.45 ? 'shelter' : night && r < 0.5 ? (r < 0.3 ? 'club' : 'bar') : null;
     // take a seat: a fair share by day, a few on the boulevard benches in the evening
     if (!kind && Math.random() < (day ? 0.4 : mood().h < 1 || mood().h > 6 ? 0.18 : 0.05)) {
       for (let i = 0; i < 10; i++) {
@@ -628,7 +660,9 @@ export function createPeds(scene, R, grid, game) {
   function release(p) { if (p.hang && p.hang.src.busy === p) p.hang.src.busy = null; standUp(p); despawn(p); }
   function density(dt) {
     const { night, day } = mood();
-    target = Math.round(N * dailyCurve(CROWD_CURVE, game.env.tod));
+    rainK = game.env.indoor ? rainK : game.env.w.rain;
+    const storm = game.env.weather === 'storm' ? 1 : 0;
+    target = Math.round(N * dailyCurve(CROWD_CURVE, game.env.tod) * (1 - 0.3 * clamp(rainK, 0, 1) - 0.25 * storm));
     active = 0;
     for (const p of peds) if (!p.off) active++;
     densT -= dt; churnT -= dt;
@@ -645,7 +679,7 @@ export function createPeds(scene, R, grid, game) {
       let best = null, bs = -1;
       for (const p of peds) {
         if (p.off || p.state === DOWN || p.state === FIST || p.evtLock || !hid(p.x, p.z, 45)) continue;
-        const wrong = p.hang && ((p.hang.kind === 'beach' && !day) || (p.hang.kind === 'seat' && !day && p.state === SIT && (p.sitK === 'lounger' || p.sitK === 'towel')) || (p.hang.kind !== 'beach' && p.hang.kind !== 'seat' && !night));
+        const wrong = p.hang && ((p.hang.kind === 'shelter' && rainK < 0.15) || (p.hang.kind === 'beach' && !day) || (p.hang.kind === 'seat' && !day && p.state === SIT && (p.sitK === 'lounger' || p.sitK === 'towel')) || (p.hang.kind !== 'beach' && p.hang.kind !== 'seat' && !night));
         const sc = Math.random() + (wrong ? 2 : 0);
         if (sc > bs) { bs = sc; best = p; }
       }
@@ -657,7 +691,7 @@ export function createPeds(scene, R, grid, game) {
       // slow turnover so the crowd drifts towards the club at night and the beach by day
       churnT = 4;
       const p = peds[Math.floor(Math.random() * N)];
-      const wrong = !p.off && (p.hang ? (p.hang.kind === 'beach' ? !day : p.hang.kind === 'seat' ? Math.random() < 0.3 : !night) : (night || day) && Math.random() < 0.35);
+      const wrong = !p.off && (p.hang ? (p.hang.kind === 'shelter' ? rainK < 0.15 : p.hang.kind === 'beach' ? !day : p.hang.kind === 'seat' ? Math.random() < 0.3 : !night) : (night || day) && Math.random() < 0.35);
       if (wrong && !p.evtLock && p.state !== DOWN && p.state !== FIST && hid(p.x, p.z, 45)) { release(p); spawn(p); }
     }
   }
@@ -785,7 +819,8 @@ export function createPeds(scene, R, grid, game) {
       // drivers sit on the left: a torso and a head per occupied car
       for (const c of cars) {
         const i = N + BN + c.idx, ai = c.idx * 4;
-        if (c.off || !c.hasDriver || !(c.ai || c.jacking)) { torso.setMatrixAt(i, ZERO); head.setMatrixAt(i, ZERO); for (let a = 0; a < 4; a++) arms.setMatrixAt(ai + a, ZERO); continue; }
+        // (the player's own car too: the figure shows through the glass; the convertible gets Skye herself, main.js)
+        if (c.off || !(c.hasDriver || c.driven) || !(c.ai || c.jacking || (c.driven && c.kind === 'car' && c.type !== 'coupe' && !game.vehicles.firstPerson))) { torso.setMatrixAt(i, ZERO); head.setMatrixAt(i, ZERO); for (let a = 0; a < 4; a++) arms.setMatrixAt(ai + a, ZERO); continue; }
         B.compose(v.set(c.x, c.y, c.z), q.setFromEuler(eu.set(c.tx, c.yaw, c.tz)), sc.set(1, 1, 1));
         // the wheel angle follows the car's steering input a little late
         c.wa = (c.wa || 0) + ((c.steerLast || 0) * 1.1 - (c.wa || 0)) * Math.min(1, dt * 10);
@@ -801,8 +836,11 @@ export function createPeds(scene, R, grid, game) {
         const ca = Math.cos(c.wa), sa = Math.sin(c.wa);
         for (const sd of [1, -1]) arm(ai + (sd > 0 ? 0 : 2), st[0] + sd * 0.24, st[1] + 0.49, st[2] - 0.11, st[0] + sd * 0.16 * ca, st[1] + 0.22 + sd * 0.16 * sa, st[2] + 0.42 - sd * 0.16 * sa * 0.3, 0.3);
       }
-      for (const m of [torso, head, limb, hat, shadow, arms]) m.instanceMatrix.needsUpdate = true;
+      for (const m of [torso, head, limb, hat, shadow, arms, umb]) m.instanceMatrix.needsUpdate = true;
+      umb.visible = rainK > 0.15;
     },
+    // rain checks: umbrellas up, people sheltering, people hurrying
+    rainStats() { const on = peds.filter((p) => !p.off); return { rain: +rainK.toFixed(2), active: on.length, target, umbrellas: on.filter((p) => p.umb && (p.state === WALK || p.state === WAIT) && !p.hang && rainK > 0.15).length, sheltering: on.filter((p) => p.hang && p.hang.kind === 'shelter').length, hurrying: on.filter((p) => !p.hang && !(p.umb) && rainK > 0.2 && p.state === WALK).length, shelterSpots: spots.shelter.list.length }; },
   };
   return api;
 }

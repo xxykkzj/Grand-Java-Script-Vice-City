@@ -109,7 +109,7 @@ export function createRules(game, scene) {
       // would sit inside the building and get pulled right up against Skye's back.
       let endZ = at.z + 1.6;
       if (onRoad(at.x, endZ, 0.6)) endZ = at.z;
-      walk = { t: 0, x: at.x, z0: at.z - 4.6, z1: endZ };
+      walk = { t: 0, x0: at.x, x1: at.x, z0: at.z - 4.6, z1: endZ, yaw: 0, end: PI / 2 };
       player.pos.set(at.x, 0, walk.z0); player.vel.set(0, 0, 0); player.vy = 0; player.yaw = 0; player.speed = 0;
       cam.yaw = PI + 0.5; cam.pitch = 0.24;
       game.money -= fee; game.health = 100; game.wanted = 0; unseen = 0; bust = 0;
@@ -117,22 +117,32 @@ export function createRules(game, scene) {
       setTimeout(() => fade.classList.remove('on'), 80);
     }
   }
-  const stats = { totalled: 0 };
+  const stats = { totalled: 0, walkouts: 0 };
+  // a walk-out from a door (a venue's street door, the Solstice Spire's roof lift): Skye strolls from (x0, z0) to
+  // (x1, z1) with the camera out in front looking back at her (so it is never inside the building or the lift hut),
+  // then she turns to `end` and the camera swings round behind her. y: the floor height (the roof terrace).
+  function walkOut(x0, z0, x1, z1, end, o = {}) {
+    const yaw = Math.atan2(x1 - x0, z1 - z0);
+    walk = { t: 0, x0, z0, x1, z1, yaw, end, y: o.y || 0, T: o.T || 2.0, camOff: o.camOff || 0 };
+    player.pos.set(x0, o.y || 0, z0); player.vel.set(0, 0, 0); player.vy = 0; player.yaw = yaw; player.speed = 0;
+    cam.yaw = yaw + PI + 0.45; cam.pitch = o.pitch ?? 0.22; cam.snap(player.pos);
+    game.busy = 'walkout';
+  }
 
   // ---- after CAUGHT / KNOCKED OUT: stroll out of the station or clinic, then turn along the sidewalk
   let walk = null;
   function stepWalk(dt) {
     walk.t += dt;
-    const T = 2.0, k = clamp(walk.t / T, 0, 1), e = k * k * (3 - 2 * k);
-    player.pos.set(walk.x, 0, lerp(walk.z0, walk.z1, e));
+    const T = walk.T || 2.0, k = clamp(walk.t / T, 0, 1), e = k * k * (3 - 2 * k);
+    player.pos.set(lerp(walk.x0, walk.x1, e), walk.y || 0, lerp(walk.z0, walk.z1, e));
     player.speed = k < 1 ? 2.6 : 0;
     if (walk.t > T) {
-      // face along the street and bring the camera round behind, clear of the building
-      player.yaw += angleDelta(player.yaw, PI / 2) * (1 - Math.exp(-7 * dt));
-      cam.yaw += angleDelta(cam.yaw, player.yaw) * (1 - Math.exp(-4 * dt));
-    } else player.yaw = 0;
+      // face along the street (or the view) and bring the camera round behind, clear of the building
+      player.yaw += angleDelta(player.yaw, walk.end) * (1 - Math.exp(-7 * dt));
+      cam.yaw += angleDelta(cam.yaw, player.yaw + (walk.camOff || 0)) * (1 - Math.exp(-4 * dt));
+    } else player.yaw = walk.yaw;
     player.animate(dt, 0, null);
-    if (walk.t > T + 0.9) { cam.yaw = player.yaw; walk = null; game.busy = null; }
+    if (walk.t > T + 0.9) { cam.yaw = player.yaw + (walk.camOff || 0); walk = null; game.busy = null; stats.walkouts++; }
   }
 
   // ---- carjack: glide to the driver's door, swing it open, haul them out, hop in
@@ -218,7 +228,7 @@ export function createRules(game, scene) {
       camera.position.set(d.x + d.ux * r, d.y + h, d.z + d.uz * r);
       camera.lookAt(d.x, d.y + 0.8, d.z);
     },
-    blips: [],
+    blips: [], walkOut, get walking() { return !!walk; },
     update(dt) {
       frame++;
       const f = game.focus(), t = timeU.value;

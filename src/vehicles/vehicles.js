@@ -673,7 +673,8 @@ export function createVehicles(scene, L, fx, audio) {
           // driving it in first person: the cockpit overlay stands in for the body, whose glass is opaque from inside
           kitMesh.setMatrixAt(c.ki, m4); kitMesh.setVisibleAt(c.ki, !(c.driven && api.firstPerson)); m4.makeScale(0, 0, 0);
           if (kitLo[c.model] !== undefined && api.eye) {
-            const lod = (c.x - api.eye.x) ** 2 + (c.z - api.eye.z) ** 2 > (quality.high ? LOD_HIGH * LOD_HIGH : LOD_LOW * LOD_LOW) && !c.driven;
+            // (with a few metres of hysteresis, so a car right at the threshold does not flick between the two)
+            const R = (quality.high ? LOD_HIGH : LOD_LOW) + (c.lod ? -4 : 4), lod = (c.x - api.eye.x) ** 2 + (c.z - api.eye.z) ** 2 > R * R && !c.driven;
             if (lod !== c.lod) { c.lod = lod; kitMesh.setGeometryIdAt(c.ki, lod ? kitLo[c.model] : kitGid[c.model]); }
           }
         }
