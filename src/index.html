@@ -287,6 +287,24 @@ body.touch #arcade canvas{height:min(48vh,calc(100vh - 260px))}
 #settings .stuntc{font:800 calc(15px) var(--disp);letter-spacing:.14em;color:#fff}
 #settings small{display:block;margin-top:12px;font-size:10px;letter-spacing:.12em;color:rgba(255,246,236,.6)}
 
+#sumry{margin:10px 0 0;font-size:clamp(10px,1.7vmin,12px);letter-spacing:.18em;line-height:1.7;color:var(--paper);cursor:default}
+#sumry b{display:block;font-weight:700;color:#fff}#sumry i{font-style:normal;color:var(--cyan);font-size:.9em}
+#newg{margin:12px auto 0;min-height:44px;padding:8px 22px;font:800 13px var(--disp);letter-spacing:.24em;color:var(--paper);background:none;border:1px solid rgba(39,232,255,.55);cursor:pointer}
+#newg[hidden],#sumry[hidden],#newconf[hidden]{display:none}
+#newg:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+#newconf{margin:clamp(12px,3.6vmin,28px) auto 0;max-width:460px;cursor:default}
+#newconf p{margin:0 0 10px;font-size:11px;letter-spacing:.22em;color:var(--sun)}
+#mapbox{position:relative;flex:none}
+#saveic{position:absolute;right:calc(-4 * var(--u));bottom:calc(-2 * var(--u));width:calc(20 * var(--u));height:calc(20 * var(--u));color:var(--cyan);opacity:0;filter:drop-shadow(0 0 4px rgba(39,232,255,.8))}
+#saveic.on{animation:saveblink .5s ease-in-out 3}
+@keyframes saveblink{50%{opacity:.85}}
+#savebox{margin-top:10px}
+#savecode{width:100%;box-sizing:border-box;min-height:84px;margin:0 0 8px;padding:8px;font:11px/1.4 var(--mono);color:var(--cyan);background:rgba(6,3,16,.85);border:1px solid rgba(39,232,255,.5);resize:vertical;word-break:break-all}
+#savebox .pick+.pick{margin-top:0}
+#savebox .pick[hidden]{display:none}
+#savemsg.bad{color:#ff8f8f}
+body.touch #savecode{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default;touch-action:auto;font-size:16px}
+
 /* ---------- cheat console ---------- */
 #console{position:fixed;z-index:8;left:0;right:0;bottom:0;padding:10px calc(16px + var(--sar)) calc(12px + var(--sab)) calc(16px + var(--sal));background:rgba(6,3,16,.9);
   border-top:2px solid var(--pink);box-shadow:0 -6px 30px rgba(255,63,180,.25);font-size:clamp(12px,calc(13 * var(--u)),16px)}
@@ -339,7 +357,7 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
 #nogl{position:fixed;inset:0;z-index:10;display:grid;place-items:center;padding:24px;text-align:center;background:var(--ink);line-height:1.7}
 #nogl h2{font:italic 900 44px var(--disp);color:var(--sun);margin:0 0 8px}
 @media (max-width:700px){#hint{max-width:90vw}#note{font-size:9px}}
-@media (prefers-reduced-motion:reduce){#go,#stars.cool i.on,#getout,#sharkw,#breath.low span,#vcond.fire span{animation:none}#cine::before,#cine::after,#fade,#card{transition:none}#toast,#title,#bar i,#airtime{transition:none}.tbtn.on{transform:none}}
+@media (prefers-reduced-motion:reduce){#saveic.on{animation:none;opacity:.7}#go,#stars.cool i.on,#getout,#sharkw,#breath.low span,#vcond.fire span{animation:none}#cine::before,#cine::after,#fade,#card{transition:none}#toast,#title,#bar i,#airtime{transition:none}.tbtn.on{transform:none}}
 </style>
 </head>
 <body>
@@ -347,7 +365,7 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
 
 <div id="hud" hidden>
   <div id="tl">
-    <div id="mapwrap"><canvas id="map" width="312" height="312" aria-label="Minimap"></canvas></div>
+    <div id="mapbox"><div id="mapwrap"><canvas id="map" width="312" height="312" aria-label="Minimap"></canvas></div><svg id="saveic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h13l3 3v15H4z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 3v5h7V3M8 21v-7h8v7" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
     <div id="zone">THE PROMENADE</div>
     <div id="obj" class="chip" hidden><em id="objm"></em><b id="objt"></b><span id="objs"></span></div>
   </div>
@@ -411,8 +429,17 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
     <div class="pick"><button type="button" id="scine">START CINEMATIC MODE <small>K</small></button></div>
     <p>STUNT JUMPS</p>
     <div id="stuntc" class="stuntc">STUNTS FOUND 0/8</div>
+    <p>SAVED GAME</p>
+    <div class="pick"><button type="button" id="sexport">EXPORT SAVE</button><button type="button" id="simport">IMPORT SAVE</button></div>
+    <div id="savebox" hidden>
+      <textarea id="savecode" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Save code"></textarea>
+      <div id="sexpwrap" class="pick"><button type="button" id="scopy">COPY CODE</button><button type="button" id="sdown">DOWNLOAD .JSON</button></div>
+      <div id="simpwrap" class="pick"><button type="button" id="sload">LOAD THIS CODE</button><button type="button" id="sfile">FROM A FILE…</button></div>
+      <input type="file" id="sfilein" accept=".json,application/json,text/plain" hidden>
+      <small id="savemsg" role="status"></small>
+    </div>
     <button id="sresume" class="pbtn" type="button">RESUME</button>
-    <small>Your choices are remembered on this device.</small>
+    <small>Your choices are remembered on this device. The game saves itself as you play.</small>
   </div>
 </div>
 
@@ -438,6 +465,10 @@ body.touch #cmd{font-size:16px}     /* 16px stops iOS zooming in on focus */
     <div id="startgrp">
       <div id="ctlpick" hidden><p>CONTROLS</p><div class="pick" role="group" aria-label="Controls"><button type="button" data-mode="keys" aria-pressed="false">KEYBOARD &amp; MOUSE</button><button type="button" data-mode="touch" aria-pressed="false">TOUCH CONTROLS</button></div></div>
       <button id="go" type="button" hidden>CLICK TO START</button>
+      <p id="sumry" hidden></p>
+      <button id="newg" type="button" hidden>NEW GAME</button>
+      <div id="newconf" hidden role="alertdialog" aria-labelledby="newq"><p id="newq">START OVER? THIS WIPES THE SAVED GAME ON THIS DEVICE</p>
+        <div class="pick"><button id="newyes" type="button">WIPE &amp; START NEW</button><button id="newno" type="button">KEEP MY SAVE</button></div></div>
     </div>
     <p id="tkeys" class="tonly" hidden>
       <b>Left thumb</b>: stick to skate, drive and steer (push it all the way to sprint) &nbsp;·&nbsp; <b>right side</b>: swipe to look<br>

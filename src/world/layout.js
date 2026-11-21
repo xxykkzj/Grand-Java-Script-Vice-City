@@ -433,11 +433,11 @@ export function clampToWorld(o, m, w = 0) {
     const Q = Math.abs(o.x - (APIER.x0 + APIER.x1) / 2) < Math.abs(o.x - (PIER.x0 + PIER.x1) / 2) ? APIER : PIER;
     const onPier = o.x > Q.x0 + m - 0.4 && o.x < Q.x1 - m + 0.4;
     if (!onPier) {
-      if (o.z > HZ + 12) { if (w & 2) edgeHit = 'pier'; else { o.x = clamp(o.x, Q.x0 + m - 0.4, Q.x1 - m + 0.4); hit = true; } }   // off the side of the pier
+      if (o.z > HZ + 12) { if ((w & 2) && Q !== APIER) edgeHit = 'pier'; else { o.x = clamp(o.x, Q.x0 + m - 0.4, Q.x1 - m + 0.4); hit = true; } }   // off the side of the pier
       else if (w & 1) { /* the beach runs on into the sea */ }
       else if (o.z > HZ + 0.5) { o.x = clamp(o.x, Q.x0 + m - 0.4, Q.x1 - m + 0.4); hit = true; }
       else { o.z = HZ - m; hit = true; }
-    } else if (o.z > Q.z1 - m) { if (w & 2) edgeHit = 'pier'; else { o.z = Q.z1 - m; hit = true; } }
+    } else if (o.z > Q.z1 - m) { if ((w & 2) && Q !== APIER) edgeHit = 'pier'; else { o.z = Q.z1 - m; hit = true; } }
   }
   return hit;
 }

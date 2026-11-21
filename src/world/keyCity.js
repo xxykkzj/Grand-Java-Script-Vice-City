@@ -12,7 +12,7 @@ import { VENUE_DEFS, DOORS } from './layout.js';
 import { kitGeometry } from './kits.js';
 import { groundMaterial, palmMesh } from './city.js';
 import { setLampMap } from './lamplight.js';
-import { addSpire } from './spire.js';
+import { addSpire, addSpireBody } from './spire.js';
 import { addKeyscape, KEY_SHOPS } from './keyscape.js';
 import { streetAtlasMesh } from './streetscape.js';
 import { createStreetTrees } from './streettrees.js';
@@ -212,11 +212,14 @@ export function buildKey(scene, L, renderer, adSigns) {
     const faceX = fx ? (fx > 0 ? b.x1 : b.x0) : cx, faceZ = fz ? (fz > 0 ? b.z1 : b.z0) : cz, along = fx ? d : w, yawF = Math.atan2(fx, fz);
     const onFace = (o, y, out, ww, hh, dd, hex, win = 0) => bx(fx ? dd : ww, hh, fx ? ww : dd, faceX + fx * out + (fx ? 0 : o), y, faceZ + fz * out + (fz ? 0 : o), hex, win);
     if (b.style === 'tower') {
-      S.push(bx(w, h, d, cx, h / 2, cz, b.color, 2));
-      S.push(bx(w + 1.2, 5, d + 1.2, cx, 2.5, cz, '#ece6f0', 3));                                  // lobby podium
-      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) S.push(bx(1, h + 1, 1, cx + sx * (w / 2), (h + 1) / 2, cz + sz * (d / 2), '#e4e8f0'));
-      for (let y = 20; y < h - 4; y += 20) S.push(bx(w + 0.5, 0.5, d + 0.5, cx, y, cz, '#e4e8f0'));
-      slabRoof(b, '#bfc3cc');
+      if (b.spire) addSpireBody({ b, S, N, glows, bx, cy });       // the Solstice Spire's own champagne-gold shaft (world/spire.js)
+      else {
+        S.push(bx(w, h, d, cx, h / 2, cz, b.color, 2));
+        S.push(bx(w + 1.2, 5, d + 1.2, cx, 2.5, cz, '#ece6f0', 3));                                  // lobby podium
+        for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) S.push(bx(1, h + 1, 1, cx + sx * (w / 2), (h + 1) / 2, cz + sz * (d / 2), '#e4e8f0'));
+        for (let y = 20; y < h - 4; y += 20) S.push(bx(w + 0.5, 0.5, d + 0.5, cx, y, cz, '#e4e8f0'));
+      }
+      slabRoof(b, b.spire ? '#d8c49a' : '#bfc3cc');
       roofline(b, h + 0.66);
       if (b.pad) {
         const { x, z, r: pr } = b.pad, y = b.roofY;

@@ -35,12 +35,16 @@ for (let z = 112; z <= 186; z += 12.3) STR_Z.push(z);
 // ---- colliders, lamps (layout.js, before the props grid is built)
 export function planPier(props, L) {
   const P = props, A = APIER, own = (o, tag) => { o.own = 'pier'; o.tag = tag; return o; };
-  // the side rails over the sand and the first metres of surf are solid; further out the deck edge keeps you on
-  // (layout.js clampToWorld, like Driftwood Pier: a jump at the rail is a leap into the sea)
-  const sz1 = 162.5, szc = (A.z0 + sz1) / 2, slen = sz1 - A.z0;
-  own(P.box(A.x0 + 0.12, szc, 0.3, slen, 1.2), 'rail'); own(P.box(A.x1 - 0.12, szc, 0.3, slen, 1.2), 'rail');
-  own(P.box((A.x0 + ARCH.gap0) / 2, A.z0 + 0.12, ARCH.gap0 - A.x0, 0.3, 1.2), 'rail');
-  own(P.box((ARCH.gap1 + A.x1) / 2, A.z0 + 0.12, A.x1 - ARCH.gap1, 0.3, 1.2), 'rail');
+  // Sealed all round: solid rails down both sides and across the end, the landward end either side of the arch
+  // (the only way on and off). 2.2 m tall colliders so a sprint-jump at the rail can't sail over it; the part out
+  // over the water stands on the deck (y0 = 0), so a swimmer underneath can still pass between the piles. The
+  // deck edge is also a hard clamp in player/player.js (like the Solstice Terrace's glass).
+  const sz1 = 162.5, szc = (A.z0 + sz1) / 2, slen = sz1 - A.z0, wz = (sz1 + A.z1) / 2, wlen = A.z1 - sz1 + 0.3, T = 0.5, H = 2.2;
+  own(P.box(A.x0 + 0.12, szc, T, slen, H), 'rail'); own(P.box(A.x1 - 0.12, szc, T, slen, H), 'rail');
+  own(P.box(A.x0 + 0.12, wz, T, wlen, H, 0, 0), 'rail'); own(P.box(A.x1 - 0.12, wz, T, wlen, H, 0, 0), 'rail');
+  own(P.box(A.cx, A.z1 - 0.12, A.x1 - A.x0 + 0.3, T, H, 0, 0), 'end rail');
+  own(P.box((A.x0 + ARCH.gap0) / 2 - 0.15, A.z0 + 0.12, ARCH.gap0 - A.x0 + 0.3, T, H), 'rail');
+  own(P.box((ARCH.gap1 + A.x1) / 2 + 0.15, A.z0 + 0.12, A.x1 - ARCH.gap1 + 0.3, T, H), 'rail');
   for (const x of [268.95, 270.85, 273.15, 275.05]) own(P.circle(x, A.z0 + 0.8, 0.14, 1.0), "bollard");
   // the wheel: four legs, and its lowest gondolas (nobody walks into a passing cabin)
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) own(P.circle(WHEEL.x + sx * 10, WHEEL.z + (sz < 0 ? -6.6 : 4.6), 0.55, 30), 'wheel leg');

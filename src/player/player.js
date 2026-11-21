@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { damp, clamp, angleDelta, pushOut, PI, reducedMotion } from '../core/util.js';
 import { clampToWorld, PIER, HZ } from '../world/layout.js';
-import { APIER } from '../world/pier.js';
+import { APIER, ARCH } from '../world/pier.js';
 import { kit, rig, blockyMaterial, faceDriver, castAtlas, CAST_ROW, hairPieces, lookMask, hairColor, facialOf, CAP_SLOT } from '../actors/blocky.js';
 import { pushFromSolids } from '../world/sea.js';
 
@@ -231,12 +231,7 @@ export function createPlayer(scene, L) {
           P.leap = true;
           if (px < PIER.x0 + 1.5) P.vel.x = Math.min(P.vel.x, -3.5); else if (px > PIER.x1 - 1.5) P.vel.x = Math.max(P.vel.x, 3.5); else P.vel.z = Math.max(P.vel.z, 3.5);
         }
-        // ...and the same over the side of Starlight Pier, past its solid rails on the sand
-        const A = APIER;
-        if (P.pos.y > -0.3 && px > A.x0 && px < A.x1 && pz > 163 && pz < A.z1 + 0.5 && (px < A.x0 + 1.5 || px > A.x1 - 1.5 || pz > A.z1 - 1.5)) {
-          P.leap = true;
-          if (px < A.x0 + 1.5) P.vel.x = Math.min(P.vel.x, -3.5); else if (px > A.x1 - 1.5) P.vel.x = Math.max(P.vel.x, 3.5); else P.vel.z = Math.max(P.vel.z, 3.5);
-        }
+        // (Starlight Pier is sealed all round: no leap there, see below)
       }
       // the ground: a roof, a ramp, a deck or a container top (world/surfaces.js), else the street or the sand shelf
       const ground = (x, z) => { const s = L.surf.at(x, z, P.pos.y + 0.6); return s > 0 ? s : P.groundAt ? P.groundAt(x, z) : 0; };
@@ -252,6 +247,7 @@ export function createPlayer(scene, L) {
         if (!was && hit > 13.6 && P.onFall) P.onFall(hit, (P.fallFrom || g0) - g0);
       } else { if (was) P.fallFrom = P.pos.y; P.onGround = false; P.fallFrom = Math.max(P.fallFrom || 0, P.pos.y); }
       const ox = P.pos.x, oz = P.pos.z;
+      const onStar = P.pos.y > -0.3 && ox > APIER.x0 && ox < APIER.x1 && oz > APIER.z0 && oz < APIER.z1;
       P.pos.x += P.vel.x * dt; P.pos.z += P.vel.z * dt;
       // a ramp side or a deck is a wall unless it is a step you can take
       if (L.surf.climb(P.pos.x, P.pos.z) - P.pos.y > 0.75) { P.pos.x = ox; P.pos.z = oz; P.vel.x *= 0.2; P.vel.z *= 0.2; }
@@ -275,6 +271,14 @@ export function createPlayer(scene, L) {
       }
       if (P.pos.y < -0.25 && !P.leap) pushFromSolids(P.pos, 0.5, P.pos.y);     // below the pier deck: the sand beside the pier piles
       clampToWorld(P.pos, 0.6, P.leap ? 3 : 1);
+      // on Starlight Pier's deck the rails are a hard edge whatever the speed or the jump: only the arch lets you off
+      if (onStar) {
+        const A = APIER, M = 0.6, x = P.pos.x;
+        if (x < A.x0 + M) { P.pos.x = A.x0 + M; P.vel.x = Math.max(0, P.vel.x); }
+        if (x > A.x1 - M) { P.pos.x = A.x1 - M; P.vel.x = Math.min(0, P.vel.x); }
+        if (P.pos.z > A.z1 - M) { P.pos.z = A.z1 - M; P.vel.z = Math.min(0, P.vel.z); }
+        if (P.pos.z < A.z0 + M && !(P.pos.x > ARCH.gap0 + 0.35 && P.pos.x < ARCH.gap1 - 0.35)) { P.pos.z = A.z0 + M; P.vel.z = Math.max(0, P.vel.z); }
+      }
       if (P.leap && (P.onGround || P.pos.y < -0.2)) P.leap = false;
 
       P.speed = Math.hypot(P.vel.x, P.vel.z);

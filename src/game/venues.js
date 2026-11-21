@@ -1,7 +1,7 @@
 // What you can DO in the venues (rooms in game/venuerooms.js, doors in world/layout.js VENUE_DEFS):
 //   diner   order a meal at the counter (heals), the jukebox, sit at the counter or in a booth (F)
 //   arcade  Skate Surge, a tiny original arcade game on the back cabinet, with a saved high score
-//   motel   the safehouse: sleep to morning / golden hour, which saves your cash and the clock
+//   motel   the safehouse: sleep to morning / golden hour, or just save (game/saves.js: the same slot as the autosave)
 //   mall    Kiki's pretzel cart, and a coin in the wishing fountain
 //   bait    Cap'n Rudy's counter: a snorkel vest (more breath under water), tackle trivia, taffy
 //   barber  Fade & Fringe: Dolly's chair (game/salon.js): hairstyle, colour, facial hair, the cap
@@ -110,12 +110,12 @@ export function createVenues(game) {
     setTimeout(() => {
       if (to !== undefined) { env.tod = to; env.target = null; game.health = 100; game.wanted = 0; stats.sleeps++; }
       save.motel = { cash: game.money, tod: +env.tod.toFixed(2), at: Date.now() };
-      game.persist(); stats.saves++;
-      let ok = true;
-      try { ok = !!localStorage.getItem('neon-coast-save-1'); } catch (e) { ok = false; }
+      // the same slot the autosave writes (game/saves.js); you wake up at the motel's door after a reload
+      const r = game.saves ? game.saves.manual() : { ok: false, why: 'COULD NOT SAVE' };
+      if (r.ok) stats.saves++;
       game.busy = null;
       setTimeout(() => game.cut.fade(false), 120);
-      hud.toast(ok ? 'PROGRESS SAVED' : 'COULD NOT SAVE IN THIS BROWSER', to !== undefined ? pickOf(MOTEL_WAKE, stats.sleeps) : 'THE GUEST BOOK HAS YOUR NAME IN IT NOW');
+      hud.toast(r.ok ? 'GAME SAVED' : r.why, to !== undefined ? pickOf(MOTEL_WAKE, stats.sleeps) : r.ok ? 'THE GUEST BOOK HAS YOUR NAME IN IT NOW' : 'HAZEL SHRUGS AT THE GUEST BOOK');
       audio.pickup();
     }, reducedMotion ? 350 : 900);
   }
@@ -320,14 +320,6 @@ export function createVenues(game) {
       if (p.key === 'arcade' && game.busy !== 'arcade') { A.t += dt; screenT -= dt; if (screenT <= 0) { screenT = 0.12; draw(); blit(); } }
       if (p.key === 'diner' && game.act.mode === 'sit' && game.act.seat && sitSeen !== game.act.seat.ref) { sitSeen = game.act.seat.ref; hud.toast(game.act.seat.kind === 'stool' ? 'AT THE COUNTER' : 'IN A BOOTH', pickOf(DINER_SIT, stats.meals + (game.act.seat.kind === 'stool' ? 0 : 1)) + (game.input.touchMode ? '' : ' · E AT THE COUNTER TO ORDER')); }
       if (game.act.mode !== 'sit') sitSeen = null;
-    },
-    // the motel save: put it back on a reload
-    restore() {
-      const m = save.motel;
-      if (!m || typeof m !== 'object') return false;
-      if (Number.isFinite(m.cash)) game.money = Math.max(0, Math.floor(m.cash));
-      if (Number.isFinite(m.tod)) { env.tod = ((m.tod % 24) + 24) % 24; env.target = null; }
-      return true;
     },
     sleep,
   };

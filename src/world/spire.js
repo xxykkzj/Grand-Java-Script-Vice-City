@@ -26,6 +26,62 @@ export const TERRACE = {
   barman: { x: -12.7, z: -13.9 },
 };
 
+// ---- the tower itself: a signature landmark among the blue-grey glass of Glasswater downtown. Champagne-gold glass
+// behind bronze fins, art-deco bronze pilasters that step in at the corners, two bronze setback cornices, amber light
+// strips up every face (they glow from dusk), and on the roof's west edge, behind the terrace, a bronze-and-neon
+// sunburst rising like the sun with a slim mast and a sky-blue beacon on top (the tallest point on the skyline).
+// Same footprint and roof height as before, so the terrace, the lobby and every check stay as they were.
+export const SPIRE_GOLD = '#c9a86e';
+export function addSpireBody({ b, S, N, glows, bx, cy }) {
+  const { cx, cz, w, d, h } = b, BRONZE = '#8a6236', BRZ2 = '#a87a44', CHAMP = '#efe2c4';
+  S.push(bx(w, h, d, cx, h / 2, cz, SPIRE_GOLD, 2));
+  S.push(bx(w + 1.2, 5, d + 1.2, cx, 2.5, cz, CHAMP, 3));                                 // lobby podium (as before)
+  // corner pilasters: full height, with deco steps that narrow towards the top
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+    const x = cx + sx * (w / 2), z = cz + sz * (d / 2);
+    S.push(bx(1, h + 1, 1, x, (h + 1) / 2, z, CHAMP));
+    for (const [s, y0, y1] of [[2.6, 5.2, h * 0.55], [1.9, h * 0.55, h * 0.8], [1.4, h * 0.8, h + 2.4]]) S.push(bx(s, y1 - y0, s, x, (y0 + y1) / 2, z, BRZ2));
+    N.push(bx(0.14, h - 7, 0.14, x + sx * 1.36, 5.4 + (h - 7) / 2, z + sz * 1.36, AMBER));
+  }
+  // bronze fins down every face, every 3.2 m, from the podium to under the crown's name boards (and clear of the
+  // lobby's name sign over the north door)
+  const top = h - 8, y0f = (x, north) => (north && Math.abs(x) < 8 ? 9.8 : 5.2);
+  const fin = (x, y0, z, fx) => S.push(bx(fx ? 0.5 : 0.26, top - y0, fx ? 0.26 : 0.5, x, (y0 + top) / 2, z, BRONZE));
+  for (const sz of [-1, 1]) for (let x = -w / 2 + 3.2; x < w / 2 - 1.5; x += 3.2) fin(cx + x, y0f(x, sz < 0), cz + sz * (d / 2 + 0.22), false);
+  for (const sx of [-1, 1]) for (let z = -d / 2 + 3.2; z < d / 2 - 1.5; z += 3.2) fin(cx + sx * (w / 2 + 0.22), 5.2, cz + z, true);
+  // setback cornices (bronze, with an amber line under each)
+  for (const y of [h * 0.55, h * 0.8]) {
+    S.push(bx(w + 2, 0.8, d + 2, cx, y, cz, BRZ2), bx(w + 1.2, 0.5, d + 1.2, cx, y + 0.65, cz, CHAMP));
+    N.push(bx(w + 2.1, 0.12, 0.12, cx, y - 0.5, cz - d / 2 - 1.02, AMBER), bx(w + 2.1, 0.12, 0.12, cx, y - 0.5, cz + d / 2 + 1.02, AMBER), bx(0.12, 0.12, d + 2.1, cx - w / 2 - 1.02, y - 0.5, cz, AMBER), bx(0.12, 0.12, d + 2.1, cx + w / 2 + 1.02, y - 0.5, cz, AMBER));
+  }
+  // vertical light strips: three up each face, between the fins
+  const strip = (x, y0, z, fx) => N.push(bx(fx ? 0.1 : 0.16, top - y0, fx ? 0.16 : 0.1, x, (y0 + top) / 2, z, WARM));
+  for (const o of [-7.6, 0, 7.6]) for (const sz of [-1, 1]) strip(cx + o + 1.6, y0f(o + 1.6, sz < 0), cz + sz * (d / 2 + 0.06), false);
+  for (const o of [-6, 0, 6]) for (const sx of [-1, 1]) strip(cx + sx * (w / 2 + 0.06), 5.4, cz + o + 1.6, true);
+  // a warm wash on the faces at night, strongest on the side that looks at the old town (east)
+  glows.push([b.x1 + 3, h * 0.5, cz, '#ffc070', 34, 0], [b.x1 + 3, h * 0.82, cz, '#ffb35a', 26, 0], [cx, h * 0.6, b.z1 + 3, '#ffc070', 26, 0], [cx, h * 0.6, b.z0 - 3, '#ffc070', 26, 0]);
+
+  // ---- the sunburst on the roof's west edge (outside the terrace glass, behind the lift hut), facing the old town
+  const R0 = b.roofY, sx0 = b.x0 + 0.3, sy = R0 + 1.2, RAYS = 13;
+  S.push(cy(4.2, 4.2, 0.5, 24, sx0, sy, cz, BRZ2, 0, PI / 2));
+  N.push(cy(3.4, 3.4, 0.2, 24, sx0 + 0.32, sy, cz, '#ffd27a', 0, PI / 2));
+  for (let i = 0; i < RAYS; i++) {
+    const a = (i + 0.5) / RAYS * PI, long = i % 2 === 0, L = long ? 14.2 : 10.4, r0 = 4.8, dy = Math.sin(a), dz = Math.cos(a);
+    const mx = r0 + L / 2;
+    S.push(bx(0.36, L, long ? 0.9 : 0.7, sx0, sy + dy * mx, cz + dz * mx, BRONZE, PI / 2 - a));
+    N.push(bx(0.12, L - 0.6, 0.16, sx0 + 0.26, sy + dy * mx, cz + dz * mx, long ? AMBER : '#ff8a5a', PI / 2 - a));
+  }
+  // the halo arc round the rays' tips
+  for (let i = 0; i <= 24; i++) {
+    const a = i / 24 * PI, r = 19.6, seg = r * PI / 24 + 0.15;
+    N.push(bx(0.14, seg, 0.18, sx0 + 0.3, sy + Math.sin(a) * r, cz + Math.cos(a) * r, '#ffe3a0', -a));
+  }
+  // the mast and the beacon: the highest point downtown
+  S.push(cy(0.22, 0.6, 30, 8, sx0, sy + 19.6 + 15, cz, BRZ2), cy(0.9, 0.9, 0.5, 10, sx0, sy + 19.6 + 0.3, cz, BRZ2));
+  N.push(cy(0.32, 0.32, 0.9, 8, sx0, sy + 19.6 + 30.4, cz, '#8fe3ff'));
+  glows.push([sx0, sy + 19.6 + 30.6, cz, '#8fe3ff', 16, 0.55], [sx0 + 2, sy + 9, cz, '#ffc070', 30, 0.05], [sx0, sy + 19.6, cz, '#ffe3a0', 10, 0.2]);
+}
+
 export function addSpire({ b, S, N, glows, P, bx, cy, sign, group }) {
   const T = TERRACE, X = b.cx, Z = b.cz, Y = b.deckY, R0 = b.roofY, r = rng(7171);
   const W = (lx, lz) => [X + lx, Z + lz];

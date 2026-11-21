@@ -73,7 +73,7 @@ export function makeKey(props, solids, surf) {
   buildings.find((b) => b.cx === -650 && b.cz === -118).name = 'Glasswater Tower';
   // the Solstice Spire: the waterfront tower facing the old town, the causeway and the sunset. Its roof is the
   // Solstice Terrace (world/spire.js, game/spire.js), not a helipad: a timber deck behind a glass balustrade
-  { const sp = buildings.find((b) => b.cx === -519 && b.cz === -12); Object.assign(sp, { name: 'The Solstice Spire', spire: true, helipad: false, color: '#3a6f9a' }); }
+  { const sp = buildings.find((b) => b.cx === -519 && b.cz === -12); Object.assign(sp, { name: 'The Solstice Spire', spire: true, helipad: false, color: '#c9a86e' }); }
   buildings.find((b) => b.cx === -630 && b.cz === 27).name = 'Pelican Point Lofts';
 
   // ---------------------------------------------------------------- south of Halcyon Avenue

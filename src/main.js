@@ -58,6 +58,7 @@ import { createMotes } from './world/motes.js';
 import { createCinematic } from './game/cinematic.js';
 import { createSpire } from './game/spire.js';
 import { createPier } from './game/pier.js';
+import { createSaves, bindSaveUI } from './game/saves.js';
 import { createCat } from './actors/cat.js';
 
 const $ = (id) => document.getElementById(id);
@@ -178,17 +179,11 @@ async function boot() {
   const peds = game.peds = createPeds(scene, R, grid, game);
   const animals = game.animals = createAnimals(scene, game);
   const loose = game.loose = createLoose(scene, game, city, fx, audio);
-  // what survives a reload: the outfit you wear and own, and how far the story has got
-  const SAVE = 'neon-coast-save-1';
-  const save = game.save = { outfit: 'classic', owned: [], story: 0, gift: {} };
-  try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE) || '{}')); } catch (e) { /* private mode, file:// quirks: play without saving */ }
-  if (!Array.isArray(save.owned)) save.owned = [];
-  if (!save.gift || typeof save.gift !== 'object') save.gift = {};
-  save.story = Math.max(0, Math.floor(+save.story || 0));
-  // the haircut from Fade & Fringe (game/salon.js): { style, color, facial }, and whether the cap is on
-  if (!save.hair || typeof save.hair !== 'object') save.hair = { style: 'shag', color: 'plum', facial: 'none' };
-  save.cap = save.cap === 0 ? 0 : 1;
-  game.persist = () => { try { localStorage.setItem(SAVE, JSON.stringify(save)); } catch (e) { /* ignore */ } };
+  // what survives a reload (game/saves.js): one autosave slot. game.save is the profile (outfits, story, hair,
+  // blasters...), always written; the world (cash, health, where you are, the clock, the weather) only in a clean moment
+  const saves = game.saves = createSaves(game);
+  const save = game.save = saves.save;
+  game.persist = () => saves.persist();
   const cut = game.cut = createDirector(camera, game);
   const rules = game.rules = createRules(game, scene);
   const damage = game.damage = createDamage(game);
@@ -197,7 +192,6 @@ async function boot() {
   const story = game.story = createStory(game, scene);
   const act = game.act = createActivity(game);
   const eat = game.eat = createEat(game);
-  venues.restore();                           // a motel save brings back its cash and clock
   const combat = game.combat = createCombat(game, scene);
   const events = game.events = createEvents(game, scene);
   const pursuit = game.pursuit = createPursuit(game, scene);
@@ -227,6 +221,7 @@ async function boot() {
   const cheats = createCheats(game);
   game.cheats = cheats;
   const touch = game.touch = createTouch(game);
+  bindSaveUI(game, saves);
   const me = { x: 0, z: 0, isPed: true, isPlayer: true };
   window.__neon = game;                       // handy for poking around in devtools
   game.scene = scene;
@@ -419,6 +414,9 @@ async function boot() {
     spireGuests: (h, w = 'clear') => { env.setWeather(w); env.w.rain = w === 'rain' || w === 'storm' ? 0.8 : 0; env.tod = h; env.target = null; return spire.settle(); },
     tris: () => renderer.info.render.triangles,
     view: (far, fog) => { if (far) VIEW.far = far; if (fog) VIEW.fog = fog; return { ...VIEW }; },
+    // ---- saving (automated checks)
+    saveNow: (force = true) => saves.attempt('debug', force),
+    saveState: () => ({ has: saves.has, storage: saves.storage, unsafe: saves.unsafe(), world: saves.world, stats: { ...saves.stats }, summary: saves.summary() }),
     evtGo: (off = 0.6) => { const t = events.target(); if (!t) return null; const v = game.vehicle; if (v) { v.x = t.x + off; v.z = t.z; v.vx = v.vz = 0; } else player.pos.set(t.x + off, 0, t.z); return t; },
   };
   game.signalAt = (n, h) => signal(n, h, timeU.value);
@@ -598,7 +596,7 @@ async function boot() {
     if (game.started) spire.update(dt);
     pier.update(dt);
     cat.update(dt);
-    if (game.started) { rules.update(dt); pursuit.update(dt); parking.update(raw); heatHint.update(raw); story.update(dt); story.tickStar(dt); places.update(dt, ctl); venues.tick(dt); events.update(dt); marine.blips(rules.blips); roofs.update(dt); }
+    if (game.started) { saves.tick(raw); rules.update(dt); pursuit.update(dt); parking.update(raw); heatHint.update(raw); story.update(dt); story.tickStar(dt); places.update(dt, ctl); venues.tick(dt); events.update(dt); marine.blips(rules.blips); roofs.update(dt); }
     city.tick(timeU.value); city.beachFx.tick(env.rainAmt);
     fx.update(dt);
     player.tickFace(dt);
@@ -620,7 +618,8 @@ async function boot() {
     // in first person on foot the courier's own body would sit inside the camera
     cockpit.update(dt, v, cam.first && !cut.active && !game.inside && !!v, ctl.steer);
     vehicles.firstPerson = cam.first && !cut.active && !game.inside && !!v;
-    const hideBody = cam.first && !cut.active && !game.inside && game.mode === 'foot';
+    // (indoors in first person too: game/places.js fpOn; menus, sitting, scenes and dancing frame her in third person)
+    const hideBody = cam.first && !cut.active && game.mode === 'foot' && (!game.inside || places.fpOn);
     if (player.model.root.visible === hideBody && !player.hidden) player.model.root.visible = !hideBody;
     // high up (the Solstice Terrace, the Starlight Wheel: the view boost is on) the near plane moves out, so the
     // depth buffer has the precision for the ground, the roads and their markings hundreds of metres away
@@ -717,9 +716,17 @@ async function boot() {
     else if (!raf) { last = performance.now(); adaptive.reset(); raf = requestAnimationFrame(frame); if (game.started && !game.paused) audio.resume(); }
   });
 
-  const title = $('title'), go = $('go');
+  const title = $('title'), go = $('go'), newg = $('newg'), conf = $('newconf'), sumry = $('sumry');
   $('bar').hidden = true; $('status').hidden = true; go.hidden = false; $('keys').hidden = false; $('tkeys').hidden = false; $('ctlpick').hidden = false;
-  const start = () => {
+  // a save on this device: CONTINUE (with where you were) or NEW GAME (asks first: it wipes the save)
+  if (saves.has) {
+    go.textContent = 'CONTINUE';
+    sumry.innerHTML = '';
+    const b = document.createElement('b'); b.textContent = saves.summary();
+    const i = document.createElement('i'); i.textContent = saves.ago();
+    sumry.append(b, i); sumry.hidden = false; newg.hidden = false;
+  }
+  const start = (how = saves.has ? 'continue' : 'new') => {
     if (game.started) return;
     touch.save();
     game.started = true;
@@ -729,13 +736,25 @@ async function boot() {
     title.classList.add('out');
     setTimeout(() => { title.hidden = true; }, 700);
     hud.show();
-    hud.toast('HELICOPTER PARKED NEARBY', input.touchMode ? 'WALK UP AND TAP E · CODES: TAP CODES' : 'WALK UP AND PRESS E · CODES: PRESS T');
-    // the local news: the causeway is open again (once the helicopter toast has had its turn)
-    setTimeout(() => hud.toast('WAVE 86 NEWS: HALCYON CAUSEWAY REOPENS', 'STORM REPAIRS DONE · SOLANO KEY IS A SHORT DRIVE WEST'), 3200);
+    if (how === 'continue') {
+      const r = saves.resume();
+      hud.toast('PROGRESS RESTORED', r.where === 'vehicle' ? 'RIGHT WHERE YOU PARKED IT' : r.where.startsWith('door') ? 'OUTSIDE WHERE YOU LEFT OFF' : saves.summary());
+      if (!saves.storage) setTimeout(() => saves.warnOnce(), 3200);
+    } else {
+      hud.toast('HELICOPTER PARKED NEARBY', input.touchMode ? 'WALK UP AND TAP E · CODES: TAP CODES' : 'WALK UP AND PRESS E · CODES: PRESS T');
+      // the local news: the causeway is open again (once the helicopter toast has had its turn)
+      setTimeout(() => hud.toast('WAVE 86 NEWS: HALCYON CAUSEWAY REOPENS', 'STORM REPAIRS DONE · SOLANO KEY IS A SHORT DRIVE WEST'), 3200);
+      if (!saves.storage) setTimeout(() => saves.warnOnce(), 6400);
+    }
     input.enabled = true;
     go.blur();
   };
-  title.addEventListener('click', (e) => { if (!e.target.closest('#ctlpick,#tlinks')) start(); });
+  const askNew = (on) => { conf.hidden = !on; go.hidden = on; newg.hidden = on; if (on) $('newyes').focus({ preventScroll: true }); else go.focus({ preventScroll: true }); };
+  newg.addEventListener('click', (e) => { e.stopPropagation(); askNew(true); });
+  $('newno').addEventListener('click', (e) => { e.stopPropagation(); askNew(false); });
+  $('newyes').addEventListener('click', (e) => { e.stopPropagation(); saves.newGame(); sumry.hidden = true; conf.hidden = true; start('new'); });
+  go.addEventListener('click', (e) => { e.stopPropagation(); start(); });
+  title.addEventListener('click', (e) => { if (!e.target.closest('#ctlpick,#tlinks,#newg,#newconf,#sumry') && conf.hidden) start(); });
   go.focus({ preventScroll: true });
 }
 

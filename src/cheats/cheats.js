@@ -59,10 +59,9 @@ export function createCheats(game) {
       return 'ONE COMET, KEYS IN';
     },
     REWIND() {
-      Object.assign(game.save, { outfit: 'classic', owned: [], story: 0, gift: {}, arms: {}, armsIntro: 0, vest: 0, motel: null, arcade: 0, hair: { style: 'shag', color: 'plum', facial: 'none' }, cap: 1 });
-      if (game.combat) game.combat.reset();
+      // the same profile reset as NEW GAME on the title card (game/saves.js); cash, the clock and where you are stay
+      game.saves.resetProfile();
       game.persist();
-      player.model.setOutfit({ jacket: '#12b5a6', trim: '#e6258f', light: '#f7f5ef', bag: '#f2b63a' }); player.model.setHair(game.save.hair, true);
       return 'TAPE REWOUND: STORY, WARDROBE, HAIR AND BLASTERS RESET';
     },
     HIGHTIDE() {

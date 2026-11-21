@@ -71,7 +71,17 @@ export function createPlaces(game, scene, camera) {
     cam.yaw = yaw; cam.pitch = 0.2; cam.snap(player.pos);
     exitMark.visible = useMark.visible = false;
   }
-  let camRoom = null;
+  let camRoom = null, fpWas = false;
+  // first person indoors: the eyes at Skye's height, a hand's width in front, kept inside the room's walls and under
+  // its ceiling (the near plane is 0.12 m indoors, so the clamp keeps it from clipping through)
+  function firstPersonCam(r) {
+    const c = camera.position, yaw = cam.yaw, lp = clamp(cam.pitch - 0.2, -0.9, 0.9), cp = Math.cos(lp);
+    let lx = player.pos.x - r.ox + Math.sin(yaw) * 0.12, lz = player.pos.z - r.oz + Math.cos(yaw) * 0.12;
+    lx = clamp(lx, (r.x0 ?? -r.hx) + 0.3, (r.x1 ?? r.hx) - 0.3); lz = clamp(lz, -r.hz + 0.3, r.hz - 0.3);
+    c.set(r.ox + lx, Math.min(OY + 1.62, OY + (r.h || 3.2) - 0.3), r.oz + lz);
+    camera.lookAt(c.x + Math.sin(yaw) * cp, c.y - Math.sin(lp), c.z + Math.cos(yaw) * cp);
+    cut.setFov(72);
+  }
   const roamCam = (r, lx, lz, k = 1) => {
     let x = r.ox + lx * 0.55, y = OY + Math.min(3.4, r.h - 0.7), z = r.oz + Math.min(r.hz - 0.5, lz + 7.5);
     const c = camera.position, alt = r.camFor && r.camFor(lx, lz);
@@ -244,6 +254,7 @@ export function createPlaces(game, scene, camera) {
   }
 
   const api = {
+    fpOn: false,        // first person indoors this frame (main.js hides the body)
     list, enter, talk, putOutside, bark, byKey, openShop, closeShop, render, outside, faceYaw,
     // a place's room (built on first use), and stepping straight into it at room (x, z) (the Spire's lift)
     roomOf: (p) => room(p),
@@ -297,7 +308,8 @@ export function createPlaces(game, scene, camera) {
     },
     update(dt, ctl) {
       const p = game.inside;
-      if (!p) {
+      api.fpOn = false;
+      if (!p) { fpWas = false;
         // door rings on the street
         const show = game.busy !== 'cut' && game.busy !== 'door';
         for (const q of list) {
@@ -345,9 +357,15 @@ export function createPlaces(game, scene, camera) {
         if (game.act.dancing) return;
         if (game.act.mode) { cut.setFov(60); roamCam(r, player.pos.x - r.ox, player.pos.z - r.oz); return; }
       }
-      // walking around indoors: camera sits above the door looking in, so W is "further in"
+      // walking around indoors: camera sits above the door looking in, so W is "further in". In FIRST PERSON (V) the
+      // camera is Skye's eyes instead: mouse / swipe looks round, W walks where you look, the body is hidden (main.js)
+      const fp = cam.first && !game.busy && !lock;
+      if (fp && !fpWas) { cam.yaw = player.yaw; cam.pitch = 0.2; }
+      fpWas = fp; api.fpOn = fp;
+      if (fp) { const inp = game.input; if (inp.dragDX || inp.dragDY) { cam.yaw -= inp.dragDX * 0.0055; cam.pitch = clamp(cam.pitch + inp.dragDY * 0.004, -0.7, 1.1); } }
       if (!game.busy) {
         let dx = ctl.strafe, dz = -ctl.move;
+        if (fp) { const fx = Math.sin(cam.yaw), fz = Math.cos(cam.yaw); dx = fx * ctl.move - fz * ctl.strafe; dz = fz * ctl.move + fx * ctl.strafe; }
         const len = Math.hypot(dx, dz), top = (ctl.sprint ? 7 : 4.6) * (player.boost || 1);
         if (len > 0) { const k = top * Math.min(1, len) / len; dx *= k; dz *= k; }
         player.vel.x = damp(player.vel.x, dx, len > 0 ? 7 : 4, dt); player.vel.z = damp(player.vel.z, dz, len > 0 ? 7 : 4, dt);
@@ -358,11 +376,13 @@ export function createPlaces(game, scene, camera) {
         player.pos.set(r.ox + local.x, OY, r.oz + local.z);
         player.speed = Math.hypot(player.vel.x, player.vel.z);
         let turn = 0;
-        if (player.speed > 0.5) { turn = angleDelta(player.yaw, Math.atan2(player.vel.x, player.vel.z)); player.yaw += turn * (1 - Math.exp(-10 * dt)); }
+        if (fp) { turn = angleDelta(player.yaw, cam.yaw); player.yaw = cam.yaw; }
+        else if (player.speed > 0.5) { turn = angleDelta(player.yaw, Math.atan2(player.vel.x, player.vel.z)); player.yaw += turn * (1 - Math.exp(-10 * dt)); }
         player.onGround = true;
         player.animate(dt, turn, audio);
         if (!lock && Math.hypot(local.x, local.z - (r.hz - 1.1)) < 0.9) { leave(); return; }
       } else { player.speed = 0; player.animate(dt, 0, null); }
+      if (fp) { firstPersonCam(r); return; }
       cut.setFov(60);
       roamCam(r, player.pos.x - r.ox, player.pos.z - r.oz);
     },
