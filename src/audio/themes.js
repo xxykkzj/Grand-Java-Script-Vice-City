@@ -473,6 +473,106 @@ export const THEMES = {
       melody(e, { ...this.lead, vol: 0.04, oct: minor ? -1 : 0, voice: (m, tt, d, v) => { K.tone('square', m, tt, d, v, bus, { cut: 2400, ftype: 'bandpass', q: 0.8, att: 0.01, sus: true, det: 6 }); if (e.secKey === 'B') K.tone('triangle', m + 12, tt, d, v * 0.5, bus, { att: 0.01 }); } });
     },
   },
+  // ---- the estate agencies and the homes (game/homes.js) ----------------------------------------------------
+  // Coral Keys Realty: office bossa on a cheap radio. Nylon plucks, a rim-click clave, a round bass, vibes.
+  realty: {
+    bpm: 112, swing: 0.15, wet: 0.18, vol: 0.9,
+    sec: { A: prog('Fmaj7 | Gm7 C7 | Am7 | Dm7'), B: prog('Bbmaj7 | Am7 D7 | Gm7 | C7sus4 C7') },
+    form: ['A', 'A', 'B', 'A'],
+    lead: { sc: scale(5, 'maj', 72), motifs: [mot('0:4:2 2:5:2 4:4:4 10:2:2 12:1:4 16:2:6 24:4:6'), mot('2:7:2 4:6:2 6:4:6 16:5:2 18:4:2 20:2:8'), mot('0:2:4 4:4:4 8:6:6 16:4:4 20:2:4 24:0:6')] },
+    play(e, K) {
+      const { t, s, chord: c, bus, spb, r } = e, b = low(c);
+      if (s === 0 || s === 8) K.bass(b, t, spb * 3, 0.24, bus, 600); else if (s === 6 || s === 14) K.bass(b + 7, t, spb * 2, 0.18, bus, 600);
+      if ([0, 3, 6, 10, 12].includes(s)) K.rim(t, 0.04, bus);
+      if (s % 2 === 0) K.shaker(t, 0.012, bus);
+      if (s === 2 || s === 6 || s === 9 || s === 13) for (const m of tones(c, 55, 4)) K.pluck(m, t, spb * 1.2, 0.022, bus, 0.45, 'triangle');
+      if (e.secKey === 'B' && s % 4 === 0 && r() < 0.5) K.bell(tones(c, 72, 4)[(s >> 2) % 4], t, spb * 3, 0.012, bus);
+      if (e.formI !== 0 || e.loop % 2) melody(e, { ...this.lead, vol: 0.04, voice: (m, tt, d, v) => K.bell(m, tt, d * 1.6, v, bus) });
+    },
+  },
+  // Skyline Estates: a sleek lobby groove. Glassy pad, a lazy fretless-ish bass, tight rim and hats, vibes.
+  estates: {
+    bpm: 92, swing: 0.2, wet: 0.3, vol: 0.95,
+    sec: { A: prog('Am9 | Dm9 | Gmaj9 | Cmaj9'), B: prog('Fmaj9 | Em7 | Dm9 | E7sus4') },
+    form: ['A', 'B', 'A', 'A'],
+    lead: { sc: scale(9, 'min', 72), motifs: [mot('0:4:6 8:3:2 10:2:6 20:0:6'), mot('4:7:4 8:6:2 10:4:8 24:2:6'), mot('0:2:2 2:4:2 4:5:8 16:4:4 22:2:8')] },
+    play(e, K) {
+      const { t, s, chord: c, bus, spb, r } = e, b = low(c);
+      if (s === 0) K.pad(tones(c, 57, 4), t, spb * 16, 0.016, bus, 1700, 'triangle');
+      if (s === 0) K.bass(b, t, spb * 5, 0.25, bus, 500); else if (s === 7 && r() < 0.6) K.bass(b + 12, t, spb * 2, 0.15, bus, 500); else if (s === 10) K.bass(b + 7, t, spb * 3, 0.2, bus, 500);
+      if (s === 0 || s === 10) K.kick(t, 0.26, bus);
+      if (s === 4 || s === 12) K.rim(t, 0.05, bus);
+      if (s % 2 === 0) K.hat(t, s % 4 === 2 ? 0.022 : 0.012, bus);
+      if ((s === 2 || s === 11) && r() < 0.7) for (const m of tones(c, 62, 3)) K.ep(m, t, spb * 1.3, 0.018, bus, 1);
+      if (e.secKey === 'B' || e.loop % 2) melody(e, { ...this.lead, vol: 0.036, drop: 0.2, voice: (m, tt, d, v) => K.bell(m, tt, d * 2, v, bus) });
+    },
+  },
+  // the studio's radio: soft AM rock. Clean strummed chords, a pick bass, a straight backbeat, a warm lead.
+  studio: {
+    bpm: 104, wet: 0.14, vol: 0.9,
+    sec: { A: prog('D | A | Bm | G'), B: prog('G | A | F#m | Bm | G | A | D | D') },
+    form: ['A', 'A', 'B', 'A'],
+    lead: { sc: scale(2, 'maj', 69), motifs: [mot('0:4:2 2:4:2 4:5:2 6:4:6 16:2:2 18:4:2 20:2:8'), mot('0:7:4 4:6:2 6:4:4 12:2:4 16:4:12'), mot('2:2:2 4:4:2 6:5:4 10:4:2 12:2:4 16:1:2 18:0:10')] },
+    play(e, K) {
+      const { t, s, chord: c, bus, spb, r } = e, b = low(c, 38);
+      if (s === 0 || s === 8 || (s === 10 && r() < 0.4)) K.kick(t, 0.4, bus);
+      if (s === 4 || s === 12) K.snare(t, 0.12, bus);
+      if (s % 2 === 0) K.hat(t, 0.02, bus);
+      if (s % 2 === 0) K.bass(b + (s === 14 ? 2 : 0), t, spb * 1.6, 0.2, bus, 800, 'sawtooth');
+      if (s === 0 || s === 6 || s === 8 || s === 12) for (const [i, m] of tones(c, 52, 4).entries()) K.pluck(m, t + i * 0.012, spb * 2.6, 0.02, bus, 0.55, 'sawtooth');
+      if (e.secKey === 'B' || e.formI > 0) melody(e, { ...this.lead, vol: 0.045, voice: (m, tt, d, v) => K.tone('triangle', m, tt, d, v, bus, { cut: 2400, att: 0.02, sus: true, det: 6 }) });
+    },
+  },
+  // the houseboat: harbour steel pan. Bright pan chords on the off-beats, a bouncing bass, shaker and a soft kick.
+  houseboat: {
+    bpm: 98, swing: 0.4, wet: 0.24, vol: 0.9,
+    sec: { A: prog('C | F | G | C'), B: prog('Am | F | C | G'), C: prog('F | G | Em | Am') },
+    form: ['A', 'A', 'B', 'A', 'C', 'A'],
+    lead: { sc: scale(0, 'maj', 72), motifs: [mot('0:4:2 2:5:2 4:7:2 6:5:2 8:4:4 16:2:2 18:4:2 20:2:2 22:0:6'), mot('0:7:2 2:9:2 4:7:2 6:4:2 8:5:4 16:4:2 18:2:2 20:4:8'), mot('2:0:2 4:2:2 6:4:4 12:5:2 14:4:2 16:2:12')] },
+    play(e, K) {
+      const { t, s, chord: c, bus, spb, r } = e, b = low(c);
+      if (s === 0 || s === 8) K.kick(t, 0.22, bus);
+      if (s % 2 === 0) K.shaker(t, s % 4 === 2 ? 0.018 : 0.01, bus);
+      if (s === 0 || s === 6 || s === 10) K.bass(b + (s === 6 ? 7 : 0), t, spb * 2, 0.22, bus, 650);
+      if (s % 4 === 2) for (const m of tones(c, 64, 3)) K.bell(m, t, spb * 1.4, 0.014, bus);
+      melody(e, { ...this.lead, vol: 0.05, drop: 0.12, grace: 0.18, voice: (m, tt, d, v) => { K.bell(m, tt, d * 1.2, v, bus); K.bell(m + 12, tt, d * 0.6, v * 0.35, bus); } });
+    },
+  },
+  // Villa Paloma: night-time italo. A pulsing octave bass, a gated chord stab, a bright arpeggio, a soft lead.
+  villa: {
+    bpm: 116, wet: 0.26, vol: 0.9,
+    sec: { A: prog('Am | F | C | G'), B: prog('Dm | Am | F | E'), C: prog('F | G | Am | Am') },
+    form: ['A', 'A', 'B', 'A', 'C', 'B'],
+    lead: { sc: scale(9, 'min', 69), motifs: [mot('0:7:4 4:5:2 6:4:2 8:2:8 20:4:4'), mot('0:4:2 2:5:2 4:7:6 12:5:2 14:4:2 16:2:12'), mot('4:9:2 6:7:2 8:5:4 12:4:4 16:2:4 20:4:8')] },
+    play(e, K) {
+      const { t, s, chord: c, bus, spb, r } = e, b = low(c, 33);
+      if (s % 4 === 0) K.kick(t, 0.42, bus);
+      if (s === 4 || s === 12) K.clap(t, 0.06, bus);
+      if (s % 4 === 2) K.hat(t, 0.03, bus, true);
+      K.bass(b + (s % 2 ? 12 : 0), t, spb * 0.8, s % 2 ? 0.12 : 0.2, bus, 900, 'sawtooth');
+      if (s === 2 || s === 10) for (const m of tones(c, 60, 3)) K.pluck(m, t, spb * 0.9, 0.016, bus, 0.8, 'square');
+      if (e.secKey !== 'A' || e.loop % 2) K.chip('square', tones(c, 72, 3)[s % 3] + (s % 6 > 2 ? 12 : 0), t, spb * 0.5, 0.008, bus);
+      if (e.formI > 0) melody(e, { ...this.lead, vol: 0.04, voice: (m, tt, d, v) => K.tone('sawtooth', m, tt, d, v, bus, { cut: 1800, att: 0.03, sus: true, det: 8 }) });
+    },
+  },
+  // the penthouse: late-night quiet storm. Lush electric piano, a deep slow bass, brushes, a sax-ish horn.
+  penthouse: {
+    bpm: 72, swing: 0.45, wet: 0.34, vol: 1,
+    sec: { A: prog('Ebmaj9 | Cm9 | Fm9 | Bb7sus4 Bb7'), B: prog('Abmaj9 | Gm7 C7 | Fm9 | Bb7sus4') },
+    form: ['A', 'A', 'B', 'A'],
+    lead: { sc: scale(3, 'maj', 63), motifs: [mot('0:4:4 6:2:2 8:4:10 24:6:4'), mot('2:7:2 4:6:2 6:4:8 18:2:2 20:1:2 22:0:8'), mot('0:2:2 2:4:2 4:6:6 12:7:4 16:6:12')] },
+    play(e, K) {
+      const { t, s, chord: c, bus, spb, r } = e, b = low(c);
+      if (s === 0 || (s === 8 && e.bar.length === 2)) for (const m of tones(c, 55, 4)) K.ep(m, t, spb * (e.bar.length === 2 ? 8 : 14), 0.032, bus);
+      else if (s === 11 && r() < 0.4) for (const m of tones(c, 60, 3)) K.ep(m, t, spb * 2, 0.018, bus, 1);
+      if (s === 0) K.bass(b, t, spb * 7, 0.3, bus, 420); else if (s === 10) K.bass(b + (r() < 0.5 ? 7 : 12), t, spb * 4, 0.2, bus, 420);
+      if (s === 0) K.kick(t, 0.28, bus);
+      if (s === 8) K.snare(t, 0.08, bus, { brush: true });
+      if (s % 4 === 0) K.brush(t, 0.03, bus);
+      if (e.formI > 0 || e.loop % 2) melody(e, { ...this.lead, vol: 0.05, drop: 0.15, voice: (m, tt, d, v) => K.horn(m, tt, d, v, bus, 1300) });
+    },
+  },
 };
 // which theme plays in which place (places and venues by key)
-export const THEME_OF = { bar: 'bar', club: 'club', lounge: 'lounge', diner: 'diner', arcade: 'arcade', wear: 'wear', mart: 'mart', arms: 'arms', motel: 'motel', mall: 'mall', bait: 'bait', spire: 'rooftop', terrace: 'rooftop', pier: 'pier', barber: 'salon' };
+export const THEME_OF = { bar: 'bar', club: 'club', lounge: 'lounge', diner: 'diner', arcade: 'arcade', wear: 'wear', mart: 'mart', arms: 'arms', motel: 'motel', mall: 'mall', bait: 'bait', spire: 'rooftop', terrace: 'rooftop', pier: 'pier', barber: 'salon',
+  realty: 'realty', estates: 'estates', studio: 'studio', villa: 'villa', penthouse: 'penthouse', houseboat: 'houseboat' };

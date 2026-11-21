@@ -32,12 +32,20 @@ export function createPlaces(game, scene, camera) {
   };
   // the use spots in a room (E): r.uses, or the single r.use; the nearest one in reach
   const usesOf = (r) => r.uses || (r.use ? [r.use] : []);
-  const nearUse = (r) => { let best = null, bd = 1e9; for (const u of usesOf(r)) { const d = Math.hypot(player.pos.x - r.ox - u.x, player.pos.z - r.oz - u.z); if (d < u.r && d < bd) { bd = d; best = u; } } return best; };
+  const onLevel = (u) => Math.abs((u.fy || 0) - (player.pos.y - OY)) < 1.2;
+  const nearUse = (r) => { let best = null, bd = 1e9; for (const u of usesOf(r)) { if (!onLevel(u)) continue; const d = Math.hypot(player.pos.x - r.ox - u.x, player.pos.z - r.oz - u.z); if (d < u.r && d < bd) { bd = d; best = u; } } return best; };
   let shopUse = null;
   for (const p of list) { p.mark = makeMarker(scene, p.color); p.mark.position.set(p.x, 0, p.z); p.armed = true; }
   const exitMark = makeMarker(scene, '#fff6ec', 0.8, 2.6), useMark = makeMarker(scene, '#ffe14a', 0.7, 1.8);
   exitMark.layers.enable(1); useMark.layers.enable(1);
   const local = { x: 0, z: 0 };
+  // room helpers: where the way out is (default: by the door on +z), the walkable box, the floor level under a
+  // spot (rooms with stairs, a mezzanine or a pool: r.floorAt(lx, lz, ly)) and the ceiling over it
+  const exitAt = (r) => r.exit || [0, r.hz - 1.1];
+  const bnd = (r) => r.bounds || { x0: r.x0 ?? -r.hx, x1: r.x1 ?? r.hx, z0: -r.hz, z1: r.hz };
+  const ceilAt = (r, lx, lz, y) => (r.ceilAt ? r.ceilAt(lx, lz, y) : r.h || 3.2);
+  let ly = 0;                                    // the courier's floor height in the room (0: the ground floor)
+  const blockOn = (b, y) => b.y0 === undefined || (y >= b.y0 - 0.3 && y < b.y1);
   let shop = null, sel = 0, msg = '', heatCd = 0, barkN = 0, vend = null;
 
   const isWear = (k) => k === 'wear' || k === 'boutique';
@@ -47,17 +55,20 @@ export function createPlaces(game, scene, camera) {
   player.model.setHair(fixHair(save.hair), !!save.cap);       // the cut from Fade & Fringe (game/salon.js)
 
   const room = (p) => rooms[p.key] || (rooms[p.key] = buildRoom(p, scene, game));
-  const bark = (key) => { const b = BARKS[key]; return `${key === 'boutique' ? 'LAURENT' : CAST[b[0]].name}: “${b[1][barkN++ % b[1].length]}”`; };
+  const bark = (key) => { const b = BARKS[key]; if (!b) return game.homes ? game.homes.bark(key) : ''; return `${key === 'boutique' ? 'LAURENT' : CAST[b[0]].name}: “${b[1][barkN++ % b[1].length]}”`; };
 
   function setInside(p, x, z) {
     const r = p.room = room(p);
     if (game.inside && game.inside !== p) game.inside.room.group.visible = false;
-    r.group.visible = true; game.inside = p; env.indoor = true; audio.club = p.key === 'club';
+    r.group.visible = true; game.inside = p; audio.club = p.key === 'club';
+    // a home with a view onto the real town (game/homerooms.js): outdoor fog and sky for the town pass
+    const lookOut = !!(r.view && !r.view.sky); env.indoor = !lookOut; env.roomLit = lookOut;
     rimU.value.set(r.rim || RIM[p.key] || '#3a3046');   // a soft rim light on the characters
     camRoom = null;
     camera.layers.set(1);                       // indoors only the room, the courier and the rings are drawn
-    player.floor = OY; player.pos.set(r.ox + x, OY, r.oz + z); player.vel.set(0, 0, 0); player.vy = 0; player.onGround = true; player.yaw = PI; player.speed = 0;
-    exitMark.position.set(r.ox, OY, r.oz + r.hz - 1.1);
+    ly = r.floorAt ? Math.max(0, r.floorAt(x, z, 0)) : 0;
+    player.floor = OY + ly; player.pos.set(r.ox + x, OY + ly, r.oz + z); player.vel.set(0, 0, 0); player.vy = 0; player.onGround = true; player.yaw = r.faceIn ?? PI; player.speed = 0;
+    { const [ex, ez] = exitAt(r); exitMark.position.set(r.ox + ex, OY, r.oz + ez); }
     const u0 = usesOf(r)[0];
     if (u0) useMark.position.set(r.ox + u0.x, OY, r.oz + u0.z);
     if (game.venues) game.venues.entered(p);
@@ -65,7 +76,7 @@ export function createPlaces(game, scene, camera) {
   function putOutside(x, z, yaw = 0) {
     if (game.inside) game.inside.room.group.visible = false;
     if (game.act) game.act.reset();
-    game.inside = null; env.indoor = false; audio.club = false; camera.layers.set(0); rimU.value.set(0);
+    game.inside = null; env.indoor = false; env.roomLit = false; audio.club = false; camera.layers.set(0); rimU.value.set(0); ly = 0;
     for (const p of list) p.armed = Math.hypot(p.x - x, p.z - z) > 3;
     player.floor = 0; player.pos.set(x, 0, z); player.yaw = yaw; player.vel.set(0, 0, 0); player.vy = 0; player.speed = 0;
     cam.yaw = yaw; cam.pitch = 0.2; cam.snap(player.pos);
@@ -77,20 +88,21 @@ export function createPlaces(game, scene, camera) {
   function firstPersonCam(r) {
     const c = camera.position, yaw = cam.yaw, lp = clamp(cam.pitch - 0.2, -0.9, 0.9), cp = Math.cos(lp);
     let lx = player.pos.x - r.ox + Math.sin(yaw) * 0.12, lz = player.pos.z - r.oz + Math.cos(yaw) * 0.12;
-    lx = clamp(lx, (r.x0 ?? -r.hx) + 0.3, (r.x1 ?? r.hx) - 0.3); lz = clamp(lz, -r.hz + 0.3, r.hz - 0.3);
-    c.set(r.ox + lx, Math.min(OY + 1.62, OY + (r.h || 3.2) - 0.3), r.oz + lz);
+    const B = bnd(r), y0 = player.pos.y - OY;
+    lx = clamp(lx, B.x0 + 0.3, B.x1 - 0.3); lz = clamp(lz, B.z0 + 0.3, B.z1 - 0.3);
+    c.set(r.ox + lx, OY + Math.min(y0 + (r.swimming ? 1.2 : 1.62), ceilAt(r, lx, lz, y0) - 0.3), r.oz + lz);
     camera.lookAt(c.x + Math.sin(yaw) * cp, c.y - Math.sin(lp), c.z + Math.cos(yaw) * cp);
     cut.setFov(72);
   }
   const roamCam = (r, lx, lz, k = 1) => {
     let x = r.ox + lx * 0.55, y = OY + Math.min(3.4, r.h - 0.7), z = r.oz + Math.min(r.hz - 0.5, lz + 7.5);
-    const c = camera.position, alt = r.camFor && r.camFor(lx, lz);
+    const c = camera.position, alt = r.camFor && r.camFor(lx, lz, ly);
     if (alt) { x = r.ox + alt[0]; y = OY + alt[1]; z = r.oz + alt[2]; }
     // rooms with a side room ease the camera between its spots instead of cutting
     if (r.camFor && k >= 1 && camRoom === r) k = 1 - Math.exp(-5 * (game.dt || 0.016));
     camRoom = r;
     if (k >= 1) c.set(x, y, z); else c.set(lerp(c.x, x, k), lerp(c.y, y, k), lerp(c.z, z, k));
-    camera.lookAt(r.ox + lx, OY + 1.1, r.oz + lz - 0.6);
+    camera.lookAt(r.ox + lx, OY + ly + (alt && alt[3] !== undefined ? alt[3] : 1.1), r.oz + lz - (alt && alt[4] !== undefined ? alt[4] : 0.6));
   };
 
   // Walk-in scene: low shot of the courier rolling up to the door, cut inside, a wide reveal,
@@ -98,7 +110,7 @@ export function createPlaces(game, scene, camera) {
   function enter(p, ev) {
     if (game.act) game.act.reset();
     const r = room(p), b = p.b, T1 = ev ? 2.4 : 1.5;
-    const goal = ev ? r.me : [0, r.hz - 2.6];
+    const goal = ev ? r.me : r.spawn || [0, r.hz - 2.6], from = r.entry || [0, r.hz - 1];
     // street-side staging in the door's own frame: a along the face (t), b out from it (n)
     const [nx, nz] = N(p), tx = nz, tz = -nx, fy = faceYaw(p), out = p.out ?? 5.2;
     const W = (a, q) => [p.x + tx * a + nx * q, p.z + tz * a + nz * q];
@@ -119,10 +131,10 @@ export function createPlaces(game, scene, camera) {
       { dur: 0.28, start() { cut.fade(true); } },
       {
         dur: reducedMotion ? 0.8 : ev ? 2 : 1.6,
-        start() { setInside(p, 0, r.hz - 1); cut.fade(false); hud.toast(p.title, ev ? '' : bark(p.key)); },
+        start() { setInside(p, from[0], from[1]); cut.fade(false); hud.toast(p.title, ev ? '' : bark(p.key)); },
         tick(k, dt) {
-          const e = ease(k), lx = lerp(0, goal[0], e), lz = lerp(r.hz - 1, goal[1], e), w = r.wide;
-          player.pos.set(r.ox + lx, OY, r.oz + lz); player.yaw = PI + (goal[0] ? -0.3 * Math.sign(goal[0]) * (1 - e) : 0); player.speed = k < 0.9 ? 3.5 : 0;
+          const e = ease(k), lx = lerp(from[0], goal[0], e), lz = lerp(from[1], goal[1], e), w = r.wide;
+          player.pos.set(r.ox + lx, OY + ly, r.oz + lz); player.yaw = r.entry ? Math.atan2(goal[0] - from[0], goal[1] - from[1]) : PI + (goal[0] ? -0.3 * Math.sign(goal[0]) * (1 - e) : 0); player.speed = k < 0.9 ? 3.5 : 0;
           player.animate(dt, 0, null);
           r.idle(timeU.value, dt, reducedMotion);
           cut.setFov(lerp(46, ev ? 46 : 60, e));
@@ -255,6 +267,15 @@ export function createPlaces(game, scene, camera) {
 
   const api = {
     fpOn: false,        // first person indoors this frame (main.js hides the body)
+    get ly() { return ly; },
+    setLy(v) { ly = v; player.floor = OY + v; },
+    // automated checks: take one small step to (lx, lz) with the same rules as walking (stairs, levels)
+    stepTo(lx, lz) {
+      const r = game.inside && game.inside.room; if (!r) return null;
+      if (r.floorAt) { const f = r.floorAt(lx, lz, ly); if (f - ly > 0.45) return { blocked: true, ly }; ly = f; player.floor = OY + ly; }
+      player.pos.set(r.ox + lx, OY + ly, r.oz + lz); return { ly };
+    },
+    roamCam, frameFitting,
     list, enter, talk, putOutside, bark, byKey, openShop, closeShop, render, outside, faceYaw,
     // a place's room (built on first use), and stepping straight into it at room (x, z) (the Spire's lift)
     roomOf: (p) => room(p),
@@ -265,7 +286,7 @@ export function createPlaces(game, scene, camera) {
     get shop() { return shop; },
     // debug / retry helpers
     warp(key) { const p = byKey(key); if (game.inside) putOutside(...outside(game.inside), faceYaw(game.inside)); p.armed = true; player.pos.set(p.x, 0, p.z); },
-    warpInside(key) { const p = byKey(key), r = room(p); setInside(p, r.me[0], r.me[1]); },
+    warpInside(key) { const p = byKey(key), r = room(p), m = r.me || r.spawn || [0, r.hz - 2.6]; setInside(p, m[0], m[1]); },
     // walk out of the current room at once (automated checks)
     exit() { const p = game.inside; if (p) putOutside(...outside(p), faceYaw(p)); },
     key(e) {
@@ -292,19 +313,23 @@ export function createPlaces(game, scene, camera) {
     use() {
       const p = game.inside, r = p && p.room;
       if (!r || game.busy) return;
+      if (game.homes && game.homes.press()) return;          // reeling in a fish, getting out of the shower...
       const u = nearUse(r);
       if (!u) return;
       if (p.key === 'bar') game.story.askDee();
+      else if (game.homes && game.homes.use(p, u)) shopUse = u;
       else if (game.venues && game.venues.use(p, u)) shopUse = u;
       else openShop(p.key);
     },
     hint() {
       if (shop) return [['W S', 'choose'], ['Enter', isWear(shop) ? 'wear / buy' : 'buy'], ['Esc', 'done']];
       const p = game.inside, r = p.room;
+      const hh = game.homes && game.homes.hint();
+      if (hh) return hh;
       const ah = game.act.hint();
       if (ah) return ah;
       const u = nearUse(r), f = game.act.fHint();
-      return [...(u ? [['E', u.hint || USE_HINT[p.key]]] : []), ...(f ? [f] : []), ['WASD', 'move'], ['Shift', 'hurry'], ['Door', 'walk into the white ring to leave']];
+      return [...(u ? [['E', typeof u.hint === 'function' ? u.hint() : u.hint || USE_HINT[p.key]]] : []), ...(f ? [f] : []), ['WASD', 'move'], ['Shift', 'hurry'], ['Door', 'walk into the white ring to leave']];
     },
     update(dt, ctl) {
       const p = game.inside;
@@ -313,9 +338,11 @@ export function createPlaces(game, scene, camera) {
         // door rings on the street
         const show = game.busy !== 'cut' && game.busy !== 'door';
         for (const q of list) {
-          q.mark.visible = show;
+          const shut = q.home && !(game.homes && game.homes.owned(q.key));
+          q.mark.visible = show && !shut;
           const d = Math.hypot(player.pos.x - q.x, player.pos.z - q.z);
           if (!q.armed) { if (d > 3) q.armed = true; continue; }
+          if (shut) { if (show && !game.busy && !game.vehicle && d < 1.7 && player.pos.y < 2) { q.armed = false; game.homes.forSale(q); } continue; }
           if (show && !game.busy && !game.vehicle && d < 1.7 && player.pos.y < 2) { enter(q, game.story.onEnter(q.key) || firstVisit(q.key)); break; }
         }
         return;
@@ -329,13 +356,18 @@ export function createPlaces(game, scene, camera) {
       if (useMark.visible) {
         // the yellow ring sits on the nearest use spot
         let best = null, bd = 1e9;
-        for (const u of usesOf(r)) { const d = Math.hypot(player.pos.x - r.ox - u.x, player.pos.z - r.oz - u.z); if (d < bd) { bd = d; best = u; } }
-        useMark.position.set(r.ox + best.x, OY, r.oz + best.z);
+        for (const u of usesOf(r)) { const d = Math.hypot(player.pos.x - r.ox - u.x, player.pos.z - r.oz - u.z) + (onLevel(u) ? 0 : 50); if (d < bd) { bd = d; best = u; } }
+        useMark.position.set(r.ox + best.x, OY + (best.fy || 0), r.oz + best.z);
       }
       if (game.busy === 'arcade' && game.venues) { game.venues.arcadeUpdate(dt); return; }
       if (shop) {
         const u = shopUse || r.use;
-        if (isWear(shop)) {
+        const pv = prov();
+        if (pv && pv.fit) {
+          // the wardrobe at home: the same try-on framing, standing on the floor in front of it
+          player.pos.set(r.ox + u.x, OY + ly, r.oz + u.z); player.yaw += angleDelta(player.yaw, (u.face ?? 0.25) + (reducedMotion ? 0 : Math.sin(timeU.value * 0.9) * 0.5)) * (1 - Math.exp(-5 * dt));
+          frameFitting(r.ox + u.x, OY + ly, r.oz + u.z);
+        } else if (isWear(shop)) {
           player.pos.set(r.ox + u.x, OY + 0.22, r.oz + u.z - 0.4); player.yaw += angleDelta(player.yaw, 0.25 + (reducedMotion ? 0 : Math.sin(timeU.value * 0.9) * 0.5)) * (1 - Math.exp(-5 * dt));
           frameFitting(r.ox + u.x, OY + 0.22, r.oz + u.z - 0.4);
         } else if (shop === 'salon') {
@@ -344,18 +376,23 @@ export function createPlaces(game, scene, camera) {
           frameFitting(r.ox + u.x, OY, r.oz + u.z - 0.3, { h: 1.3, w: 0.95, cy: 1.7, min: 1.7 });
         } else {
           const g = u.look ? { x: u.look[0], z: u.look[1] } : r.npc[u.clerk || r.clerk || 'GUS'], cs = u.cam || [-1.3, 2, 2.1];
-          player.pos.set(r.ox + u.x, OY, r.oz + u.z); player.yaw += angleDelta(player.yaw, Math.atan2(g.x - u.x, g.z - u.z)) * (1 - Math.exp(-8 * dt));
-          camera.position.set(r.ox + u.x + cs[0], OY + cs[1], r.oz + u.z + cs[2]); camera.lookAt(r.ox + g.x - (u.look ? 0 : 0.6), OY + (u.lookY || 1.3), r.oz + g.z);
+          player.pos.set(r.ox + u.x, OY + ly, r.oz + u.z); player.yaw += angleDelta(player.yaw, Math.atan2(g.x - u.x, g.z - u.z)) * (1 - Math.exp(-8 * dt));
+          camera.position.set(r.ox + u.x + cs[0], OY + ly + cs[1], r.oz + u.z + cs[2]); camera.lookAt(r.ox + g.x - (u.look ? 0 : 0.6), OY + ly + (u.lookY || 1.3), r.oz + g.z);
         }
         cut.setFov(42);
         player.speed = 0; player.animate(dt, 0, null);
         return;
       }
+      if (!game.busy && game.homes && game.homes.drive(dt, ctl, r)) return;
       // sitting on a stool / sofa, or dancing (the dance owns the camera)
       if (!game.busy && game.act.mode) {
         game.act.update(dt, ctl, game.input);
         if (game.act.dancing) return;
-        if (game.act.mode) { cut.setFov(60); roamCam(r, player.pos.x - r.ox, player.pos.z - r.oz); return; }
+        if (game.act.mode) {
+          const sc = game.act.seat && game.act.seat.ref && game.act.seat.ref.cam;
+          if (sc && game.homes) { game.homes.seatCam(r, sc, dt); return; }
+          cut.setFov(60); roamCam(r, player.pos.x - r.ox, player.pos.z - r.oz); return;
+        }
       }
       // walking around indoors: camera sits above the door looking in, so W is "further in". In FIRST PERSON (V) the
       // camera is Skye's eyes instead: mouse / swipe looks round, W walks where you look, the body is hidden (main.js)
@@ -366,21 +403,30 @@ export function createPlaces(game, scene, camera) {
       if (!game.busy) {
         let dx = ctl.strafe, dz = -ctl.move;
         if (fp) { const fx = Math.sin(cam.yaw), fz = Math.cos(cam.yaw); dx = fx * ctl.move - fz * ctl.strafe; dz = fz * ctl.move + fx * ctl.strafe; }
-        const len = Math.hypot(dx, dz), top = (ctl.sprint ? 7 : 4.6) * (player.boost || 1);
+        const len = Math.hypot(dx, dz), top = (ctl.sprint ? 7 : 4.6) * (player.boost || 1) * (r.swimming ? 0.45 : 1);
         if (len > 0) { const k = top * Math.min(1, len) / len; dx *= k; dz *= k; }
         player.vel.x = damp(player.vel.x, dx, len > 0 ? 7 : 4, dt); player.vel.z = damp(player.vel.z, dz, len > 0 ? 7 : 4, dt);
-        local.x = player.pos.x - r.ox + player.vel.x * dt; local.z = player.pos.z - r.oz + player.vel.z * dt;
-        for (const b of r.blocks) pushOut(local, 0.42, b);
+        const px = player.pos.x - r.ox, pz = player.pos.z - r.oz;
+        local.x = px + player.vel.x * dt; local.z = pz + player.vel.z * dt;
+        for (const b of r.blocks) if (blockOn(b, ly)) pushOut(local, 0.42, b);
         if (r.pushPeople) r.pushPeople(local, 0.3);
-        local.x = clamp(local.x, (r.x0 ?? -r.hx) + 0.5, (r.x1 ?? r.hx) - 0.5); local.z = clamp(local.z, -r.hz + 0.5, r.hz - 0.5);
-        player.pos.set(r.ox + local.x, OY, r.oz + local.z);
+        { const B = bnd(r); local.x = clamp(local.x, B.x0 + 0.5, B.x1 - 0.5); local.z = clamp(local.z, B.z0 + 0.5, B.z1 - 0.5); }
+        if (r.floorAt) {
+          // stairs and levels: step up at most 0.45 m (more is a wall), drop down by falling
+          let f = r.floorAt(local.x, local.z, ly);
+          if (f - ly > 0.45) { local.x = px; local.z = pz; f = r.floorAt(px, pz, ly); player.vel.x *= 0.3; player.vel.z *= 0.3; }
+          ly = f >= ly ? f : Math.max(f, ly - dt * 7);
+          player.floor = OY + ly;
+        }
+        player.pos.set(r.ox + local.x, OY + ly, r.oz + local.z);
         player.speed = Math.hypot(player.vel.x, player.vel.z);
         let turn = 0;
         if (fp) { turn = angleDelta(player.yaw, cam.yaw); player.yaw = cam.yaw; }
         else if (player.speed > 0.5) { turn = angleDelta(player.yaw, Math.atan2(player.vel.x, player.vel.z)); player.yaw += turn * (1 - Math.exp(-10 * dt)); }
         player.onGround = true;
         player.animate(dt, turn, audio);
-        if (!lock && Math.hypot(local.x, local.z - (r.hz - 1.1)) < 0.9) { leave(); return; }
+        { const [ex, ez] = exitAt(r); if (!lock && ly < 0.5 && Math.hypot(local.x - ex, local.z - ez) < 0.9) { leave(); return; } }
+        if (game.homes) game.homes.afterWalk(dt, ctl, r, ly);
       } else { player.speed = 0; player.animate(dt, 0, null); }
       if (fp) { firstPersonCam(r); return; }
       cut.setFov(60);
@@ -388,7 +434,10 @@ export function createPlaces(game, scene, camera) {
     },
     blips(out) {
       if (game.inside) return;
-      for (const q of list) out.push({ x: q.x, z: q.z, color: q.color, near: true, sq: true });
+      for (const q of list) {
+        if (q.home) { if (game.homes && game.homes.owned(q.key)) out.push({ x: q.x, z: q.z, color: q.color, near: false, house: true }); continue; }
+        out.push({ x: q.x, z: q.z, color: q.color, near: true, sq: true });
+      }
     },
   };
   return api;

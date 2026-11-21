@@ -62,6 +62,14 @@ export const VENUE_DEFS = {
   // Fade & Fringe: a barber and salon in a back-street shopfront (row 1, facing Back Avenue 1) in the old town;
   // `lot` picks the building (row, nearest x), `alongK` puts the door where that shopfront's door is (city.js)
   barber: { name: 'Fade & Fringe', title: 'FADE & FRINGE · BARBER & SALON', color: '#ff5a6e', lot: { row: 1, x: -23 }, face: 0, alongK: -0.2, out: 2.3, exit: 1.05, camOff: 0.35 },   // a narrow sidewalk: the camera comes round on the street side
+  // the two estate agencies (game/homes.js) and the four homes you can buy from them (locked until bought)
+  realty: { name: 'Coral Keys Realty', title: 'CORAL KEYS REALTY', color: '#ffb38a', at: 'Pink Heron Hotel', face: 0, along: 7.2, out: 5.2 },
+  estates: { name: 'Skyline Estates', title: 'SKYLINE ESTATES', color: '#9fe8ff', keyAt: [-604, -10], isle: 'key', face: Math.PI, along: -11, out: 5.2 },
+  studio: { name: 'Seafront Studio 2B', title: 'SEAFRONT STUDIO 2B', color: '#7fe0ff', at: 'Aqua Deco Suites', face: 0, along: -8, out: 5.2, home: true },
+  villa: { name: 'Villa Paloma', title: 'VILLA PALOMA', color: '#ff9ad5', lot: { row: 1, x: -80.4 }, face: 0, alongK: -0.2, out: 2.3, exit: 1.05, camOff: 0.35, home: true },
+  penthouse: { name: 'Skyline Penthouse', title: 'THE SKYLINE PENTHOUSE · FLOOR 27', color: '#ffd36a', keyAt: [-519, -118], isle: 'key', face: -Math.PI / 2, along: 6, out: 5.2, home: true },
+  // moored off the marina boardwalk east of the pier: the "building" is the boat's own footprint
+  houseboat: { name: 'The Driftwood Dory', title: 'THE DRIFTWOOD DORY · HOUSEBOAT', color: '#8dffcf', boat: { cx: -760, cz: 156, w: 14, d: 6 }, isle: 'key', face: Math.PI, along: 5, out: 5.4, home: true },
   bait: { name: 'Starboard Bait & Tackle', title: 'STARBOARD BAIT & TACKLE', color: '#8dff5a', at: 'Starboard Marina', isle: 'key', face: -Math.PI / 2, along: 0, out: 5.2 },
 };
 
@@ -292,8 +300,10 @@ export function makeLayout() {
   const venues = {};
   for (const k in VENUE_DEFS) {
     const d = VENUE_DEFS[k], f = d.face;
-    const b = d.lot ? buildings.filter((q) => q.row === d.lot.row && !q.place).sort((p, q) => Math.abs(p.cx - d.lot.x) - Math.abs(q.cx - d.lot.x))[0]
-      : (d.isle === 'key' ? key.buildings : buildings).find((q) => q.name === d.at);
+    const bt = d.boat && { ...d.boat, h: 3, x0: d.boat.cx - d.boat.w / 2, x1: d.boat.cx + d.boat.w / 2, z0: d.boat.cz - d.boat.d / 2, z1: d.boat.cz + d.boat.d / 2, boat: true };
+    const b = bt || (d.lot ? buildings.filter((q) => q.row === d.lot.row && !q.place).sort((p, q) => Math.abs(p.cx - d.lot.x) - Math.abs(q.cx - d.lot.x))[0]
+      : d.keyAt ? key.buildings.find((q) => q.cx === d.keyAt[0] && q.cz === d.keyAt[1])
+      : (d.isle === 'key' ? key.buildings : buildings).find((q) => q.name === d.at));
     const along = d.alongK !== undefined ? d.alongK * b.w : d.along;
     if (d.lot) b.venue = k;
     const nx = Math.round(Math.sin(f)), nz = Math.round(Math.cos(f));

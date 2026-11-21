@@ -191,6 +191,7 @@ export function createHud(L, groundCanvas, renderer, keyCanvas) {
         g.beginPath();
         if (p.diamond) { g.moveTo(x, y - r - 2); g.lineTo(x + r + 2, y); g.lineTo(x, y + r + 2); g.lineTo(x - r - 2, y); g.closePath(); }
         else if (p.sq) g.rect(x - 4, y - 4, 8, 8);
+        else if (p.house) { g.moveTo(x, y - 7); g.lineTo(x + 7, y - 1); g.lineTo(x + 5, y - 1); g.lineTo(x + 5, y + 6); g.lineTo(x - 5, y + 6); g.lineTo(x - 5, y - 1); g.lineTo(x - 7, y - 1); g.closePath(); }
         else if (p.star) { for (let k = 0; k < 10; k++) { const a = k * 0.6283 - 1.5708, q = k % 2 ? r * 0.55 : r + 3; g.lineTo(x + Math.cos(a) * q, y + Math.sin(a) * q); } g.closePath(); }
         else g.arc(x, y, r, 0, 6.2832);
         g.stroke(); g.fill();

@@ -335,12 +335,14 @@ export function buildKey(scene, L, renderer, adSigns) {
   // frame on the façade at its ring, a lit canopy with a neon edge, a lamp either side, a step and a mat.
   for (const k in VENUE_DEFS) {
     const d = VENUE_DEFS[k];
-    if (d.isle !== 'key' || k === 'mall' || d.hidden) continue;
-    const b = K.buildings.find((q) => q.name === d.at); if (!b) continue;
+    if (d.isle !== 'key' || k === 'mall' || d.hidden || d.boat) continue;
+    const b = d.keyAt ? K.buildings.find((q) => q.cx === d.keyAt[0] && q.cz === d.keyAt[1]) : K.buildings.find((q) => q.name === d.at); if (!b) continue;
     const nx = Math.round(Math.sin(d.face)), nz = Math.round(Math.cos(d.face));
     const fxp = nx ? (nx > 0 ? b.x1 : b.x0) : b.cx + d.along, fzp = nz ? (nz > 0 ? b.z1 : b.z0) : b.cz + d.along;
     // a frame in façade coordinates: o along the wall, out from it
-    const at = (o, out) => [fxp + nx * out + (nx ? 0 : o), fzp + nz * out + (nz ? 0 : o)];
+    // (a glass tower's lobby podium stands 0.6 m proud of its shaft: the door goes on the podium's face)
+    const o0 = b.style === 'tower' && !b.spire ? 0.62 : 0;
+    const at = (o, out) => [fxp + nx * (out + o0) + (nx ? 0 : o), fzp + nz * (out + o0) + (nz ? 0 : o)];
     const pb = (o, y, out, ww, hh, dd, hex) => { const [x, z] = at(o, out); return bx(nx ? dd : ww, hh, nx ? ww : dd, x, y, z, hex); };
     const col = d.color;
     if (k !== 'spire') {

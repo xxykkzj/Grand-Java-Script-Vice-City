@@ -62,7 +62,7 @@ export function createParking(game) {
   for (let i = 0; i < POOL_BIKES; i++) { const c = vehicles.addCar(0, 0, 0, BIKE_PAINT[(i * 3 + 1) % BIKE_PAINT.length], { off: true, spare: true, kind: 'bike', type: i % 2 ? 'scooter' : 'comet' }); if (c) pool.push(c); }
   const stats = { moves: 0, pool: pool.length, slots: slots.length, rejected: raw.length - slots.length };
 
-  const vacant = (v) => !v.off && !v.ai && !v.driven && !v.wreck && !v.sink && !v.police && !(v.burn > 0) && !v.jacking && (v.kind === 'car' || v.kind === 'bike') && (v.y || 0) < 2;
+  const vacant = (v) => !v.off && !v.homeCar && !v.ai && !v.driven && !v.wreck && !v.sink && !v.police && !(v.burn > 0) && !v.jacking && (v.kind === 'car' || v.kind === 'bike') && (v.y || 0) < 2;
   function nearestVacant(x, z) {
     let best = null, bd = 1e9;
     for (const v of vehicles.cars) if (vacant(v)) { const d = Math.hypot(v.x - x, v.z - z); if (d < bd) { bd = d; best = v; } }

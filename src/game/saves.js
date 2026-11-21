@@ -13,17 +13,20 @@ import { onLand, onRoad, zoneName } from '../world/layout.js';
 import { WEATHER } from '../world/environment.js';
 import { MISSIONS, OUTFITS } from './story.js';
 import { DEFAULT_HAIR, fixHair } from './salon.js';
+import { HOMES, HOME_IDS } from './homes.js';
 
 export const SAVE_KEY = 'neon-coast-save-2';
 const OLD_KEY = 'neon-coast-save-1';
-const VERSION = 2, CODE_TAG = 'NEONCOAST2';
+// schema 3 adds the homes (owned, the car in each parking bay, the last one slept in); a schema-2 slot or code
+// still loads (the new fields just start empty)
+const VERSION = 3, CODE_TAG = 'NEONCOAST2', OK_V = (v) => v === 2 || v === 3;
 const AUTOSAVE_S = 50, MIN_GAP = 3000;
 export const START = { x: -10, z: 67, yaw: Math.PI / 2 };
 const $ = (id) => document.getElementById(id);
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
-export const profileDefaults = () => ({ outfit: 'classic', owned: [], story: 0, gift: {}, arms: {}, armsIntro: 0, vest: 0, motel: null, arcade: 0, hair: { ...DEFAULT_HAIR }, cap: 1, stunts: [] });
+export const profileDefaults = () => ({ outfit: 'classic', owned: [], story: 0, gift: {}, arms: {}, armsIntro: 0, vest: 0, motel: null, arcade: 0, hair: { ...DEFAULT_HAIR }, cap: 1, stunts: [], homes: [], garage: {}, lastHome: null });
 const PROFILE_KEYS = Object.keys(profileDefaults());
 
 // FNV-1a over the JSON text: catches a code that got cut short or edited
@@ -75,6 +78,12 @@ export function cleanSlot(raw) {
   s.hair = fixHair(raw.hair);
   s.cap = raw.cap === 0 ? 0 : 1;
   if (Array.isArray(raw.stunts)) s.stunts = [...new Set(raw.stunts.filter((k) => typeof k === 'string').map((k) => k.slice(0, 32)))];
+  if (Array.isArray(raw.homes)) s.homes = [...new Set(raw.homes.filter((k) => HOME_IDS.includes(k)))];
+  if (raw.garage && typeof raw.garage === 'object' && !Array.isArray(raw.garage)) for (const h of HOMES) {
+    const g = raw.garage[h.id];
+    if (h.bay && g && typeof g.type === 'string' && /^[a-z]{2,16}$/.test(g.type) && typeof g.color === 'string' && /^#[0-9a-f]{6}$/i.test(g.color)) s.garage[h.id] = { type: g.type, color: g.color };
+  }
+  s.lastHome = HOME_IDS.includes(raw.lastHome) && s.homes.includes(raw.lastHome) ? raw.lastHome : null;
   if (raw.motel && fin(raw.motel.cash) && fin(raw.motel.tod)) s.motel = { cash: raw.motel.cash, tod: raw.motel.tod, at: fin(raw.motel.at) ? raw.motel.at : 0 };
   return {
     profile: s,
@@ -88,7 +97,7 @@ export function cleanSlot(raw) {
 function load(storage) {
   let raw = null, from = null;
   try { raw = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (raw) from = 'v2'; } catch (e) { raw = null; }
-  if (!raw || raw.v !== VERSION) {
+  if (!raw || !OK_V(raw.v)) {
     raw = null;
     try {
       const old = JSON.parse(localStorage.getItem(OLD_KEY) || 'null');
@@ -242,7 +251,11 @@ export function createSaves(game) {
     env.wet = W.rain > 0 ? 0.7 : 0;
     let where = 'start';
     const p = w.venue && places.byKey(w.venue);
-    if (p && !p.hidden) {
+    if (p && !p.hidden && p.home && save.homes.includes(p.key)) {
+      // your own home: you wake up inside (by the bed if you slept there)
+      const r = places.roomOf(p), sp = r.spawn || [0, r.hz - 2.6];
+      places.enterRoom(p.key, sp[0], sp[1]); where = 'home:' + p.key;
+    } else if (p && !p.hidden) {
       const [x, z] = places.outside(p); places.putOutside(x, z, places.faceYaw(p)); where = 'door:' + p.key;
     } else if (w.vehicle && restoreVehicle(w.vehicle)) where = 'vehicle';
     else if (w.pos) {
@@ -292,7 +305,7 @@ export function createSaves(game) {
     } else return { error: 'NOT A NEON COAST SAVE CODE' };
     if (checksum(json) !== sum) return { error: 'CHECKSUM MISMATCH: THE CODE WAS CUT SHORT OR CHANGED' };
     let raw; try { raw = JSON.parse(json); } catch (e) { return { error: 'THAT CODE IS DAMAGED' }; }
-    if (!raw || raw.v !== VERSION) return { error: 'UNKNOWN SAVE VERSION' };
+    if (!raw || !OK_V(raw.v)) return { error: 'UNKNOWN SAVE VERSION' };
     const s = cleanSlot(raw);
     return s ? { slot: s, raw } : { error: 'THAT SAVE DOESN\'T LOOK RIGHT' };
   }

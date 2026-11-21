@@ -167,9 +167,10 @@ export function createEnvironment(scene, sky, ocean, city, camera, audio) {
     for (let i = 0; i < LN; i++) { const l = best[i] && best[i][1]; if (l) lightPos[i].set(l.x + Math.sin(l.yaw) * 1.45, 5.6, l.z + Math.cos(l.yaw) * 1.45); else lightPos[i].set(0, -999, 0); }
   }
 
+  const outL = { hc: new THREE.Color(), hg: new THREE.Color(), hi: 1, si: 1 };
   const env = {
     hemi, rain, splash, lightPos,
-    tod: 19, target: null, ffRate: null, viewFog: 1, speed: 1, indoor: false, flash: 0, cur,
+    tod: 19, target: null, ffRate: null, viewFog: 1, speed: 1, indoor: false, roomLit: false, flash: 0, cur,
     glare: 0, weather: 'clear', w: { cloud: 0.12, rain: 0, bolt: 0, fog: 0 }, wxTimer: 2.5, wet: 0,
     nextBolt: 4, pendingThunder: -1, phase: 'DUSK',
     // the rainbow: armed by a real shower, it shows once the rain has stopped and the clouds thin with the sun up
@@ -309,8 +310,15 @@ export function createEnvironment(scene, sky, ocean, city, camera, audio) {
       reflU.sky.value.copy(cur.hor).lerp(cur.mid, 0.5).multiplyScalar(0.8 + fl * 2);
       reflU.sun.value.copy(cur.sun).multiplyScalar(cur.sunI * 0.5 * (1 - veil)); reflU.dir.value.copy(lightDir);
       city.setLights(cur.neon, cur.lit, cur.glass);
-      // indoors the courier is lit by the room, not the sky
-      if (env.indoor) { hemi.color.set(0xfff0f6); hemi.groundColor.set(0xb090d0); hemi.intensity = 2.1; sun.intensity = 0.5; scene.fog.near = 400; scene.fog.far = 900; }
+      // indoors the courier is lit by the room, not the sky. A home with a view (env.roomLit: the town is drawn
+      // through its windows first, main.js) keeps the outdoor values for that pass: lightPass(true / false)
+      outL.hc.copy(hemi.color); outL.hg.copy(hemi.groundColor); outL.hi = hemi.intensity; outL.si = sun.intensity;
+      if (env.indoor || env.roomLit) { hemi.color.set(0xfff0f6); hemi.groundColor.set(0xb090d0); hemi.intensity = 2.1; sun.intensity = 0.5; }
+      if (env.indoor) { scene.fog.near = 400; scene.fog.far = 900; }
+    },
+    lightPass(out) {
+      if (out) { hemi.color.copy(outL.hc); hemi.groundColor.copy(outL.hg); hemi.intensity = outL.hi; sun.intensity = outL.si; }
+      else { hemi.color.set(0xfff0f6); hemi.groundColor.set(0xb090d0); hemi.intensity = 2.1; sun.intensity = 0.5; }
     },
   };
   return env;

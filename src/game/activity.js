@@ -29,8 +29,10 @@ export function createActivity(game) {
     const p = player.pos, r = room();
     if (r) {
       let best = null, bd = 1.3;
-      for (const s of r.seats) { const d = Math.hypot(r.ox + s.x - p.x, r.oz + s.z - p.z); if (d < bd && !s.taken) { bd = d; best = s; } }
-      return best && { x: r.ox + best.x, z: r.oz + best.z, y: best.y, yaw: best.yaw, kind: best.kind, ref: best };
+      const ly = p.y - OY;
+      for (const s of r.seats) { const d = Math.hypot(r.ox + s.x - p.x, r.oz + s.z - p.z); if (d < (s.r || bd) && d < bd && !s.taken && Math.abs((s.fy || 0) - ly) < 1.2) { bd = d; best = s; } }
+      // (a seat on an upper floor, or sunk into a hot tub, says where its floor is: fy)
+      return best && { x: r.ox + best.x, z: r.oz + best.z, y: best.y, yaw: best.yaw, kind: best.kind, ref: best, ...(best.fy !== undefined ? { floorY: OY + best.fy } : {}) };
     }
     if (p.y > 0.3) return game.spire ? game.spire.seatNear(p) : null;     // up on the Solstice Terrace (game/spire.js)
     const s = L.props.nearest(p.x, p.z, 1.4);

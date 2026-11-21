@@ -133,6 +133,7 @@ export function createTouch(game) {
     }
     if (game.swim && game.swim.wet) return game.swim.touchButtons();
     if (act.dancing) return [];
+    { const hb = game.homes && game.homes.touchButtons(); if (hb) return hb; }
     if (act.mode === 'sit') return game.spire && game.spire.seated ? [['Digit1', 'SUNSET'], ['Digit2', 'NIGHT'], ['KeyF', 'GET UP']] : [['KeyF', 'GET UP']];
     const f = act.fHint(), fb = f ? [['KeyF', f[1].toUpperCase()]] : [];
     if (game.inside) {

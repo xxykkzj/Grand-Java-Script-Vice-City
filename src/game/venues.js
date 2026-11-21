@@ -126,13 +126,18 @@ export function createVenues(game) {
   const box = $('arcade'), view = $('arcc'), foot = $('arcf');
   const vctx = view ? view.getContext('2d') : null;
   const A = { mode: 'attract', x: W / 2, t: 0, score: 0, stars: 0, speed: 60, obs: [], items: [], spawn: 0, spark: [], over: 0, frameT: 0, flash: 0 };
-  const best = () => save.arcade || 0;
+  // the villa's console plays the same engine as Tide Rider: free, the sea instead of the street, its own best
+  const best = () => (A.skin === 'tide' ? A.tideBest || 0 : save.arcade || 0);
+  const setBest = (v) => { if (A.skin === 'tide') A.tideBest = v; else { save.arcade = v; game.persist(); } };
   const BOARD = [['TOK', 4200], ['DOT', 2650], ['RDY', 1200], ['HZL', 900]];
   let rr = rng(86);
   function reset() { Object.assign(A, { mode: 'play', x: W / 2, t: 0, score: 0, stars: 0, speed: 60, obs: [], items: [], spawn: 0.4, spark: [], over: 0, flash: 0 }); rr = rng(86 + stats.games * 13); }
   function start() {
-    if (game.money < 1) { audio.blip(false); foot.textContent = 'ONE TOKEN IS $1. YOU ARE OUT OF QUARTERS.'; return false; }
-    game.money -= 1; audio.cash(); stats.games++; reset(); return true;
+    if (A.skin !== 'tide') {
+      if (game.money < 1) { audio.blip(false); foot.textContent = 'ONE TOKEN IS $1. YOU ARE OUT OF QUARTERS.'; return false; }
+      game.money -= 1; audio.cash();
+    } else audio.blip(true);
+    stats.games++; reset(); return true;
   }
   function step(dt, input) {
     A.t += dt; A.frameT += dt; A.flash = Math.max(0, A.flash - dt);
@@ -158,7 +163,7 @@ export function createVenues(game) {
       if (Math.abs(o.x - A.x) < o.w / 2 + 4 && Math.abs(o.y - py) < hh / 2 + 5) {
         A.mode = 'over'; A.over = 0; stats.lastScore = Math.floor(A.score);
         audio.thud(0.4); audio.blip(false);
-        if (stats.lastScore > best()) { save.arcade = stats.lastScore; game.persist(); A.newBest = true; } else A.newBest = false;
+        if (stats.lastScore > best()) { setBest(stats.lastScore); A.newBest = true; } else A.newBest = false;
         break;
       }
     }
@@ -166,23 +171,31 @@ export function createVenues(game) {
   function draw() {
     const t = A.t;
     // road: dusk purple with scrolling lane marks and palm silhouettes at the sides
-    const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#2a0f4a'); gr.addColorStop(1, '#5a1a6a'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    const tide = A.skin === 'tide';
+    const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, tide ? '#0a3a6a' : '#2a0f4a'); gr.addColorStop(1, tide ? '#1a8ab0' : '#5a1a6a'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
     const scroll = (A.mode === 'play' ? A.t * A.speed : t * 40) % 24;
-    g.fillStyle = '#ff2bd1'; g.fillRect(6, 0, 2, H); g.fillRect(W - 8, 0, 2, H);
-    g.fillStyle = 'rgba(255,240,255,.35)'; for (let y = -24 + scroll; y < H; y += 24) { g.fillRect(W / 3, y, 2, 10); g.fillRect(2 * W / 3, y, 2, 10); }
+    g.fillStyle = tide ? '#f4e2b0' : '#ff2bd1'; g.fillRect(6, 0, 2, H); g.fillRect(W - 8, 0, 2, H);
+    if (tide) { g.fillStyle = 'rgba(255,255,255,.3)'; for (let y = -24 + scroll; y < H; y += 24) for (let x = 14; x < W - 14; x += 26) g.fillRect(x + ((y / 24) % 2) * 12, y, 10, 2); }
+    else { g.fillStyle = 'rgba(255,240,255,.35)'; for (let y = -24 + scroll; y < H; y += 24) { g.fillRect(W / 3, y, 2, 10); g.fillRect(2 * W / 3, y, 2, 10); } }
     if (A.mode === 'attract') {
       g.fillStyle = '#ffe14a'; g.font = 'bold 22px monospace'; g.textAlign = 'center';
-      g.fillText('SKATE', W / 2, 46 + Math.sin(t * 3) * 2); g.fillStyle = '#18f0ff'; g.fillText('SURGE', W / 2, 70 + Math.sin(t * 3 + 1) * 2);
+      g.fillText(tide ? 'TIDE' : 'SKATE', W / 2, 46 + Math.sin(t * 3) * 2); g.fillStyle = '#18f0ff'; g.fillText(tide ? 'RIDER' : 'SURGE', W / 2, 70 + Math.sin(t * 3 + 1) * 2);
       g.font = 'bold 9px monospace'; g.fillStyle = '#fff';
       g.fillText('HIGH SCORES', W / 2, 98);
       const rows = [...BOARD, ['YOU', best()]].sort((a, b) => b[1] - a[1]).slice(0, 5);
       rows.forEach(([nm, sc], i) => { g.fillStyle = nm === 'YOU' ? '#8dff5a' : '#ffd6f5'; g.fillText(`${i + 1}. ${nm}  ${String(sc).padStart(5, '0')}`, W / 2, 114 + i * 13); });
-      if (Math.floor(t * 2) % 2) { g.fillStyle = '#ffe14a'; g.fillText('INSERT TOKEN', W / 2, 192); }
+      if (Math.floor(t * 2) % 2) { g.fillStyle = '#ffe14a'; g.fillText(tide ? 'PRESS START' : 'INSERT TOKEN', W / 2, 192); }
       return;
     }
     // stars, obstacles, the skater
     for (const s of A.items) { g.fillStyle = '#ffe14a'; g.beginPath(); for (let k = 0; k < 10; k++) { const a = k * 0.628 - 1.57 + t * 3, q = k % 2 ? 2.5 : 6; g.lineTo(s.x + Math.cos(a) * q, s.y + Math.sin(a) * q); } g.fill(); }
     for (const o of A.obs) {
+      if (tide) {
+        if (o.kind === 'cone') { g.fillStyle = '#ff3f3a'; g.beginPath(); g.arc(o.x, o.y, 6, 0, 6.3); g.fill(); g.fillStyle = '#fff'; g.fillRect(o.x - 6, o.y - 1, 12, 2); }
+        else if (o.kind === 'puddle') { g.fillStyle = '#ff9ad5cc'; g.beginPath(); g.arc(o.x, o.y, o.w / 2, PI, 0); g.fill(); for (let k = -2; k <= 2; k++) g.fillRect(o.x + k * 3, o.y, 1, 6); }
+        else { g.fillStyle = o.c; g.beginPath(); g.moveTo(o.x, o.y - 12); g.lineTo(o.x + o.w / 2, o.y + 10); g.lineTo(o.x - o.w / 2, o.y + 10); g.fill(); g.fillStyle = '#fff'; g.fillRect(o.x - o.w / 2 + 3, o.y + 7, o.w - 6, 2); }
+        continue;
+      }
       if (o.kind === 'cone') { g.fillStyle = '#ff8a3d'; g.beginPath(); g.moveTo(o.x, o.y - 7); g.lineTo(o.x + 6, o.y + 5); g.lineTo(o.x - 6, o.y + 5); g.fill(); g.fillStyle = '#fff'; g.fillRect(o.x - 3, o.y, 6, 2); }
       else if (o.kind === 'puddle') { g.fillStyle = '#18f0ffaa'; g.beginPath(); g.ellipse(o.x, o.y, o.w / 2, 5, 0, 0, 6.28); g.fill(); }
       else { g.fillStyle = o.c; g.fillRect(o.x - o.w / 2, o.y - 11, o.w, 22); g.fillStyle = '#22203a'; g.fillRect(o.x - o.w / 2 + 3, o.y - 5, o.w - 6, 7); g.fillStyle = '#ffe14a'; g.fillRect(o.x - o.w / 2 + 2, o.y + 9, 4, 2); g.fillRect(o.x + o.w / 2 - 6, o.y + 9, 4, 2); }
@@ -195,10 +208,10 @@ export function createVenues(game) {
     g.textAlign = 'right'; g.fillText(`HI ${String(Math.max(best(), Math.floor(A.score))).padStart(5, '0')}`, W - 4, 10);
     if (A.mode === 'over') {
       g.fillStyle = 'rgba(20,6,40,.78)'; g.fillRect(10, 60, W - 20, 80);
-      g.textAlign = 'center'; g.fillStyle = '#ff4fa3'; g.font = 'bold 16px monospace'; g.fillText('WIPEOUT!', W / 2, 82);
+      g.textAlign = 'center'; g.fillStyle = '#ff4fa3'; g.font = 'bold 16px monospace'; g.fillText(A.skin === 'tide' ? 'WIPED OUT!' : 'WIPEOUT!', W / 2, 82);
       g.font = 'bold 9px monospace'; g.fillStyle = '#fff'; g.fillText(`SCORE ${stats.lastScore}`, W / 2, 100);
       g.fillStyle = A.newBest ? '#8dff5a' : '#ffd6f5'; g.fillText(A.newBest ? 'NEW HIGH SCORE!' : `BEST ${best()}`, W / 2, 114);
-      g.fillStyle = '#ffe14a'; g.fillText('AGAIN: $1', W / 2, 130);
+      g.fillStyle = '#ffe14a'; g.fillText(A.skin === 'tide' ? 'AGAIN: START' : 'AGAIN: $1', W / 2, 130);
     }
   }
   let screenTex = null, screenT = 0;
@@ -206,12 +219,18 @@ export function createVenues(game) {
     if (vctx && !box.hidden) { vctx.imageSmoothingEnabled = false; vctx.drawImage(cv, 0, 0, view.width, view.height); }
     if (screenTex) screenTex.needsUpdate = true;
   }
+  function openConsole() {
+    A.skin = 'tide'; start();
+    game.busy = 'arcade'; game.act.reset(); box.hidden = false; arcFoot();
+    hud.toast('TIDE RIDER', 'THE CONSOLE BLEEPS · DODGE THE BUOYS, CATCH THE STARS');
+  }
   function openArcade() {
+    A.skin = null;
     if (!start()) { hud.toast('OUT OF TOKENS', 'ONE GO IS $1'); return; }
     game.busy = 'arcade'; game.act.reset(); box.hidden = false; arcFoot(); audio.blip(true);
   }
-  function closeArcade() { if (A.mode === 'play') { A.mode = 'over'; stats.lastScore = Math.floor(A.score); if (stats.lastScore > best()) { save.arcade = stats.lastScore; game.persist(); } } A.mode = 'attract'; box.hidden = true; game.busy = null; }
-  const arcFoot = () => { foot.textContent = game.input.touchMode ? '◀ ▶ steer · PLAY again · QUIT' : '← → / A D steer · Enter play again · Esc quit'; };
+  function closeArcade() { if (A.mode === 'play') { A.mode = 'over'; stats.lastScore = Math.floor(A.score); if (stats.lastScore > best()) setBest(stats.lastScore); } A.mode = 'attract'; box.hidden = true; game.busy = null; A.skin = null; }
+  const arcFoot = () => { foot.textContent = game.input.touchMode ? '◀ ▶ steer · PLAY again · QUIT' : `← → / A D steer · Enter play again${A.skin === 'tide' ? ' (free)' : ''} · Esc quit`; };
 
   // ---- the Blue Pelican's now-playing card ------------------------------------------------------------
   const np = $('nowplay'), music = game.music;
@@ -235,7 +254,7 @@ export function createVenues(game) {
   const api = {
     stats, arcade: A, canvas: cv, salon,
     get vest() { return !!save.vest; },
-    menu: (kind) => MENUS[kind] || null,
+    menu: (kind) => MENUS[kind] || (game.homes ? game.homes.menu(kind) : null),
     closeMenu: () => game.places.closeShop(),
     // the arcade cabinet's screen in the room shows the same canvas
     screen(tex) { screenTex = tex; },
@@ -247,6 +266,7 @@ export function createVenues(game) {
     get cardShown() { return !!np && !np.hidden; },
     // E at a use spot: true when handled here
     // the Galleria's escalator: up from the atrium to Velvet Rope Couture, or back down (a short ride, X skips)
+    playConsole: () => openConsole(),
     escalator(up = true) {
       const from = game.inside, cut = game.cut, places = game.places;
       if (!from) return false;
@@ -305,11 +325,12 @@ export function createVenues(game) {
     hint() { return A.mode === 'play' ? [['← →', 'steer'], ['Esc', 'quit']] : [['Enter', 'play again ($1)'], ['Esc', 'quit']]; },
     // the arcade owns the camera: over the shoulder at the cabinet
     arcadeUpdate(dt) {
-      const r = game.inside.room, u = r.uses.find((q) => q.kind === 'arcade');
+      const r = game.inside.room, u = r.uses.find((q) => q.kind === 'arcade' || q.kind === 'console');
       step(dt, game.input); draw(); blit();
       player.pos.set(r.ox + u.x, OY, r.oz + u.z); player.yaw += angleDelta(player.yaw, PI) * (1 - Math.exp(-8 * dt)); player.speed = 0; player.animate(dt, 0, null);
       const s = r.screenAt;
-      camera.position.set(r.ox + s[0] + 1.55, OY + 1.95, r.oz + s[2] + 1.5); camera.lookAt(r.ox + s[0] - 0.15, OY + s[1] - 0.1, r.oz + s[2]);   // beside Skye, not behind her head
+      if (r.consoleCam) { const c = r.consoleCam; camera.position.set(r.ox + c[0], OY + c[1], r.oz + c[2]); camera.lookAt(r.ox + c[3], OY + c[4], r.oz + c[5]); player.yaw = -PI / 2; }
+      else { camera.position.set(r.ox + s[0] + 1.55, OY + 1.95, r.oz + s[2] + 1.5); camera.lookAt(r.ox + s[0] - 0.15, OY + s[1] - 0.1, r.oz + s[2]); }   // beside Skye, not behind her head
       game.cut.setFov(44);
     },
     // every frame while inside a venue (idle animation of the attract screen, diner counter flavour)

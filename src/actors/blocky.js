@@ -357,7 +357,7 @@ export function faceDriver(u, reduced = false) {
 
 // ---- shared atlases ---------------------------------------------------------------------------------------
 // the story cast (row per character) and the city's crowd (eight face variants)
-export const CAST_ROW = { SKYE: 0, DEE: 1, GLITZ: 2, GUS: 3, KILO: 4, TAPS: 5, ZIZI: 6, MIMI: 7, DOT: 8, TOKEN: 9, HAZEL: 10, KIKI: 11, RUDY: 12, BIRDIE: 13, LEO: 14, JUNE: 15, SKYE_STUBBLE: 16, DOLLY: 17 };
+export const CAST_ROW = { SKYE: 0, DEE: 1, GLITZ: 2, GUS: 3, KILO: 4, TAPS: 5, ZIZI: 6, MIMI: 7, DOT: 8, TOKEN: 9, HAZEL: 10, KIKI: 11, RUDY: 12, BIRDIE: 13, LEO: 14, JUNE: 15, SKYE_STUBBLE: 16, DOLLY: 17, BRENDA: 18, VAUGHN: 19 };
 const CAST_FACES = [
   { iris: '#1f7f86', brow: '#2a2140', freckles: true },                                   // Skye
   { iris: '#6a3a1a', brow: '#b02a6a', lash: true, lip: '#d42f6e', blush: true },           // Dee
@@ -377,6 +377,8 @@ const CAST_FACES = [
   { iris: '#2a6a5a', brow: '#d0502a', lash: true, lip: '#d04050', blush: true, freckles: true },  // June, the Afterglow Bar
   { iris: '#1f7f86', brow: '#2a2140', freckles: true, stubble: true },                       // Skye with stubble (the salon)
   { iris: '#5a3a1a', brow: '#3a1a2a', lash: true, lip: '#e0306a', blush: true },            // Dolly, Fade & Fringe
+  { iris: '#2f6fa8', brow: '#c8a860', lash: true, lip: '#ff6a8a', blush: true },            // Brenda, Coral Keys Realty
+  { iris: '#3a2a1a', brow: '#8a8a94', thick: true },                                        // Vaughn, Skyline Estates
 ];
 const CROWD_FACES = [
   { iris: '#4a2a14', brow: '#2a1a12' },                                         // 0  m

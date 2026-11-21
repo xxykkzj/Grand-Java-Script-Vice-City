@@ -23,6 +23,8 @@ Saturday is the Neon Coast Dance-Off at Club Prism. The prize is $5,000. Dee has
 | **DJ Kilowatt** | Club Prism, the booth | Headphones, yellow cap, one hand always in the air. Has not forgiven Marty for the smoke machine incident. |
 | **Mimi Zig** | Zigzag Threads | Sells jackets. Has opinions about your shorts. |
 | **Zizi Sparks** | Volt & Spark Supply | Pyrotechnician and blaster tinkerer. Tangerine overalls over a dark long-sleeve, yellow straps, teal hair under a goggle band. Everything she sells is "certified toy-grade": it zaps cars and rattles bins and only ever gives people a fright. Takes safety very seriously, in the loudest possible way. |
+| **Brenda Shore** | Coral Keys Realty, Lumina Boulevard | Estate agent. Peach blazer with shoulder pads, a frosted perm, pearls. "Location, location, and a balcony." Sells the old town's studio and villa first and calls everyone sugar. |
+| **Vaughn Castellane** | Skyline Estates, Solano Key | Estate agent. Charcoal double-breasted suit, silver side part, a gold watch. Does not sell homes, he sells "views with walls"; everyone asks him about the penthouse. |
 | **Officer Duarte** | Coast Patrol, in a patrol car | The friendly voice on the patrol car's loudspeaker during street events. Pays a reward for a good tackle. The Coast Patrol only ever appears in its cars. |
 | **Patrol Dispatch** | the radio | Calls in the street events: alarms at shops, suspects on foot. |
 

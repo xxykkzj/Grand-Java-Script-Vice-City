@@ -9,6 +9,7 @@ import { CLUB_CROWD, clubTier } from './story.js';
 import { shell, stool, bake, glow } from './dress.js';
 import { REDRESS } from './redress.js';
 import { VENUE_BUILD, VENUE_LOOKS } from './venuerooms.js';
+import { HOME_BUILD, HOME_LOOKS } from './homerooms.js';
 import { quality } from '../core/quality.js';
 
 export const OY = -90;
@@ -112,7 +113,7 @@ const LOOKS = {
         K.B(0.1, 0.1, 0.06, 0.12, 0.4, 0.07, '#ff2bd1'), K.B(0.04, 0.04, 0.02, 0.12, 0.4, 0.105, '#ffe14a'));
     } },
 };
-Object.assign(LOOKS, VENUE_LOOKS);
+Object.assign(LOOKS, VENUE_LOOKS, HOME_LOOKS);
 const shade = (hex, k) => '#' + new THREE.Color(hex).multiplyScalar(k).getHexString();
 
 // Characters indoors are lit (Lambert) with a soft rim light so they stand out from light walls too.
@@ -836,7 +837,7 @@ const BUILD = { bar: buildBar, club: buildClub, wear: buildWear, mart: buildMart
 export function buildRoom(place, scene, game) {
   const mat = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false });
   const room = { key: place.key, mat, npc: {}, extras: [], ox: place.b.cx, oz: place.b.cz, game, idle() {}, lights: null, pools: [], hiPools: [], ticks: [] };
-  BUILD[place.key](room, scene);
+  if (HOME_BUILD[place.key]) HOME_BUILD[place.key](room, place); else BUILD[place.key](room, scene);
   if (REDRESS[place.key]) REDRESS[place.key](room);
   const group = room.group = new THREE.Group();
   const body = merge(room.geo);

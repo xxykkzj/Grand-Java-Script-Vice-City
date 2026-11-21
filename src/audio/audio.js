@@ -44,7 +44,7 @@ export function createAudio() {
   const mus = { on: pref !== 'off', keep: pref === 'on', fired: false, until: AUTO_OFF, slow: false };
   const players = [];                 // themes playing now (two while crossfading)
   const savePref = (v) => { try { localStorage.setItem(MUSIC_KEY, v); } catch (e) { /* private mode */ } };
-  let purr = null, eng, rotor, skate, rain, siren, hum, spray, fire, uw, ufilt, heyT = 0, zapT = 0, splashT = 0;
+  let purr = null, eng, rotor, skate, rain, siren, hum, spray, fire, uw, ufilt, water, waves, heyT = 0, zapT = 0, splashT = 0;
   const A = {
     muted: false, ready: false,
     start() {
@@ -95,6 +95,8 @@ export function createAudio() {
           src.connect(f); f.connect(g); g.connect(rain.bus); src.start(); return { f, g }; };
         rain.wash = mkL('bandpass', 1500, 0.35); rain.hiss = mkL('lowpass', 5200, 0.3); rain.rumble = mkL('lowpass', 160, 0.6); rain.drum = mkL('bandpass', 420, 0.8); }
       spray = loop('bandpass', 1900, 0.5);
+      // at home (game/homes.js): a shower or a bath running, and the waves round the houseboat's hull
+      water = loop('highpass', 2400, 0.4); waves = loop('lowpass', 420, 0.6);
       // a burning car: low crackling noise, its level jittered every frame
       fire = loop('bandpass', 700, 0.45);
       // a cat's purr: low noise pulsed ~24 times a second, breathing in and out (s.purr from actors/cat.js)
@@ -233,6 +235,8 @@ export function createAudio() {
       rainLayers(s, t, edt);
       if (purr) { const br = 0.65 + 0.35 * Math.max(0, Math.sin(t * 2.6)); purr.g.gain.setTargetAtTime((s.purr || 0) * 0.16 * br, t, 0.12); purr.lfo.frequency.setTargetAtTime(22 + Math.sin(t * 2.6) * 3, t, 0.2); }
       spray.g.gain.setTargetAtTime((s.spray || 0) * 0.08, t, 0.2);
+      water.g.gain.setTargetAtTime((s.water || 0) * (0.05 + 0.012 * Math.sin(t * 9.1)), t, 0.12);
+      waves.g.gain.setTargetAtTime((s.waves || 0) * (0.05 + 0.04 * Math.max(0, Math.sin(t * 0.55))), t, 0.4);
       hum.gain.setTargetAtTime((s.hum || 0) * 0.035, t, 0.3);
       siren.gain.setTargetAtTime((s.siren || 0) * 0.07, t, 0.15);
       fire.g.gain.setTargetAtTime((s.fire || 0) * (0.05 + Math.random() * 0.07), t, 0.05);
@@ -278,6 +282,9 @@ export function createAudio() {
     },
     chomp() { hit(0.55, 0.14, 'bandpass', 800, 220); tone('square', 200, 60, 0.14, 0.18); tone('sawtooth', 110, 40, 0.3, 0.14, 0.05); hit(0.4, 0.45, 'lowpass', 1800, 300, ctx ? ctx.currentTime + 0.05 : 0); },
     step(k = 1) { hit(0.035 * k, 0.05, 'bandpass', 2400); },
+    // the TV at home: a short tone (a test card, a jingle, a cartoon boing) and a studio audience laughing
+    tvTone(f, dur = 0.2, vol = 0.02, slide = false) { tone(slide ? 'triangle' : 'sine', f, slide ? f * 1.8 : f, dur, vol); },
+    laugh() { for (let i = 0; i < 5; i++) hit(0.05, 0.25 + Math.random() * 0.2, 'bandpass', 700 + Math.random() * 900, 0, ctx ? ctx.currentTime + i * 0.13 : 0); },
     // typewriter blip for subtitles, pitched per character
     talk(pitch = 1) { tone('square', 420 * pitch, 380 * pitch, 0.035, 0.022); },
     jump() { tone('sine', 300, 620, 0.12, 0.08); },

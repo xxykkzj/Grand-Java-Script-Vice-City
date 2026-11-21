@@ -31,12 +31,14 @@ Dee's bar, the Velvet Flamingo, owes $5,000 by Sunday. Marty Glitz at Club Prism
 
 One autosave slot in the browser's local storage (`neon-coast-save-2`, a few KB of JSON; `game/saves.js`). A reload, a refresh after an update, or a phone throwing the tab away in the background no longer starts you over.
 
-- **What is kept:** your cash and health, where you are and which way you face, the clock and the weather; the story chapter; the outfits you own and wear, your hair, facial hair and cap; blasters and ammo, the snorkel vest, the Skate Surge best, the stunts found, odd jobs done. In a car or on a bike you come back in the same type of vehicle in the same colour at the same spot; in the helicopter (landed) the same helicopter. Inside a place you come back outside its street door. Settings (controls, subtitles, graphics, resolution, music) are stored on their own as before.
-- **When:** every 50 seconds of play, a moment after you go in or out of a place, start or finish a job step, get in or out of a vehicle or get back on your feet after a respawn; on every purchase, haircut and finished job; and when the tab is hidden or the page is closed (`visibilitychange`, `pagehide`). A small floppy icon blinks by the minimap when an autosave is written. Sleeping (or **Just save**) at the Moonlite Motor Inn is the manual save: the same slot, with a **GAME SAVED** toast.
+- **What is kept:** the homes you own, the car in each home's parking bay (type and colour) and the home you last slept in; your cash and health, where you are and which way you face, the clock and the weather; the story chapter; the outfits you own and wear, your hair, facial hair and cap; blasters and ammo, the snorkel vest, the Skate Surge best, the stunts found, odd jobs done. In a car or on a bike you come back in the same type of vehicle in the same colour at the same spot; in the helicopter (landed) the same helicopter. Inside a place you come back outside its street door. Settings (controls, subtitles, graphics, resolution, music) are stored on their own as before.
+- **When:** every 50 seconds of play, a moment after you go in or out of a place, start or finish a job step, get in or out of a vehicle or get back on your feet after a respawn; on every purchase, haircut and finished job; and when the tab is hidden or the page is closed (`visibilitychange`, `pagehide`). A small floppy icon blinks by the minimap when an autosave is written. Sleeping (or **Just save**) at the Moonlite Motor Inn or in a home of your own is the manual save: the same slot, with a **GAME SAVED** toast.
 - **Never in a bad moment:** with heat on you, during a scene or a chase, while knocked out, caught or totalled, in the air, in the water or on the Starlight Wheel. The last clean save is kept instead, so refreshing can't shake the Coast Patrol and you never wake up mid-fall. (Purchases still save what you bought; your cash and position then stay at the last clean moment.)
 - **Jobs:** a story job in progress is not saved. **CONTINUE** puts you back with the chapter where it was, before that job started; its giver has it for you again.
 - **Resuming:** with a save on the device, the title card shows **CONTINUE** with a summary (cash, time, district, chapter, how long ago) and **NEW GAME**, which asks first because it wipes the save. CONTINUE checks the spot: on foot it must be dry land, off the carriageway and outside any building (or on the roof or deck you stood on), otherwise you start on the nearest sidewalk; then **PROGRESS RESTORED**. A first visit plays the usual intro.
 - **Export / Import** (pause / settings, **SAVED GAME**): **EXPORT SAVE** shows a save code (`NEONCOAST2.<base64 JSON>.<checksum>`) to copy, and **DOWNLOAD .JSON** saves it as a file. **IMPORT SAVE** takes a pasted code or a file, checks the checksum and every field, writes it and reloads into it (the title card then offers CONTINUE). A damaged or edited code is refused with a message and nothing changes.
+- **Inside your own home** CONTINUE wakes you inside it (any other place: outside its street door).
+- **Schema 3** (the homes) is written since the homes came in; a schema-2 slot or export code still loads and imports (you simply own no homes yet).
 - **Upgrading:** an old `neon-coast-save-1` (outfits, story, hair, blasters, the motel's cash and clock) is moved into the new slot on the first load.
 - `REWIND` and **NEW GAME** clear the same things (story, wardrobe, hair, blasters, the vest, the arcade best, stunts found); `REWIND` leaves your cash, the clock and where you are, NEW GAME starts those over too.
 - Where local storage is blocked (some private modes, odd `file://` setups) the game still plays and says once **SAVING UNAVAILABLE IN THIS BROWSER**; Export still gives you a code.
@@ -100,6 +102,49 @@ A barber and salon in a shopfront on Back Avenue 1, two blocks in from the boule
 - **Kept with your save** like the clothes (`save.hair`, `save.cap`): it is there after you leave and after a reload. `REWIND` puts Skye's own shag, midnight-plum colour and cap back.
 - A new cut, like a new outfit, sheds a star of heat now and then (once every 45 seconds).
 - Its own music: laid-back soul and funk on the salon radio (see [Music](#music)).
+
+## Homes of your own
+
+Four homes are for sale through two estate agencies. Each agency can sell any of them (its own district's are listed first). Until you buy one, its door has no ring and says **FOR SALE** (and where to ask) when you walk up; once it is yours the door ring lights up, a **house icon** marks it on the minimap (pointing the way from the rim when it is far off), and walking into the ring takes you home with the usual walk-in.
+
+| Agency | Where | Inside |
+| --- | --- | --- |
+| **Coral Keys Realty** (peach ring) | Lumina Boulevard, old town: the ground floor of the Pink Heron Hotel, east of the canopy. Peach frame, a striped canopy, a display window full of listing cards, the name over it. | A pastel seafront office: checked floor, a mint dado, wooden blinds over the boulevard, a pinboard of listing Polaroids, a ceiling fan, SOLD! and the agent of the month, a water cooler, a pink waiting sofa, and behind the teak desk (a beige computer with a green screen) a painted wall map of the coast with a pin on every home. **Brenda Shore** (peach blazer with shoulder pads, frosted perm, pearls). |
+| **Skyline Estates** (ice-blue ring) | Solano Key, Stadium Way: glass doors and a canopy in the front of the downtown office block west of the Spire. | Marble and brass: a veined marble desk, **Vaughn Castellane** (charcoal double-breasted suit, silver hair), an architectural model of the district under a glass case (the penthouse tower has a gold top), three glowing listing screens, a skyline painting, leather sofas, a glass partition, cove light. |
+
+**At the desk** (`E`, touch **USE**) the agent opens the **listings**: a painted photo of the home, the district, its features, the tier and the price. `Enter` (tap) on a home shows its card with **VIEW**, **BUY** and **BACK**:
+- **View** is a short tour of the place (five camera shots through it, about ten seconds; `X` skips), then you are back at the desk.
+- **Buy** takes the cash (refused with how much you have if it is not enough) and hands you the keys: *SOLD!*, the house goes on the map and the save is written.
+
+| Home | Where | Tier | Price | Showers / soaks give |
+| --- | --- | --- | --- | --- |
+| **Seafront Studio 2B** | old town, Lumina Boulevard: up from a residential door beside the Aqua Deco Suites lobby, east end | starter | **$1,800** | REFRESHED 30 s |
+| **The Driftwood Dory** | Solano Key: a houseboat moored off the Starboard Marina boardwalk, east of the pier (a gangway over the seawall) | character | **$9,500** | 60 s |
+| **Villa Paloma** | old town, Back Avenue 1: a gate in a cream arch with a pink neon edge (its parking bay is round the corner on the side street) | comfort | **$14,500** | 60 s |
+| **The Skyline Penthouse** | Solano Key: the top of the bay tower at Glasswater Street (glass lobby doors on its west face; its private bay on the street) | luxury | **$45,000** | 90 s and +15 health |
+
+Prices are set against what the game pays: a story job $300 to $1,000, Dee's odd jobs $300 to $750, a stunt jump $200 to $800, so the studio is a first-evening buy, the houseboat and the villa a few hours' work and the penthouse a long-term goal.
+
+**What each one has**
+- **The studio** (a compact 80s flat over the boulevard): a single bed under a sunset print, a kitchenette (sink, two-ring hob, a little fridge, a red transistor **radio**), a CRT **TV** with three channels, a tiny tiled bathroom whose old **shower** goes cold now and then, a wardrobe, a bean bag, and a French door onto a narrow **balcony** with a folding chair: the boulevard, the beach, the sea and the Starlight Wheel.
+- **The houseboat**: a mint clapboard cabin with portholes, a **bunk** under a quilt, a tiny **galley**, a walnut **vintage radio** with a lit dial, a wet room, a locker for clothes, a ship's wheel and a tide chart; the aft deck has two deck chairs facing the water and the **fishing** spot at the stern rail. It rocks gently (more while you sleep) and you hear the water round the hull.
+- **The villa** (art deco round an open courtyard; the sky over it is the real sky): a **pool** you can swim in (steps at the east end), loungers and an umbrella, a hall behind a row of columns, the den with a **big TV**, a **games console** and a **bar cart**, a loggia with a dining table under a neon wave, a **curved staircase** up to the gallery with the bedroom (a round bed under a pink neon arch) and the bathroom (a clawfoot **tub**), and a garage that shows the car you keep in its bay.
+- **The penthouse** (a duplex at the top of the tower): glass from floor to ceiling on the bay side and on the old town side, a double-height living room, a **projector wall** with speakers in the corners ("surround sound"), an **espresso** bar at the east window, a **record player** under a vinyl wall, a kitchen under the mezzanine, a stair up to the bedroom, the walk-in closet and a **rain shower** in a glass box, and a **balcony** with a **hot tub** and a lounger. While you are inside it the view reaches further (the Solstice Spire's view boost: trees, lamps and the haze go out 2.4x, 1.7x on Low).
+
+**Windows onto the real coast.** The studio, the penthouse and the houseboat look out at the actual town: their rooms are drawn on top of the world as seen from where they really are (`main.js` draws the town from that spot first, then the room), so the sunset, the night, the weather and the traffic outside are the game's own. The villa's courtyard shows the real sky the same way.
+
+**Things to do at home** (`E` at the yellow rings; moving cuts the short ones short)
+- **TV** (studio, villa, penthouse): pick a channel or switch it off. The channels are painted live on the screen: *Coastal Weather* (a magnetic map and today's weather), *Sunrise Stretch* (aerobics), *Captain Crab* (a cartoon), *Boardwalk Buddies* (a sitcom with a laugh track), *Neon Video Hour* (neon shapes; the room's music switches to a synth-pop track while it is on) and a *test card* with its tone. The studio's set gets three of them.
+- **Sleep** (the bed or the bunk): wake in the **morning** (8:00), the **evening** (18:30) or at **night** (22:00), or **just save**. You lie down, the screen fades, the clock moves on, you get +25 health and the game is saved (**GAME SAVED**). Not while you have stars.
+- **Shower / bath / hot tub**: a few seconds with steam and running water, then **REFRESHED** (see the table). The bath and the hot tub are seats: sit in them (`E` at the tub or `F`) and after five seconds you are refreshed (once a minute).
+- **Wardrobe** (the closet, the locker): the outfits you own, with the same try-on view as the shops; nothing to buy, and hair stays a job for Fade & Fringe.
+- **Fridge, galley, espresso machine, bar cart**: a free snack or drink with the usual eating animation (it heals a little, or refreshes you at full health), then it needs a minute to restock.
+- **Radio** (studio, houseboat) and **record player** (penthouse): any of the game's own themes (each home's, the bars', the salon's, the diner's, the terrace's...), the house sound or off. `M` still switches all music.
+- **Sit and lie** (`F`): sofas, beds, the balcony and deck chairs, the window chairs, the espresso stool, the loungers. Where there is a view (the studio's balcony, the villa's loungers, the penthouse's window chairs, espresso stool, balcony, hot tub and bed, the houseboat's deck chairs) the camera turns to it and you can **wait for the sunset** (`1`, to 19:30) or **the night** (`2`, to 22:00); touch: **SUNSET** / **NIGHT**.
+- **Swim** in the villa's pool (walk in; out up the steps), play **Tide Rider** on the villa's console (the arcade engine with a sea skin, free), and **fish** off the houseboat's stern: cast, wait for the bite, then press `E` (touch **REEL IN**) while the marker is in the green. A catch is a fish (or an old sneaker) and a few dollars.
+- **The parking bay** (villa, penthouse): drive into the painted RESIDENT bay and get out: the car is kept (type and colour) with the save and is there next time, even after a reload. Drive it out of the bay and the bay is free again. (The villa's garage shows the car you keep.)
+- **Safehouse**: walk into a home of yours with stars on you and, as long as no patrol car is within about 45 m of the door, a star comes off every five seconds.
+- Each home and agency has its own music: soft AM rock on the studio's radio, steel pan on the houseboat, italo at the villa, late-night quiet storm in the penthouse, office bossa at Coral Keys, a lobby groove at Skyline Estates.
 
 ## Hairstyles
 
@@ -599,7 +644,8 @@ src/
                     rampGeo, kits (the embedded models),
                     glow sprites, day/night + weather, props (solid street furniture + seats, spatial grid),
                     loose (knock-over physics, lamps / hydrants / palms, vending machines), beach (Coral Beach props + exclusion zones),
-                    bloom (post effect), motes (moths + fireflies), neonpools (street light pools of the neon signs), barberpole (the turning pole)
+                    bloom (post effect), motes (moths + fireflies), neonpools (street light pools of the neon signs), barberpole (the turning pole),
+                    homefronts (the homes' and the realty's street doors, the houseboat at its mooring, the residents' parking bays)
   actors/           blocky.js (the refined block characters, pixel faces, hairstyles and the crowd's hair picker), AI traffic + Coast Patrol, pedestrians + drivers, the beach crowd (beachgoers.js), beach animals, dance moves (shared by courier and crowd)
   game/             story.js (all dialogue + mission data), missions (story engine), cutscene (director), activity (sitting, dancing + rhythm),
                     interiors (the five rooms + cast), places (doors, walking indoors, shops), venues + venuerooms (the venues and their rooms),
@@ -607,7 +653,8 @@ src/
                     rules (heat, cash, health, pickups, carjack), eat (food and drink models, eating animation), damage (vehicle condition, fire, explosions),
                     combat (blasters, fireworks, patrol lasers), pursuit (the patrol helicopter and tank), parking (spare cars and bikes,
                     parking slots), events (random street events), rooftops, stunts, cinematic (orbit camera mode),
-                    spire + spireroom (the Solstice Spire: lift, terrace, guests, waiting for the sunset; its lobby)
+                    spire + spireroom (the Solstice Spire: lift, terrace, guests, waiting for the sunset; its lobby),
+                    homes + homerooms (the four homes and the two estate agencies: listings, tours, buying, everything you do at home)
   player/           the courier model + skating controller, follow camera
   vehicles/         car / bike / tank / helicopter models and physics, types.js (the fifteen vehicle types: handling, size, sound,
                     traffic mix, the original convertible / muscle car / ice-cream truck / bus / scooter), effect pools

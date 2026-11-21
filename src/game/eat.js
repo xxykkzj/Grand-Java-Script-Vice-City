@@ -147,6 +147,8 @@ export function createEat(game) {
       } else E.yaw0 = m.root.rotation.y;
     },
     cancel: () => stop(true),
+    // a shower or a soak at home (game/homes.js): the same buff, for as long as the home is good for
+    refresh(sec = REFRESH_S) { refreshT = Math.max(refreshT, sec); stats.refreshed++; player.boost = 1.08; },
     state: () => ({ active: E.active, kind: E.kind, item: E.item, t: +E.t.toFixed(2), drink: E.drink, visible: holdR.visible, fries: holdL.visible, refreshed: refreshT > 0, refreshT: +refreshT.toFixed(1), boost: player.boost, health: game.health, ...stats }),
   };
   return api;

@@ -59,6 +59,9 @@ import { createCinematic } from './game/cinematic.js';
 import { createSpire } from './game/spire.js';
 import { createPier } from './game/pier.js';
 import { createSaves, bindSaveUI } from './game/saves.js';
+import { createHomes } from './game/homes.js';
+import { buildHomeFronts } from './world/homefronts.js';
+import { OY } from './game/interiors.js';
 import { createCat } from './actors/cat.js';
 
 const $ = (id) => document.getElementById(id);
@@ -189,6 +192,9 @@ async function boot() {
   const damage = game.damage = createDamage(game);
   const places = game.places = createPlaces(game, scene, camera);
   const venues = game.venues = createVenues(game);
+  // homes and the estate agencies (game/homes.js); the street doors and the houseboat (world/homefronts.js)
+  const homes = game.homes = createHomes(game);
+  const fronts = game.fronts = buildHomeFronts(L, city.group, keyCity.group);
   const story = game.story = createStory(game, scene);
   const act = game.act = createActivity(game);
   const eat = game.eat = createEat(game);
@@ -196,6 +202,7 @@ async function boot() {
   const events = game.events = createEvents(game, scene);
   const pursuit = game.pursuit = createPursuit(game, scene);
   const parking = game.parking = createParking(game);
+  for (const h of homes.HOMES) if (h.bay) for (let i = parking.slots.length - 1; i >= 0; i--) { const q = parking.slots[i]; if (Math.hypot(q.x - h.bay.x, q.z - h.bay.z) < 6) parking.slots.splice(i, 1); }
   const heatHint = createHeatHint(game);
   const roofs = game.roofs = createRooftops(game);
   const stunts = game.stunts = createStunts(game);
@@ -217,6 +224,7 @@ async function boot() {
   const sinking = game.sinking = createSinking(game);
   // indoors the camera renders layer 1 only: the room, the courier, the rings and the lights
   scene.traverse((o) => { if (o.isLight) o.layers.enable(1); });
+  sky.mesh.layers.enable(2);                  // the villa's courtyard: only the sky behind the room
   player.model.root.traverse((o) => o.layers.enable(1)); player.shadow.layers.enable(1);
   const cheats = createCheats(game);
   game.cheats = cheats;
@@ -417,6 +425,15 @@ async function boot() {
     // ---- saving (automated checks)
     saveNow: (force = true) => saves.attempt('debug', force),
     saveState: () => ({ has: saves.has, storage: saves.storage, unsafe: saves.unsafe(), world: saves.world, stats: { ...saves.stats }, summary: saves.summary() }),
+    // ---- homes (automated checks)
+    homes: () => homes.state(),
+    own: (k, on = true) => { const i = save.homes.indexOf(k); if (on && i < 0) save.homes.push(k); if (!on && i >= 0) save.homes.splice(i, 1); return [...save.homes]; },
+    tour: (k, ag) => homes.tour(k, ag),
+    fish: () => homes.fishState(), biteNow: () => homes.biteNow(), fishM: (m) => homes.fishSetM(m),
+    useKind: (kind) => { const r = game.inside && game.inside.room; if (!r) return null; const u = (r.uses || [r.use]).find((q) => q.kind === kind); if (!u) return 'no ' + kind; places.setLy(u.fy || 0); player.pos.set(r.ox + u.x, OY + (u.fy || 0), r.oz + u.z); places.use(); return game.busy || (homes.act && homes.act.kind) || 'used'; },
+    sitAt: (i) => { const r = game.inside && game.inside.room; const s = r.seats[i]; places.setLy(s.fy || 0); player.pos.set(r.ox + s.x, OY + (s.fy || 0), r.oz + s.z); return act.toggle() && act.mode; },
+    roomAt: (x, z, ly = 0) => { const r = game.inside.room; places.setLy(ly); player.pos.set(r.ox + x, OY + ly, r.oz + z); return [x, z, ly]; },
+    lum: () => { draw(); const gl = renderer.getContext(), w = gl.drawingBufferWidth, h = gl.drawingBufferHeight, px = new Uint8Array(w * h * 4); gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px); let s2 = 0, n = 0, cr = 0, cg = 0, cb = 0; for (let i = 0; i < px.length; i += 4 * 7) { s2 += 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2]; cr += px[i]; cg += px[i + 1]; cb += px[i + 2]; n++; } return { mean: +(s2 / n).toFixed(1), rgb: [cr / n | 0, cg / n | 0, cb / n | 0], calls: renderer.info.render.calls, tris: renderer.info.render.triangles }; },
     evtGo: (off = 0.6) => { const t = events.target(); if (!t) return null; const v = game.vehicle; if (v) { v.x = t.x + off; v.z = t.z; v.vx = v.vz = 0; } else player.pos.set(t.x + off, 0, t.z); return t; },
   };
   game.signalAt = (n, h) => signal(n, h, timeU.value);
@@ -483,6 +500,7 @@ async function boot() {
     const wd = /^(Digit|Numpad)([1-5])$/.exec(e.code);
     // seated on the Solstice Terrace: 1 waits for the sunset, 2 for the night
     if (wd && spire.seated && !game.busy && !cheats.open && (wd[2] === '1' || wd[2] === '2')) { spire.wait(wd[2] === '1' ? 'sunset' : 'night'); return; }
+    if (wd && homes.seatedView() && !game.busy && !cheats.open && (wd[2] === '1' || wd[2] === '2')) { homes.wait(wd[2] === '1' ? 'sunset' : 'night'); return; }
     if (wd && !act.dancing && game.started && !game.busy && !cheats.open) { combat.select(+wd[2]); return; }
     // dancing: 1-8 pick a move and hit the beat, arrows step through the moves
     if (act.dancing && !game.busy) {
@@ -520,10 +538,25 @@ async function boot() {
   let last = performance.now(), raf = 0, frameN = 0, turnT = 0;
 
   const hudState = { env, game, vehicles, counts: [0, peds.count], blips: [], focus: null, heading: 0, camYaw: 0, inVehicle: null };
-  // one frame's drawing: the scene, then (High) the bloom over it
+  // one frame's drawing: the scene, then (High) the bloom over it. A home with a view: first the town (or only the
+  // sky) from where the room really is, then the room on top (game/homerooms.js view)
+  const _vo = new THREE.Vector3();
   function draw() {
     renderer.info.reset();
-    renderer.render(scene, camera);
+    const vr = game.inside && game.inside.room && game.inside.room.view;
+    if (vr) {
+      const r = game.inside.room, rv = player.model.root.visible;
+      if (vr.sky) _vo.set(0, -OY + 30, 0); else _vo.set(vr.x - r.ox, vr.y - OY, vr.z - r.oz);
+      r.group.visible = false; player.model.root.visible = false;
+      camera.position.add(_vo); camera.updateMatrixWorld(); sky.mesh.position.copy(camera.position);
+      camera.layers.set(vr.sky ? 2 : 0);
+      if (!vr.sky) env.lightPass(true);
+      renderer.render(scene, camera);
+      camera.position.sub(_vo); camera.updateMatrixWorld();
+      r.group.visible = true; player.model.root.visible = rv;
+      camera.layers.set(1); env.lightPass(false);
+      renderer.autoClear = false; renderer.clearDepth(); renderer.render(scene, camera); renderer.autoClear = true;
+    } else renderer.render(scene, camera);
     // a room can tone the bloom down (Zigzag Threads' pale walls would glow otherwise)
     if (bloom.on) bloom.render(nightU.value * (game.inside && game.inside.room && game.inside.room.bloomK != null ? game.inside.room.bloomK : 1), game.inside ? 0 : env.glare);
   }
@@ -596,7 +629,7 @@ async function boot() {
     if (game.started) spire.update(dt);
     pier.update(dt);
     cat.update(dt);
-    if (game.started) { saves.tick(raw); rules.update(dt); pursuit.update(dt); parking.update(raw); heatHint.update(raw); story.update(dt); story.tickStar(dt); places.update(dt, ctl); venues.tick(dt); events.update(dt); marine.blips(rules.blips); roofs.update(dt); }
+    if (game.started) { saves.tick(raw); rules.update(dt); pursuit.update(dt); parking.update(raw); heatHint.update(raw); story.update(dt); story.tickStar(dt); places.update(dt, ctl); venues.tick(dt); homes.update(dt); events.update(dt); marine.blips(rules.blips); roofs.update(dt); }
     city.tick(timeU.value); city.beachFx.tick(env.rainAmt);
     fx.update(dt);
     player.tickFace(dt);
@@ -615,6 +648,7 @@ async function boot() {
     else if (cine.active) cine.update(dt);
     else if (spire.camOn) spire.camUpdate(dt);     // seated on the terrace: the wide view
     else { cam.spec = v && v.spec || null; cam.update(dt, input, game.mode, game.focus(), game.heading(), speed, fx, player.phase); }
+    if (game.started && game.inside) homes.camLate(dt);
     // in first person on foot the courier's own body would sit inside the camera
     cockpit.update(dt, v, cam.first && !cut.active && !game.inside && !!v, ctl.steer);
     vehicles.firstPerson = cam.first && !cut.active && !game.inside && !!v;
@@ -623,9 +657,9 @@ async function boot() {
     if (player.model.root.visible === hideBody && !player.hidden) player.model.root.visible = !hideBody;
     // high up (the Solstice Terrace, the Starlight Wheel: the view boost is on) the near plane moves out, so the
     // depth buffer has the precision for the ground, the roads and their markings hundreds of metres away
-    { const nr = VIEW.far > 1.05 && !game.inside ? 0.5 : 0.12; if (camera.near !== nr) { camera.near = nr; camera.updateProjectionMatrix(); } }
+    { const nr = VIEW.far > 1.05 ? (game.inside ? 0.25 : 0.5) : 0.12; if (camera.near !== nr) { camera.near = nr; camera.updateProjectionMatrix(); } }
     pointScaleU.value = renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360));
-    lampU.uLampOn.value = game.inside ? 0 : 1;
+    lampU.uLampOn.value = game.inside && !env.roomLit ? 0 : 1;
     env.update(dt);
     horizon.update(env);
     sea.update(dt);
@@ -679,7 +713,9 @@ async function boot() {
     // up on the Solstice Terrace its own theme plays, like an indoor place (it ignores the street music's auto-off)
     sound.room = !game.inside ? (spire.on ? 1 : 0) : game.inside.key === 'club' ? 2 : game.inside.key === 'lounge' ? 3 : 1;
     sound.themeK = !game.inside && !spire.on && pier.music > 0.01 ? pier.music : 1;
-    sound.theme = !game.inside ? (spire.on ? THEME_OF.terrace : pier.music > 0.01 ? 'pier' : 'street') : game.busy === 'arcade' ? 'arcadeGame' : THEME_OF[game.inside.key] || null;
+    { const ho = game.inside ? homes.themeFor(game.inside.key) : undefined;
+      sound.theme = !game.inside ? (spire.on ? THEME_OF.terrace : pier.music > 0.01 ? 'pier' : 'street') : game.busy === 'arcade' ? 'arcadeGame' : ho !== undefined ? ho : THEME_OF[game.inside.key] || null; }
+    sound.water = homes.water; sound.waves = homes.waves;
     sound.night = nightU.value; sound.wanted = game.wanted;
     music.update(dt, !!game.inside && game.inside.key === 'lounge' && game.busy !== 'door' && audio.musicOn, game.paused);
     sound.rec = music.rec;
