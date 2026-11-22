@@ -108,7 +108,7 @@ export function createVenues(game) {
   function sleep(to) {
     game.busy = 'door'; game.cut.fade(true);
     setTimeout(() => {
-      if (to !== undefined) { env.tod = to; env.target = null; game.health = 100; game.wanted = 0; stats.sleeps++; }
+      if (to !== undefined) { if (to < env.tod) env.day = (env.day || 1) + 1; env.tod = to; env.target = null; game.health = 100; game.wanted = 0; stats.sleeps++; }
       save.motel = { cash: game.money, tod: +env.tod.toFixed(2), at: Date.now() };
       // the same slot the autosave writes (game/saves.js); you wake up at the motel's door after a reload
       const r = game.saves ? game.saves.manual() : { ok: false, why: 'COULD NOT SAVE' };

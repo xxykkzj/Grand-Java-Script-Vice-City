@@ -170,7 +170,7 @@ export function createEnvironment(scene, sky, ocean, city, camera, audio) {
   const outL = { hc: new THREE.Color(), hg: new THREE.Color(), hi: 1, si: 1 };
   const env = {
     hemi, rain, splash, lightPos,
-    tod: 19, target: null, ffRate: null, viewFog: 1, speed: 1, indoor: false, roomLit: false, flash: 0, cur,
+    tod: 19, day: 1, target: null, ffRate: null, viewFog: 1, speed: 1, indoor: false, roomLit: false, flash: 0, cur,
     glare: 0, weather: 'clear', w: { cloud: 0.12, rain: 0, bolt: 0, fog: 0 }, wxTimer: 2.5, wet: 0,
     nextBolt: 4, pendingThunder: -1, phase: 'DUSK',
     // the rainbow: armed by a real shower, it shows once the rain has stopped and the clouds thin with the sun up
@@ -197,6 +197,8 @@ export function createEnvironment(scene, sky, ocean, city, camera, audio) {
         adv = dt * (env.ffRate ? env.ffRate(d) : 7);      // ffRate: a gentler fast-forward (waiting on the Solstice Terrace)
         if (d <= adv) { adv = d; env.target = null; }
       }
+      // the day number (the night's fireworks go by it, world/fireworks.js): up by one each time the clock passes midnight
+      if (env.tod + adv >= 24) env.day++;
       env.tod = (env.tod + adv) % 24;
       const t = env.tod;
       let i = 0;

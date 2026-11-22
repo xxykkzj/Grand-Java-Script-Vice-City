@@ -364,6 +364,18 @@ export function createAudio() {
       hit(0.7 * k, 0.5, 'lowpass', 2400, 120); tone('sine', 120, 40, 0.3, 0.35 * k);
       if (ctx) for (let i = 0; i < 9; i++) hit(0.12 * k, 0.04, 'highpass', 3000 + Math.random() * 3000, 0, ctx.currentTime + 0.22 + Math.random() * 0.6);
     },
+    // a distant firework shell (world/fireworks.js): a soft low thump rolling over the water, sometimes a crackle tail.
+    // k: loudness (by distance, already scaled for where you are); m: muffling (0 outdoors, 0.7 through glass, 1 indoors)
+    fwBoom(k = 0.4, m = 0, crackle = false) {
+      if (!ctx || !(k > 0.004)) return;
+      const t = ctx.currentTime, cut = 520 - m * 330;
+      hit(0.55 * k, 1.5 + m * 0.5, 'lowpass', cut, 50, t);
+      tone('sine', 64 - m * 10, 30, 1.0, 0.42 * k);
+      if (m < 0.9) hit(0.12 * k * (1 - m), 0.25, 'bandpass', 700 - m * 300, 200, t);
+      if (crackle && m < 0.9) for (let i = 0; i < 12; i++) hit(0.045 * k * (1 - m * 0.8), 0.04, m > 0.5 ? 'bandpass' : 'highpass', m > 0.5 ? 1400 : 2600 + Math.random() * 2400, 0, t + 0.35 + Math.random() * 1.4);
+    },
+    // a pan on the hob (the penthouse island): a short hiss of frying
+    sizzle() { if (!ctx) return; hit(0.035, 0.28 + Math.random() * 0.2, 'highpass', 3800 + Math.random() * 1500); hit(0.02, 0.12, 'bandpass', 1800 + Math.random() * 800, 0, ctx.currentTime + 0.05); },
     empty() { tone('square', 180, 150, 0.05, 0.05); hit(0.06, 0.03, 'highpass', 3000); },
     swap() { tone('triangle', 900, 1350, 0.06, 0.05); tone('square', 1800, 1800, 0.04, 0.025, 0.05); },
     // the shop alarm: a bell that rings for a couple of seconds

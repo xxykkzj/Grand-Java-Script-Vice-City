@@ -46,6 +46,7 @@ function cleanWorld(w) {
     cash: fin(w.cash) ? clamp(Math.floor(w.cash), 0, 1e9) : START_CASH,
     health: fin(w.health) ? clamp(Math.round(w.health), 1, 100) : 100,
     tod: fin(w.tod) ? ((w.tod % 24) + 24) % 24 : 19,
+    day: fin(w.day) ? clamp(Math.floor(w.day), 1, 1e6) : 1,
     weather: typeof w.weather === 'string' && WEATHER[w.weather] ? w.weather : 'clear',
     zone: typeof w.zone === 'string' ? w.zone.slice(0, 40) : '',
     venue: typeof w.venue === 'string' && /^[a-z]{2,16}$/.test(w.venue) ? w.venue : null,
@@ -170,7 +171,7 @@ export function createSaves(game) {
   }
   function snapshot() {
     const g = game, { player, env } = g;
-    const w = { cash: Math.floor(g.money), health: Math.round(g.health), tod: +env.tod.toFixed(3), weather: env.weather, zone: '', venue: null, pos: null, vehicle: null };
+    const w = { cash: Math.floor(g.money), health: Math.round(g.health), tod: +env.tod.toFixed(3), day: env.day || 1, weather: env.weather, zone: '', venue: null, pos: null, vehicle: null };
     const p = g.inside;
     if (p) { const k = p.up || p.key, q = g.places.byKey(k) || p; w.venue = k; w.zone = String(q.name || '').toUpperCase(); }
     else if (g.spire && g.spire.on) { w.venue = 'spire'; w.zone = 'THE SOLSTICE SPIRE'; }
@@ -249,7 +250,7 @@ export function createSaves(game) {
     // one-off top-up for saves made before the starting bankroll went up to $150,000
     if (!save.bankroll) { g.money = Math.max(g.money, START_CASH); save.bankroll = 1; }
     if (g.stats) g.stats.jobs = jobs0;
-    env.tod = w.tod; env.target = null;
+    env.tod = w.tod; env.day = w.day || 1; env.target = null;
     env.setWeather(w.weather, 3);
     const W = WEATHER[w.weather]; for (const k in env.w) if (k in W) env.w[k] = W[k];
     env.wet = W.rain > 0 ? 0.7 : 0;
@@ -282,6 +283,7 @@ export function createSaves(game) {
   function newGame() {
     resetProfile();
     world = null; savedAt = 0; jobs0 = 0; has = false;
+    if (game.env) game.env.day = 1;
     if (game.stats) game.stats.jobs = 0;
     try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(OLD_KEY); } catch (e) { /* ignore */ }
   }

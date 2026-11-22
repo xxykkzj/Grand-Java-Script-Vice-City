@@ -18,6 +18,7 @@ const KIND = {
   laser: ['tall', '#e8ff5a'], ultra: ['cocktail', '#9b5cff'], mirror: ['cocktail', '#7fe0ff'], kilowatt: ['cocktail', '#ff3f6a'], filler: ['beer'],
   smoothie: ['smoothie'], softserve: ['cone'], coconut: ['coconut'],
   floss: ['floss'], popcorn: ['popcorn'], corndog: ['corndog'], lemonade: ['tall', '#ff9ac0'],
+  snapper: ['plate'], sliders: ['burger'], tartlet: ['pie'], negroni: ['cocktail', '#d8402a'], fizzwine: ['tall', '#ffb0c0'], oldfash: ['cocktail', '#c8782a'],
   cooler: ['tall', '#8dff5a'], tlager: ['beer'], skysour: ['tall', '#ffd447'], sundown: ['cocktail', '#ff6a3d'], nightcap: ['cocktail', '#7a5cff'],
 };
 const DRINKS = new Set(['can', 'mug', 'tall', 'cocktail', 'beer', 'smoothie', 'shake', 'coconut']);

@@ -28,7 +28,7 @@ export const HOMES = [
   { id: 'villa', name: 'VILLA PALOMA', district: 'OLD TOWN · BACK AVENUE 1', agency: 'realty', tier: 'COMFORT', price: 14500, refresh: 60, heal: 0, bay: { x: -95.2, z: -27, yaw: PI },
     features: 'Art-deco courtyard villa: a pool to swim in, a curved stair to the gallery, big TV and a games console, a clawfoot tub, a bar cart, a garage bay.' },
   { id: 'penthouse', name: 'THE SKYLINE PENTHOUSE', district: 'SOLANO KEY · GLASSWATER, FLOOR 27', agency: 'estates', tier: 'LUXURY', price: 45000, refresh: 90, heal: 15, bay: { x: -555.2, z: -125, yaw: PI },
-    features: 'Duplex at the top of the bay tower: glass to the floor, a projector wall with surround sound, a rain shower, a hot tub on the balcony, espresso, a vinyl wall, a private parking bay.' },
+    features: 'The whole corner of the top floor: glass to the floor on two sides, a double-height living room with a sunken lounge, a chef\'s kitchen, a bar, a fireplace, a grand piano, a primary suite with a spa bath, a terrace with a hot tub, a private parking bay.' },
 ];
 export const HOME_IDS = HOMES.map((h) => h.id);
 const H = Object.fromEntries(HOMES.map((h) => [h.id, h]));
@@ -43,8 +43,14 @@ const FOOD = {
   fridge: { title: 'THE FRIDGE', items: [{ id: 'cw', name: 'COOLWAVE COLA', note: 'A cold can from the door shelf.', heal: 10 }, { id: 'lime', name: 'KEY LIME SLICE', note: 'Left over, still perfect.', heal: 18 }] },
   galley: { title: 'THE GALLEY', items: [{ id: 'tea', name: 'SWEET ICED TEA', note: 'Brewed in a jar on the deck.', heal: 10 }, { id: 'stack', name: 'SKILLET PANCAKES', note: 'Two-ring hob, one good pan.', heal: 22 }] },
   espresso: { title: 'THE ESPRESSO MACHINE', items: [{ id: 'coffee', name: 'WINDOW ESPRESSO', note: 'Pulled at the glass, the bay below.', heal: 12 }, { id: 'shake', name: 'AFFOGATO SHAKE', note: 'Espresso over ice cream.', heal: 20 }] },
+  skybar: { title: 'THE BAR', items: [{ id: 'negroni', name: 'FLOOR 27 NEGRONI', note: 'Stirred, over one big cube, an orange twist.', heal: 12 }, { id: 'fizzwine', name: 'SPARKLING ROSÉ', note: 'A chilled flute from the wine fridge.', heal: 10 }, { id: 'oldfash', name: 'SKYLINE OLD FASHIONED', note: 'Bourbon, bitters, the bay at your back.', heal: 14 }] },
   bar: { title: 'THE BAR CART', items: [{ id: 'sundown', name: 'PALOMA SPRITZ', note: 'Grapefruit, fizz, a pink umbrella.', heal: 12 }, { id: 'cooler', name: 'COURTYARD COOLER', note: 'Mint, lime, crushed ice.', heal: 10 }, { id: 'fizz', name: 'POOLSIDE FIZZ', note: 'Blue, for reasons.', heal: 14 }] },
 };
+// the penthouse island: cooked to order (a short scene at the hob, then you eat it; game/eat.js has the models)
+const COOK = [{ id: 'snapper', name: 'SEARED SNAPPER, LEMON BUTTER', note: 'Crisp skin, capers, a squeeze of lemon. Takes a moment.', heal: 32 },
+  { id: 'sliders', name: 'WAGYU SLIDERS', note: 'Three little burgers on brioche. Worth the smoke alarm.', heal: 28 },
+  { id: 'stack', name: 'RICOTTA PANCAKES', note: 'Fluffy, with berries and maple. Any time is breakfast time.', heal: 24 },
+  { id: 'tartlet', name: 'KEY LIME TARTLET', note: 'Out of the fridge, torched meringue on top.', heal: 18 }];
 const SLEEP = [
   { id: 'morning', name: 'WAKE IN THE MORNING', note: 'Sleep till 8:00. A little health back, and the game is saved.', tag: '8:00', to: 8 },
   { id: 'evening', name: 'WAKE IN THE EVENING', note: 'Nap till 18:30, golden hour. Saves the game.', tag: '18:30', to: 18.5 },
@@ -141,7 +147,7 @@ export function createHomes(game) {
     studio: 'Small, sweet, and the balcony looks straight at the Wheel. The shower has moods.',
     houseboat: 'It floats, it rocks, it has a fishing deck. The sunsets are included at no extra charge.',
     villa: 'A pool in the courtyard, a stair that curves like a compliment, a garage for the car.',
-    penthouse: 'Floor twenty-seven. Glass to the floor, the bay at your feet, a hot tub on the balcony.',
+    penthouse: 'Floor twenty-seven, the whole corner. Glass to the floor, a sunken lounge, a chef\'s kitchen, a hot tub on the terrace. And every third night, fireworks over the bay.',
   };
   function buy(id, ag) {
     const h = H[id];
@@ -185,8 +191,23 @@ export function createHomes(game) {
       audio.pickup(); return game.eat.consume(o);
     },
   });
+  const cookMenu = {
+    title: 'THE ISLAND · COOK SOMETHING', label: 'COOK',
+    items: () => COOK.map((o) => ({ ...o, price: 0, tag: 'FREE' })),
+    greet: () => (coolLeft('cook') > 0 ? `STILL FULL · COOK AGAIN IN ${Math.ceil(coolLeft('cook'))} S` : 'THE HOB CLICKS ON. WHAT ARE WE MAKING?'),
+    pick(o) {
+      const left = coolLeft('cook');
+      if (left > 0) { audio.blip(false); return `STILL FULL · COOK AGAIN IN ${Math.ceil(left)} S`; }
+      S.cool[homeKey() + ':cook'] = timeU.value + 60;
+      const r = room(), u = shopUse();
+      game.places.closeShop();
+      startCook(r, u, o);
+      return null;
+    },
+  };
+  const shopUse = () => game.places.shopUse || (room() && room().uses.find((q) => q.kind === 'cook'));
   const coolLeft = (kind) => Math.max(0, (S.cool[homeKey() + ':' + kind] || 0) - timeU.value);
-  const MENUS = { listings_realty: listings('realty'), listings_estates: listings('estates'), homesleep: sleepMenu, hometv: tvMenu, wardrobe: wardrobeMenu, homeradio: radioMenu, ...Object.fromEntries(Object.keys(FOOD).map((k) => ['food_' + k, foodMenu(k)])) };
+  const MENUS = { listings_realty: listings('realty'), listings_estates: listings('estates'), homesleep: sleepMenu, hometv: tvMenu, wardrobe: wardrobeMenu, homeradio: radioMenu, ...Object.fromEntries(Object.keys(FOOD).map((k) => ['food_' + k, foodMenu(k)])), food_cook: cookMenu };
 
   // ---- the TV ---------------------------------------------------------------------------------------------
   function setTv(ch) {
@@ -259,6 +280,7 @@ export function createHomes(game) {
     if (A.t > (reducedMotion ? 0.4 : 1.2) && !A.done) {
       A.done = true; game.busy = 'door'; cut.fade(true);
       setTimeout(() => {
+        if (A.to < env.tod) env.day = (env.day || 1) + 1;     // slept past midnight: a new day (world/fireworks.js counts nights)
         env.tod = A.to; env.target = null; game.health = Math.min(100, game.health + 25); stats.sleeps++; save.lastHome = A.k;
         const res = game.saves.manual();
         game.busy = null; S.act = null;
@@ -306,6 +328,33 @@ export function createHomes(game) {
     player.resetPose();
     if (done) refresh(k, k === 'studio' ? ' · THE PIPES SAY GOODBYE' : ''); else hud.toast('OUT OF THE SHOWER', 'STILL A BIT SOAPY');
     return true;
+  }
+  // ---- cooking at the penthouse island: a few seconds at the hob (sizzle, a flip of the pan), then you eat it ----
+  function startCook(r, u, o) {
+    game.act.reset();
+    S.act = { kind: 'cook', t: 0, u: u || { x: 0, z: 0 }, o, k: homeKey(), sz: 0 };
+    stats.cooks = (stats.cooks || 0) + 1; audio.blip(true);
+    hud.toast('COOKING: ' + o.name, 'A MINUTE AT THE HOB · WASD STOPS');
+  }
+  function cookTick(dt, ctl, r) {
+    const A = S.act, u = A.u, T = reducedMotion ? 1.6 : 3.4; A.t += dt;
+    const look = u.look || [u.x + 1, u.z];
+    player.pos.set(r.ox + u.x, OY + (u.fy || 0), r.oz + u.z); player.speed = 0; player.animate(dt, 0, null);
+    player.yaw += angleDelta(player.yaw, Math.atan2(look[0] - u.x, look[1] - u.z)) * (1 - Math.exp(-8 * dt));
+    const m = player.model, flip = Math.max(0, Math.sin(A.t * 2.2)) ** 6;
+    m.armR.rotation.set(-1.25 - flip * 0.6, 0, -0.15); m.armL.rotation.set(-1.0 + Math.sin(A.t * 9) * 0.08, 0, 0.2); m.head.rotation.x = 0.3;
+    if ((A.sz -= dt) <= 0) { A.sz = 0.22 + Math.random() * 0.2; if (audio.sizzle) audio.sizzle(); }
+    camRoom(r, u.cam || [2.2, 2.0, 2.2], [u.x, (u.fy || 0) + 1.0, u.z], u.fy || 0);
+    if (A.t > 0.4 && (Math.abs(ctl.move) > 0.1 || Math.abs(ctl.strafe) > 0.1)) { S.act = null; player.resetPose(); hud.toast('LEFT IT ON THE COUNTER', 'THE HOB CLICKS OFF'); return true; }
+    if (A.t >= T) { S.act = null; player.resetPose(); hud.toast('SERVED: ' + A.o.name, 'STRAIGHT FROM THE PAN'); game.eat.consume(A.o); stats.cooked = (stats.cooked || 0) + 1; }
+    return true;
+  }
+  // ---- the piano: a short phrase on the baby grand (a different one each time) ----
+  const PHRASES = [[60, 64, 67, 72, 71, 67, 64], [62, 65, 69, 72, 69, 65], [57, 60, 64, 67, 64, 60, 57], [65, 69, 72, 76, 74, 72, 69, 65], [64, 67, 71, 74, 72, 71, 67]];
+  function playPiano() {
+    const ph = PHRASES[(stats.piano = (stats.piano || 0) + 1) % PHRASES.length];
+    ph.forEach((n, i) => setTimeout(() => { if (audio.tvTone) audio.tvTone(440 * 2 ** ((n - 69) / 12), 0.9, 0.035); }, i * 210));
+    hud.toast('♪ A FEW BARS ON THE BABY GRAND', 'THE ROOM HAS GOOD ACOUSTICS');
   }
   const camRoom = (r, cs, look, fy) => {
     camera.position.set(r.ox + look[0] + cs[0], OY + fy + cs[1], r.oz + look[2] + cs[2]);
@@ -449,12 +498,17 @@ export function createHomes(game) {
       if (k === 'tv') { game.places.openShop('hometv'); return true; }
       if (k === 'bed') { game.places.openShop('homesleep'); return true; }
       if (k === 'shower') { startShower(r, u); return true; }
-      if (k === 'bath') { const s = r.seats.find((q) => q.tub); if (s) { game.act.reset(); game.act.sit({ x: r.ox + s.x, z: r.oz + s.z, y: s.y, yaw: s.yaw, kind: s.kind, ref: s, floorY: OY + (s.fy || 0) }); } return true; }
+      if (k === 'bath') { const s = (u.seat && r.seats.find((q) => q.steam === u.seat)) || r.seats.find((q) => q.tub); if (s) { game.act.reset(); game.act.sit({ x: r.ox + s.x, z: r.oz + s.z, y: s.y, yaw: s.yaw, kind: s.kind, ref: s, floorY: OY + (s.fy || 0) }); } return true; }
       if (k === 'wardrobe') { game.places.openShop('wardrobe'); return true; }
       if (FOOD[k]) { game.places.openShop('food_' + k); return true; }
       if (k === 'radio' || k === 'records') { game.places.openShop('homeradio'); return true; }
       if (k === 'fish') { startFish(r, u); return true; }
       if (k === 'console') { if (game.venues.playConsole) game.venues.playConsole(); return true; }
+      // the penthouse: cook at the island, the blinds, the fire, the piano
+      if (k === 'cook') { game.places.openShop('food_cook'); return true; }
+      if (k === 'blinds' && r.blinds) { const c = r.blinds.userData.toggle(); stats.blinds = (stats.blinds || 0) + 1; audio.blip(true); hud.toast(c ? 'THE BLINDS COME DOWN' : 'THE BLINDS GO UP', c ? 'LINEN OVER THE GLASS · E AGAIN TO OPEN' : 'THE VIEW IS BACK'); return true; }
+      if (k === 'fireplace' && r.fire) { const f = r.fire.userData; f.want = f.want ? 0 : 1; stats.fires = (stats.fires || 0) + 1; audio.blip(!!f.want); hud.toast(f.want ? 'THE FIRE IS LIT' : 'THE FIRE GOES DOWN', f.want ? 'A LONG ROW OF FLAMES BEHIND THE GLASS' : 'THE STONE STAYS WARM A WHILE'); return true; }
+      if (k === 'piano') { playPiano(); return true; }
       return false;
     },
     // E while something is running: reel in, or step out of the shower
@@ -469,6 +523,7 @@ export function createHomes(game) {
       const A = S.act; if (!A) return false;
       if (A.kind === 'shower') return showerTick(dt, ctl, r);
       if (A.kind === 'fish') return fishTick(dt, ctl, r);
+      if (A.kind === 'cook') return cookTick(dt, ctl, r);
       if (A.kind === 'sleep') { game.act.update(dt, { move: 0, strafe: 0 }, null); const s = game.act.seat; if (s && s.ref && s.ref.cam) api.seatCam(r, s.ref.cam, dt); else { const b = bedSeat(r); if (b) camRoom(r, [1.6, 2.2, 1.8], [b.x - r.ox, (b.ref.fy || 0) + 0.6, b.z - r.oz], b.ref.fy || 0); } sleepTick(dt); return true; }
       return false;
     },
@@ -496,6 +551,7 @@ export function createHomes(game) {
       const A = S.act;
       if (A && A.kind === 'fish') return A.phase === 'bite' ? [['E', 'reel in now, in the green!'], ['WASD', 'stop fishing']] : [['E', 'wait for the bite'], ['WASD', 'stop fishing']];
       if (A && A.kind === 'shower') return [['E / WASD', 'step out']];
+      if (A && A.kind === 'cook') return [['', 'cooking…'], ['WASD', 'stop']];
       if (A && A.kind === 'sleep') return [['Zzz', 'sleeping']];
       if (seatedView()) return [['1', 'wait for sunset (19:30)'], ['2', 'wait for night (22:00)'], ['F / E / WASD', 'get up']];
       if (S.swim) return [['WASD', 'swim'], ['', 'the steps are at the end by the umbrella']];
@@ -530,7 +586,7 @@ export function createHomes(game) {
       if (r.garageCar) r.garageCar(owned(k) && save.garage[k] ? save.garage[k].color : null);
       // a soak in the tub or the hot tub: steam, and after five seconds the reward (once a minute)
       const s = seatRef(), tub = !!(s && s.tub);
-      if (r.steam2) r.steam2.userData.on(tub && k === 'penthouse' ? 0.8 : 0);
+      if (k === 'penthouse') for (const key of ['steam2', 'steam3']) if (r[key]) r[key].userData.on(tub && (s.steam || 'steam2') === key ? 0.8 : 0);
       if (k === 'villa' && r.steam && !S.act) r.steam.userData.on(tub ? 0.8 : 0);
       S.soakCd = Math.max(0, S.soakCd - dt);
       if (tub) { S.soakT += dt; if (S.soakT > 5 && S.soakCd <= 0) { S.soakCd = 60; stats.soaks++; refresh(k, k === 'villa' ? ' · A LONG SOAK' : ' · THE BUBBLES DID IT'); } } else S.soakT = 0;

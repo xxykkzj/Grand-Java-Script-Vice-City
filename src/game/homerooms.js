@@ -14,10 +14,11 @@
 import * as THREE from 'three';
 import { box, cyl, tint, merge, PI, rng } from '../core/util.js';
 import { boards, P, plant, rug, fan, pulser, pbox, shadeHex } from './dress.js';
+import { buildPenthouse } from './penthouse.js';
 
-const BLK = '#22203a', GOLD = '#ffd166', CHROME = '#d9d6e6', CREAM = '#fff6ec';
-const disc = (x, y, z, r, hex, k, axis, f) => ({ disc: [x, y, z, r, hex, k, axis, f] });
-const cone = (x, y, z, rt, rb, h, hex, k) => ({ cone: [x, y, z, rt, rb, h, hex, k] });
+export const BLK = '#22203a', GOLD = '#ffd166', CHROME = '#d9d6e6', CREAM = '#fff6ec';
+export const disc = (x, y, z, r, hex, k, axis, f) => ({ disc: [x, y, z, r, hex, k, axis, f] });
+export const cone = (x, y, z, rt, rb, h, hex, k) => ({ cone: [x, y, z, rt, rb, h, hex, k] });
 
 // ---- the agents ------------------------------------------------------------------------------------------
 export const HOME_LOOKS = {
@@ -51,21 +52,21 @@ export const HOME_LOOKS = {
 // ---- shared pieces ----------------------------------------------------------------------------------------
 // one TV picture for whichever home you are in (game/homes.js paints it)
 export const TV = (() => { const cv = document.createElement('canvas'); cv.width = 256; cv.height = 176; const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; return { cv, ctx: cv.getContext('2d'), tex }; })();
-function screen(w, h, x, y, z, ry = 0) {
+export function screen(w, h, x, y, z, ry = 0) {
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: '#1a1826', fog: false, toneMapped: false }));
   m.position.set(x, y, z); m.rotation.y = ry; m.renderOrder = 2;
   m.userData.on = (on) => { m.material.map = on ? TV.tex : null; m.material.color.set(on ? '#ffffff' : '#1a1826'); m.material.needsUpdate = true; };
   return m;
 }
 // a glass pane (the town shows through it, faintly tinted)
-function glass(list) {
+export function glass(list) {
   const m = new THREE.Mesh(merge(list), new THREE.MeshBasicMaterial({ color: '#cfefff', transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide, fog: false }));
   m.renderOrder = 4;
   return m;
 }
-const pane = (w, h, x, y, z, ry = 0) => { const q = new THREE.PlaneGeometry(w, h); q.rotateY(ry); q.translate(x, y, z); return q; };
+export const pane = (w, h, x, y, z, ry = 0) => { const q = new THREE.PlaneGeometry(w, h); q.rotateY(ry); q.translate(x, y, z); return q; };
 // steam from a shower or a bath: soft points rising and spreading, shown while it runs (on(k), 0..1)
-function steam(x, y, z, w = 0.9, n = 46) {
+export function steam(x, y, z, w = 0.9, n = 46) {
   const r = rng(Math.round(x * 31 + z * 7 + 99)), pos = new Float32Array(n * 3), ph = new Float32Array(n);
   for (let i = 0; i < n; i++) { pos[i * 3] = (r() - 0.5) * w; pos[i * 3 + 1] = 0; pos[i * 3 + 2] = (r() - 0.5) * w; ph[i] = r(); }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('aP', new THREE.BufferAttribute(ph, 1));
@@ -81,7 +82,7 @@ function steam(x, y, z, w = 0.9, n = 46) {
   return m;
 }
 // animated water (the villa's pool, the penthouse's hot tub)
-function water(w, d, x, y, z, deep, shallow) {
+export function water(w, d, x, y, z, deep, shallow) {
   const U = { uT: { value: 0 }, uA: { value: new THREE.Color(deep) }, uB: { value: new THREE.Color(shallow) } };
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d, 1, 1).rotateX(-PI / 2), new THREE.ShaderMaterial({
     uniforms: U, transparent: true, depthWrite: false, fog: false,
@@ -96,13 +97,13 @@ function water(w, d, x, y, z, deep, shallow) {
   return m;
 }
 // a framed picture painted on a board
-function picture(g, B, x, y, z, ry, w, h, frame, draw) {
+export function picture(g, B, x, y, z, ry, w, h, frame, draw) {
   const nx = Math.sin(ry), nz = Math.cos(ry), across = Math.abs(nz) > 0.5;
   g.push(box(across ? w + 0.1 : 0.04, h + 0.1, across ? 0.04 : w + 0.1, x - nx * 0.01, y, z - nz * 0.01, frame));
   B.add(w, h, x + nx * 0.015, y, z + nz * 0.015, ry, draw);
 }
 // walls: along x at z (with gaps [[a, b], ...] in x) or along z at x
-function wallX(g, z, x0, x1, y0, y1, hex, gaps = [], t = 0.2) {
+export function wallX(g, z, x0, x1, y0, y1, hex, gaps = [], t = 0.2) {
   let a = x0;
   for (const [g0, g1, gy0 = y0, gy1 = y1] of [...gaps, [x1, x1]]) {
     if (g0 > a + 0.01) g.push(pbox(g0 - a, y1 - y0, t, (a + g0) / 2, (y0 + y1) / 2, z, hex));
@@ -111,7 +112,7 @@ function wallX(g, z, x0, x1, y0, y1, hex, gaps = [], t = 0.2) {
     a = g1;
   }
 }
-function wallZ(g, x, z0, z1, y0, y1, hex, gaps = [], t = 0.2) {
+export function wallZ(g, x, z0, z1, y0, y1, hex, gaps = [], t = 0.2) {
   let a = z0;
   for (const [g0, g1, gy0 = y0, gy1 = y1] of [...gaps, [z1, z1]]) {
     if (g0 > a + 0.01) g.push(pbox(t, y1 - y0, g0 - a, x, (y0 + y1) / 2, (a + g0) / 2, hex));
@@ -121,7 +122,7 @@ function wallZ(g, x, z0, z1, y0, y1, hex, gaps = [], t = 0.2) {
   }
 }
 // a floor of tiles (a, b alternate) or planks (b = null) between x0..x1, z0..z1 at height y
-function floor(g, x0, x1, z0, z1, y, a, b, s = 1) {
+export function floor(g, x0, x1, z0, z1, y, a, b, s = 1) {
   if (!b) { for (let z = z0; z < z1 - 0.01; z += 0.3) g.push(box(x1 - x0, 0.1, Math.min(0.29, z1 - z), (x0 + x1) / 2, y - 0.05, z + 0.15, ((z - z0) / 0.3 | 0) % 3 === 1 ? shadeHex(a, 0.93) : a)); return; }
   for (let x = x0; x < x1 - 0.01; x += s) for (let z = z0; z < z1 - 0.01; z += s) {
     const w = Math.min(s, x1 - x), d = Math.min(s, z1 - z);
@@ -129,7 +130,7 @@ function floor(g, x0, x1, z0, z1, y, a, b, s = 1) {
   }
 }
 // a sofa (back towards -z before turning by ry) of width w at (x, z)
-function sofa(g, w, x, z, ry, col, cush) {
+export function sofa(g, w, x, z, ry, col, cush) {
   const c = Math.cos(ry), s = Math.sin(ry), at = (lx, lz) => [x + lx * c + lz * s, z - lx * s + lz * c];
   const add = (ww, hh, dd, lx, y, lz, hex) => { const [px, pz] = at(lx, lz); g.push(box(ww, hh, dd, px, y, pz, hex, 0, ry)); };
   add(w, 0.42, 0.9, 0, 0.21, 0, col); add(w - 0.3, 0.14, 0.72, 0, 0.47, 0.08, cush); add(w, 0.5, 0.22, 0, 0.62, -0.38, col);
@@ -137,14 +138,14 @@ function sofa(g, w, x, z, ry, col, cush) {
   for (let i = 0; i < 2; i++) add(0.38, 0.32, 0.12, -w / 4 + i * w / 2, 0.68, -0.25, cush);
 }
 // a bed (head towards -z before turning): frame, mattress, cover, pillows
-function bed(g, w, l, x, z, ry, frame, cover, pillow = CREAM) {
+export function bed(g, w, l, x, z, ry, frame, cover, pillow = CREAM) {
   const c = Math.cos(ry), s = Math.sin(ry), at = (lx, lz) => [x + lx * c + lz * s, z - lx * s + lz * c];
   const add = (ww, hh, dd, lx, y, lz, hex) => { const [px, pz] = at(lx, lz); g.push(box(ww, hh, dd, px, y, pz, hex, 0, ry)); };
   add(w + 0.1, 0.3, l + 0.1, 0, 0.2, 0, frame); add(w, 0.2, l, 0, 0.45, 0, '#fbf7f0'); add(w + 0.04, 0.1, l * 0.66, 0, 0.58, l * 0.17, cover);
   add(w + 0.1, 1.0, 0.1, 0, 0.6, -l / 2 - 0.05, frame);
   if (w > 1.2) { add(w * 0.42, 0.14, 0.38, -w * 0.24, 0.62, -l / 2 + 0.3, pillow); add(w * 0.42, 0.14, 0.38, w * 0.24, 0.62, -l / 2 + 0.3, pillow); } else add(w * 0.8, 0.14, 0.38, 0, 0.62, -l / 2 + 0.3, pillow);
 }
-const lamp = (g, x, z, h, shade, pools, hiP) => { g.push(cyl(0.2, 0.24, 0.05, 10, x, 0.025, z, BLK), cyl(0.025, 0.025, h, 6, x, h / 2, z, GOLD), cyl(0.16, 0.3, 0.36, 12, x, h + 0.1, z, shade)); pools.push(disc(x, 0.012, z, 1.3, '#ffd9a0', 0.4)); if (hiP) hiP.push(cone(x, h - 0.05, z, 0.28, 0.9, h - 0.1, '#ffe8c0', 0.3)); };
+export const lamp = (g, x, z, h, shade, pools, hiP) => { g.push(cyl(0.2, 0.24, 0.05, 10, x, 0.025, z, BLK), cyl(0.025, 0.025, h, 6, x, h / 2, z, GOLD), cyl(0.16, 0.3, 0.36, 12, x, h + 0.1, z, shade)); pools.push(disc(x, 0.012, z, 1.3, '#ffd9a0', 0.4)); if (hiP) hiP.push(cone(x, h - 0.05, z, 0.28, 0.9, h - 0.1, '#ffe8c0', 0.3)); };
 // a wardrobe against a wall (doors face +z before turning)
 function wardrobe(g, B, w, x, z, ry, col, knob = GOLD) {
   const c = Math.cos(ry), s = Math.sin(ry), at = (lx, lz) => [x + lx * c + lz * s, z - lx * s + lz * c];
@@ -558,137 +559,7 @@ function buildVilla(room) {
   });
 }
 
-// ---- the Skyline Penthouse (Solano Key, the top of the bay tower) ------------------------------------------
-// Floor-to-ceiling glass on the north (-z: the bay and the open sea) and the east (+x: the causeway, the old
-// town and the sunset), a double-height living room, a mezzanine (4.3 m) with the bedroom and the rain shower
-// over the kitchen, a balcony off the east glass with a hot tub. The lift and the door are on +z.
-const PM = 4.3;
-function buildPenthouse(room, place) {
-  const g = [], B = room.boards = boards(1024), HX = 8.5, HZ = 6.5, H = 8.6, pools = room.pools, hi = room.hiPools;
-  const WALL = '#f0ece8', DARK = '#2a2a36';
-  floor(g, -HX, HX, -HZ, HZ, 0, '#e8e4e0', '#d8d2cc', 1.6);
-  floor(g, HX, HX + 2.2, -HZ, -0.4, 0, '#c8a888', null);
-  // walls: the inner ones (+z with the lift door, -x), glass on -z and +x with slim mullions, a sliding door
-  wallX(g, HZ + 0.1, -HX - 0.2, HX + 0.2, 0, H, WALL, [[-6.3, -4.7, 0, 2.6]]); wallZ(g, -HX - 0.1, -HZ, HZ, 0, H, WALL);
-  g.push(box(1.6, 2.6, 0.08, -5.5, 1.3, HZ - 0.02, '#c9a86e'), box(0.04, 2.5, 0.06, -5.5, 1.3, HZ - 0.06, '#8a7040'), box(1.8, 0.1, 0.1, -5.5, 2.65, HZ - 0.05, GOLD));
-  g.push(pbox(HX * 2 + 0.4, 0.3, HZ * 2 + 0.4, 0, H + 0.15, 0, '#f6f4f2', 2));
-  for (let x = -HX; x <= HX + 0.01; x += 2.125) g.push(box(0.08, H, 0.1, x, H / 2, -HZ - 0.05, DARK));
-  for (let z = -HZ; z <= HZ + 0.01; z += 2.6) g.push(box(0.1, H, 0.08, HX + 0.05, H / 2, z, DARK));
-  g.push(box(HX * 2, 0.12, 0.14, 0, 0.06, -HZ - 0.05, DARK), box(0.14, 0.12, HZ * 2, HX + 0.05, 0.06, 0, DARK), box(HX * 2, 0.2, 0.14, 0, H - 0.1, -HZ - 0.05, DARK), box(0.14, 0.2, HZ * 2, HX + 0.05, H - 0.1, 0, DARK));
-  room.extras.push(glass([pane(HX * 2, H, 0, H / 2, -HZ - 0.05), pane(HZ * 2 - 6.0, H, HX + 0.05, H / 2, 3.0 + 0.5, PI / 2), pane(6.0, H - 2.8, HX + 0.05, 2.8 + (H - 2.8) / 2, -3.5, PI / 2),
-    pane(2.2, 1.05, HX + 1.1, 0.55, -HZ - 0.05), pane(6.1, 1.05, HX + 2.25, 0.55, -3.45, PI / 2), pane(2.2, 1.05, HX + 1.1, 0.55, -0.4)]));
-  // the balcony: teak, a glass balustrade with a brass rail, the hot tub, a lounger
-  g.push(box(2.3, 0.3, 6.2, HX + 1.15, -0.15, -3.45, '#c8a888'), box(2.3, 0.05, 0.06, HX + 1.15, 1.1, -HZ - 0.05, GOLD), box(0.06, 0.05, 6.2, HX + 2.25, 1.1, -3.45, GOLD), box(2.3, 0.05, 0.06, HX + 1.15, 1.1, -0.4, GOLD));
-  g.push(cyl(0.85, 0.85, 0.7, 18, HX + 1.15, 0.35, -4.9, '#e8e4e0'), cyl(0.9, 0.9, 0.06, 18, HX + 1.15, 0.72, -4.9, '#c8a888'));
-  const hw = water(1.5, 1.5, HX + 1.15, 0.62, -4.9, '#2a9ab8', '#7ff0ff'); room.extras.push(hw);
-  g.push(box(0.7, 0.3, 1.8, HX + 1.15, 0.25, -2.0, '#e8e4e0'), box(0.66, 0.1, 1.2, HX + 1.15, 0.45, -1.8, '#3a3a48'), box(0.66, 0.5, 0.12, HX + 1.15, 0.62, -2.9, '#3a3a48', 0.6));
-  // the living room: a long sofa facing the projector wall (+z right), a coffee table, the window chairs facing
-  // the bay, a rug
-  sofa(g, 3.6, 3.2, -0.6, PI, '#3a3a48', '#5a5a6a'); sofa(g, 2.0, 5.6, 1.2, -PI / 2, '#3a3a48', '#5a5a6a');
-  g.push(box(1.8, 0.35, 0.9, 3.2, 0.18, 1.0, '#c9a86e'), box(1.84, 0.04, 0.94, 3.2, 0.37, 1.0, '#2a2a36'), cyl(0.08, 0.06, 0.2, 8, 3.6, 0.47, 1.1, '#ff9ad5'));
-  rug(g, 5.0, 3.4, 3.4, 0.6, '#2a2a36', '#d8d0c4', GOLD, 'stripes');
-  for (const x of [1.0, 3.0]) g.push(box(0.8, 0.4, 0.8, x, 0.25, -5.2, '#f0ece8'), box(0.8, 0.6, 0.15, x, 0.65, -4.85, '#f0ece8'), box(0.74, 0.1, 0.7, x, 0.47, -5.2, '#c9a86e'));
-  // the projector wall: a big pale screen, the projector on a shelf behind the sofa, speakers in the corners
-  g.push(box(5.8, 3.4, 0.06, 3.2, 2.7, HZ - 0.04, '#141420'));
-  const tv = screen(5.6, 3.15, 3.2, 2.7, HZ - 0.08, PI); room.extras.push(tv); room.tv = tv;
-  g.push(box(0.5, 0.25, 0.4, 3.2, 3.5, -2.0, DARK), cyl(0.07, 0.07, 0.05, 8, 3.2, 3.5, -1.78, '#9fe8ff', PI / 2), box(0.06, 2.2, 0.06, 3.2, H - 1.1, -2.0, CHROME));
-  for (const [x, z] of [[0.2, HZ - 0.3], [6.2, HZ - 0.3], [0.2, -HZ + 0.4], [7.9, -HZ + 0.4]]) g.push(box(0.35, 1.2, 0.35, x, 0.6, z, DARK), cyl(0.1, 0.1, 0.02, 10, x, 0.9, z + (z > 0 ? -0.18 : 0.18), '#5a5a6a', PI / 2));
-  hi.push(cone(3.2, 3.5, -1.0, 0.05, 1.2, 0.01, '#bfe8ff', 0.01));
-  // the espresso bar at the east glass: a walnut counter, the chrome machine, cups, two stools
-  g.push(box(0.7, 1.0, 2.2, HX - 0.45, 0.5, 2.6, '#6a4a30'), box(0.8, 0.05, 2.3, HX - 0.45, 1.02, 2.6, '#2a2a36'), box(0.5, 0.45, 0.42, HX - 0.45, 1.27, 2.1, CHROME), box(0.42, 0.06, 0.3, HX - 0.45, 1.52, 2.1, '#3a3a48'),
-    cyl(0.04, 0.04, 0.12, 6, HX - 0.65, 1.15, 2.0, BLK, 0, PI / 2), cyl(0.05, 0.04, 0.07, 8, HX - 0.35, 1.08, 2.7, CREAM), cyl(0.05, 0.04, 0.07, 8, HX - 0.35, 1.08, 2.9, CREAM), box(0.06, 0.2, 0.06, HX - 0.25, 1.15, 2.1, '#ff3f5a'));
-  for (const z of [2.0, 3.1]) g.push(cyl(0.22, 0.22, 0.07, 10, HX - 1.15, 0.78, z, '#3a3a48'), cyl(0.03, 0.04, 0.75, 6, HX - 1.15, 0.38, z, CHROME));
-  // the record player on a long sideboard and the vinyl wall over it (+z wall, left of the screen)
-  g.push(box(3.6, 0.7, 0.5, -1.4, 0.35, HZ - 0.3, '#6a4a30'), box(0.5, 0.12, 0.4, -1.0, 0.76, HZ - 0.3, '#2a2a36'), cyl(0.15, 0.15, 0.02, 14, -1.0, 0.83, HZ - 0.3, BLK), box(0.02, 0.02, 0.22, -0.82, 0.85, HZ - 0.32, CHROME));
-  B.add(3.6, 2.4, -1.4, 2.3, HZ - 0.06, PI, (c, Ww, Hh) => {
-    P.fill(c, Ww, Hh, '#e8e2da'); const r = rng(8);
-    for (let row = 0; row < 3; row++) { c.fillStyle = '#6a4a30'; c.fillRect(0, (row + 1) * Hh / 3 - 6, Ww, 6); for (let i = 0; i < 7; i++) { const x = 6 + i * (Ww - 12) / 7, s = (Ww - 20) / 8; c.fillStyle = ['#ff6a8a', '#7fe0ff', '#ffe14a', '#2a2a36', '#8dff5a', '#ff8a3d', '#b388ff'][Math.floor(r() * 7)]; c.fillRect(x, (row + 1) * Hh / 3 - 8 - s, s, s); c.fillStyle = 'rgba(255,255,255,.5)'; c.beginPath(); c.arc(x + s / 2, (row + 1) * Hh / 3 - 8 - s / 2, s * 0.22, 0, 6.3); c.fill(); } }
-  });
-  // the kitchen under the mezzanine: an island, a tall fridge, a lit backsplash
-  g.push(box(0.6, 0.9, 4.0, -HX + 0.35, 0.45, -2.0, '#f6f4f2'), box(0.65, 0.05, 4.1, -HX + 0.35, 0.93, -2.0, '#2a2a36'), box(0.7, 2.2, 1.0, -HX + 0.4, 1.1, 0.8, '#d9d6e6'), box(0.02, 1.0, 0.04, -HX + 0.76, 1.3, 0.5, CHROME),
-    box(1.0, 0.9, 2.4, -5.6, 0.45, -2.0, '#2a2a36'), box(1.1, 0.06, 2.5, -5.6, 0.93, -2.0, '#f6f4f2'), cyl(0.1, 0.08, 0.15, 8, -5.6, 1.04, -2.4, '#ffe14a'), cyl(0.18, 0.18, 0.08, 10, -5.6, 1.0, -1.5, '#ff6a3d'));
-  B.add(4.0, 0.6, -HX + 0.06, 1.3, -2.0, PI / 2, (c, Ww, Hh) => { P.grad(c, Ww, Hh, '#ffd36a', '#ff9ad5', false); });
-  for (const z of [-3.0, -1.0]) g.push(cyl(0.2, 0.2, 0.07, 10, -4.8, 0.78, z, '#c9a86e'), cyl(0.03, 0.04, 0.75, 6, -4.8, 0.38, z, CHROME));
-  // the stair up to the mezzanine along the +z wall, its glass rail; the mezzanine slab, its rail
-  const SX0 = 2.0, SX1 = -2.6, NST = 14;
-  for (let i = 0; i < NST; i++) { const x = SX0 + (SX1 - SX0) * (i + 0.5) / NST, y = (i + 1) / NST * PM; g.push(box(Math.abs(SX1 - SX0) / NST + 0.02, 0.1, 1.1, x, y - 0.05, 5.3, '#c9a86e'), box(0.04, y, 0.04, x, y / 2, 4.73, CHROME)); }
-  g.push(box(Math.hypot(SX1 - SX0, PM), 0.06, 0.06, (SX0 + SX1) / 2, PM / 2 + 1.0, 4.73, GOLD, 0, 0, -Math.atan2(PM, SX0 - SX1)));
-  g.push(pbox(5.9, 0.3, HZ * 2, -HX + 2.95, PM - 0.15, 0, '#f6f4f2', 2));
-  floor(g, -HX, -2.6, -HZ, HZ, PM + 0.01, '#b8906a', null);
-  g.push(box(0.06, 0.06, HZ * 2 - 2.2, -2.6, PM + 1.0, -1.1, GOLD), box(0.04, 1.0, HZ * 2 - 2.2, -2.6, PM + 0.5, -1.1, '#cfefff'));
-  // upstairs: the bed facing the bay, the walk-in closet (a rail of clothes), the rain shower in a glass box
-  bed(g, 1.9, 2.2, -5.4, -3.2, PI, '#2a2a36', '#d8d0c4', CREAM);
-  for (const y of [PM + 0.3]) g.push(box(2.0, 0.02, 0.02, -5.4, y, -2.1, GOLD));
-  for (let i = 0; i < 2; i++) g.push(box(0.5, 0.45, 0.4, -6.8 + i * 2.8, PM + 0.22, -2.0, '#6a4a30'), cyl(0.08, 0.12, 0.3, 10, -6.8 + i * 2.8, PM + 0.6, -2.0, '#fff3c4'));
-  g.push(box(0.04, 0.04, 2.4, -HX + 0.5, PM + 1.9, 2.0, CHROME));
-  for (let i = 0; i < 8; i++) g.push(box(0.45, 1.0, 0.08, -HX + 0.5, PM + 1.35, 1.0 + i * 0.28, ['#ff9ad5', '#2a2a36', '#7fe0ff', '#fff6ec', '#ffd36a', '#3a3a48', '#8dffcf', '#ff6a3d'][i]));
-  wardrobe(g, B, 1.4, -4.6, 1.1, PI / 2, '#6a4a30');
-  floor(g, -HX, -5.4, 3.6, HZ, PM + 0.02, '#3a3a48', '#2a2a36', 0.5);
-  g.push(box(0.08, 0.08, 2.0, -6.3, PM + 2.4, 5.0, CHROME), cyl(0.3, 0.3, 0.04, 14, -7.0, PM + 2.4, 5.4, CHROME), box(2.8, 0.02, 0.06, -6.8, PM + 2.4, 3.6, CHROME));
-  room.extras.push(glass([pane(2.8, 2.4, -6.8, PM + 1.2, 3.6), pane(1.3, 2.4, -5.4, PM + 1.2, 4.9, PI / 2)]));
-  const st = steam(-7.0, PM + 0.1, 5.2, 1.0); room.extras.push(st); room.steam = st;
-  const st2 = steam(HX + 1.15, 0.7, -4.9, 1.2, 30); room.extras.push(st2); room.steam2 = st2;
-  B.add(1.2, 1.5, -HX + 0.06, PM + 1.4, 4.6, PI / 2, (c, Ww, Hh) => P.mirror(c, Ww, Hh, ['#606878', '#a8b8c8'], [['#ffd36a', 2], ['#7fe0ff', 2]], 11));
-  // a tall plant, art on the inner wall, a brass pendant cluster over the island, cove light in the ceiling
-  plant(g, -1.8, -5.6, 1.4, DARK, '#3faf6a', 0); plant(g, 7.7, 5.7, 1.2, DARK, '#2f9f6a', 0);
-  picture(g, B, -HX + 0.05, PM + 2.0, -3.6, PI / 2, 2.4, 1.3, GOLD, (c, Ww, Hh) => { P.grad(c, Ww, Hh, '#1a1438', '#ff9ad5'); c.fillStyle = '#ffd36a'; for (let i = 0; i < 5; i++) c.fillRect(Ww * (0.1 + i * 0.17), Hh * (0.3 + (i % 2) * 0.2), Ww * 0.08, Hh * 0.6); });
-  for (const z of [-2.8, -2.0, -1.2]) g.push(cyl(0.01, 0.01, 2.2, 4, -5.6, PM - 1.3, z, GOLD), cyl(0.12, 0.2, 0.22, 10, -5.6, PM - 2.45, z, GOLD));
-  g.push(box(HX * 2 - 6.0, 0.06, 0.2, 3.0, H - 0.25, HZ - 0.15, '#fff0c8'));
-  pools.push(disc(3.2, 0.012, 0.6, 3.4, '#ffe8c8', 0.22), disc(-5.6, 0.95, -2.0, 1.4, '#fff0c0', 0.35), disc(HX + 1.15, 0.66, -4.9, 0.9, '#7ff0ff', 0.4), disc(-5.4, PM + 0.6, -3.2, 1.6, '#ffe0c0', 0.25), disc(3.2, 2.7, HZ - 0.14, 2.8, '#9fd8ff', 0.0, '-z'));
-  hi.push(cone(-5.6, PM - 2.5, -2.0, 0.2, 1.3, 1.6, '#fff0c8', 0.25));
-  const vt = place.b;
-  const stairH = (x, z) => (z > 4.65 && z < 5.95 && x < SX0 + 0.1 && x > SX1 - 0.05 ? Math.min(PM, Math.max(0, (SX0 - x) / (SX0 - SX1) * PM)) : null);
-  Object.assign(room, {
-    hx: HX, hz: HZ, h: H, geo: g, rim: '#3a3a5a', amb: 0.35, ambCol: '#fff6ee', bloomK: 0.5,
-    view: { x: vt.x1 - HX - 0.4, y: vt.h - 9.2, z: vt.z0 + HZ + 0.4, boost: true },
-    lights: [{ x: 3.2, y: 5, z: 0.6, hex: '#fff0e0', r: 10, k: 0.35 }, { x: -5.6, y: 3.2, z: -2.0, hex: '#fff0c8', r: 5, k: 0.45 }, { x: -5.4, y: PM + 2.5, z: -2.6, hex: '#ffe8d0', r: 6, k: 0.4 },
-      { x: -6.8, y: PM + 2.2, z: 5.0, hex: '#e8f8ff', r: 3, k: 0.4 }, { x: HX - 0.5, y: 2.2, z: 2.4, hex: '#ffd8a0', r: 3, k: 0.4 }, { x: 3.2, y: 2.7, z: HZ - 1, hex: '#a0c8ff', r: 5, k: 0.25 }],
-    bounds: { x0: -HX, x1: HX + 2.2, z0: -HZ, z1: HZ },
-    floorAt(x, z, y) {
-      const s = stairH(x, z); if (s !== null) return s;
-      if (x < -2.6 && y > PM - 0.9) return PM;
-      return 0;
-    },
-    ceilAt(x, z, y) { return y < 2 && x < -2.6 ? PM - 0.2 : H; },
-    blocks: [
-      // the glass walls (the balcony door is the gap at z -6.3..-0.6 in the east glass), the balcony rails
-      { x0: HX - 0.05, x1: HX + 0.2, z0: -0.5, z1: HZ }, { x0: HX - 0.08, x1: HX + 0.16, z0: -4.0, z1: -3.8 }, { x0: HX - 0.08, x1: HX + 0.16, z0: -1.4, z1: -1.2 }, { x0: HX + 2.15, x1: HX + 2.5, z0: -HZ, z1: -0.3 }, { x0: HX, x1: HX + 2.4, z0: -0.5, z1: -0.25 },
-      { x0: HX + 0.25, x1: HX + 2.1, z0: -5.8, z1: -4.0 }, { x0: HX + 0.75, x1: HX + 1.55, z0: -2.9, z1: -1.1 },
-      // the stair's underside and its rail, the mezzanine's edge (only upstairs), the sofas, the bar, the kitchen
-      { x0: SX1 - 0.1, x1: SX0 + 0.1, z0: 4.55, z1: 4.75, y0: -1, y1: 9 }, { x0: -2.75, x1: -2.45, z0: -HZ, z1: 4.6, y0: 3.2, y1: 9 },
-      { x0: 1.3, x1: 5.1, z0: -1.2, z1: 0.0 }, { x0: 2.3, x1: 4.1, z0: 0.55, z1: 1.45 }, { x0: 5.1, x1: 6.1, z0: 0.2, z1: 2.2 }, { x0: HX - 0.8, x1: HX, z0: 1.5, z1: 3.7 }, { x0: HX - 1.4, x1: HX - 0.9, z0: 1.75, z1: 3.35 },
-      { x0: -HX, x1: -7.7, z0: -4.0, z1: 1.3, y0: -1, y1: 3 }, { x0: -6.1, x1: -5.1, z0: -3.2, z1: -0.8, y0: -1, y1: 3 }, { x0: -5.0, x1: -4.6, z0: -3.2, z1: -0.8, y0: -1, y1: 3 },
-      { x0: -3.2, x1: 0.4, z0: HZ - 0.55, z1: HZ, y0: -1, y1: 3 }, { x0: 0.6, x1: 1.4, z0: -5.6, z1: -4.75 }, { x0: 2.6, x1: 3.4, z0: -5.6, z1: -4.75 }, { x0: -2.2, x1: -1.4, z0: -6.0, z1: -5.2 }, { x0: 7.3, x1: 8.1, z0: 5.3, z1: 6.1 },
-      { x0: -6.4, x1: -4.4, z0: -4.4, z1: -2.0, y0: 3.2, y1: 9 }, { x0: -HX, x1: -7.9, z0: 0.6, z1: 3.4, y0: 3.2, y1: 9 }, { x0: -4.9, x1: -4.3, z0: 0.4, z1: 1.8, y0: 3.2, y1: 9 }, { x0: -7.1, x1: -6.5, z0: -2.3, z1: -1.7, y0: 3.2, y1: 9 },
-      { x0: -HX, x1: -5.4, z0: 3.5, z1: 3.7, y0: 3.2, y1: 9 }, { x0: -5.5, x1: -5.3, z0: 3.6, z1: 4.4, y0: 3.2, y1: 9 },
-    ],
-    seats: [{ x: 2.4, z: -0.55, y: 0.5, yaw: 0, kind: 'booth' }, { x: 4.0, z: -0.55, y: 0.5, yaw: 0, kind: 'booth' }, { x: 5.55, z: 1.2, y: 0.5, yaw: -PI / 2, kind: 'booth' },
-      { x: 1.0, z: -5.2, y: 0.47, yaw: PI, kind: 'booth', view: true, cam: [1.6, 2.6, -1.4, -4, -2.5, -80] }, { x: 3.0, z: -5.2, y: 0.47, yaw: PI, kind: 'booth', view: true, cam: [2.6, 2.6, -1.4, 4, -2.5, -80] },
-      { x: HX - 1.15, z: 2.0, y: 0.8, yaw: PI / 2, kind: 'stool', view: true, cam: [HX - 3.6, 2.2, 3.4, 60, -3, 0] },
-      { x: HX + 1.15, z: -1.9, y: 0.5, yaw: PI, kind: 'lounger', view: true, cam: [HX - 1.0, 2.6, 1.0, 40, -6, -40] },
-      { x: HX + 1.15, z: -4.9, y: 0.3, yaw: PI / 2, kind: 'stool', fy: -0.2, tub: true, view: true, cam: [HX - 1.4, 2.3, -2.2, 60, -4, -20] },
-      { x: -5.4, z: -2.9, y: 0.58, yaw: PI, kind: 'lounger', fy: PM, home: 'bed', view: true, cam: [-5.4, PM + 2.4, 0.4, -3, PM - 2, -60] }],
-    spawn: [-5.5, 4.4], exit: [-5.5, HZ - 1.0], faceIn: PI,
-    uses: [
-      { x: 3.2, z: 4.2, r: 1.2, kind: 'tv', hint: 'the projector', look: [3.2, HZ], cam: [-1.6, 2.2, -3.6], lookY: 2.4 },
-      { x: -4.4, z: -3.3, r: 1.0, fy: PM, kind: 'bed', hint: 'sleep (and save)', look: [-5.4, -3.2], cam: [2.2, 2.0, 1.4] },
-      { x: -6.4, z: 4.6, r: 0.8, fy: PM, kind: 'shower', hint: 'the rain shower', look: [-7.0, 5.2], cam: [2.2, 1.9, -1.6] },
-      { x: -3.8, z: 1.1, r: 0.9, fy: PM, kind: 'wardrobe', hint: 'the walk-in closet', face: -PI / 2 + 0.35 },
-      { x: HX - 1.0, z: 1.2, r: 0.8, kind: 'espresso', hint: 'an espresso at the window', look: [HX - 0.45, 2.1], cam: [-1.8, 1.7, -1.2] },
-      { x: -7.2, z: 0.0, r: 0.8, kind: 'fridge', hint: 'the fridge', look: [-HX + 0.4, 0.8], cam: [2.0, 1.7, -1.0] },
-      { x: -1.0, z: HZ - 1.0, r: 0.8, kind: 'records', hint: 'the record player', look: [-1.0, HZ - 0.3], cam: [1.6, 1.7, -1.6], lookY: 1.4 },
-    ],
-    wide: [6.6, 3.6, -3.6, -2.0, 2.4, 3.0],
-    camFor(lx, lz, ly) {
-      if (ly > 2.4) return [-3.0, PM + 2.6, Math.max(-4, Math.min(4.0, lz + 3.2)), 1.0, 0.0];
-      if (lx > HX) return [HX - 1.2, 2.6, Math.min(-0.8, lz + 3.0), 0.8, 0.6];
-      if (lx < -2.6) return [-1.6, 2.8, Math.min(HZ - 0.8, lz + 3.2), 1.0, 0.6];
-      return [lx * 0.5 + 1.4, 3.6, Math.min(HZ - 0.6, lz + 5.0), 1.0, 0.6];
-    },
-    tour: [[-1.0, 3.2, 4.6, 4.0, 1.4, -6.5], [7.2, 2.0, 4.6, 7.0, 1.4, -30], [-3.4, PM + 2.0, 3.4, -5.4, PM + 0.4, -4.0], [HX + 0.6, 1.8, -0.8, HX + 1.4, 0.4, -6.0], [3.0, 2.0, -5.6, 3.0, 1.2, -80]],
-    idle(t) { st.userData.U.uT.value = t; st2.userData.U.uT.value = t; hw.userData.U.uT.value = t; },
-  });
-}
+// ---- the Skyline Penthouse: its own file (game/penthouse.js), it is the biggest room in the game
 
 // ---- The Driftwood Dory, a houseboat at Starboard Marina ---------------------------------------------------
 // The boat lies along x with its gangway on the north side (-z, towards the boardwalk) at the aft deck (+x).

@@ -57,6 +57,7 @@ import { createBloom } from './world/bloom.js';
 import { createMotes } from './world/motes.js';
 import { createCinematic } from './game/cinematic.js';
 import { createSpire } from './game/spire.js';
+import { createFireworks } from './world/fireworks.js';
 import { createPier } from './game/pier.js';
 import { createSaves, bindSaveUI } from './game/saves.js';
 import { createHomes } from './game/homes.js';
@@ -212,6 +213,8 @@ async function boot() {
   vehicles.onNoLand = () => spire.noLand();
   // Starlight Pier: the wheel ride, the candy stand, the pier crowd, its music
   const pier = game.pier = createPier(game, scene);
+  // the distant fireworks over the bay, every third night (world/fireworks.js)
+  const fireworks = game.fireworks = createFireworks(game, scene);
   // Marmalade, the cat on the windowsill in the midtown alley
   const cat = game.cat = createCat(game, scene);
   // a second helicopter waits on the Glasswater Tower helipad downtown
@@ -247,6 +250,12 @@ async function boot() {
     to: (x, z) => { if (game.vehicle) { game.vehicle.x = x; game.vehicle.z = z; } else player.pos.set(x, player.floor, z); },
     // set the clock (hours, e.g. 3 or 8.5); the traffic and the crowd follow it over the next seconds
     time: (h) => { env.tod = ((h % 24) + 24) % 24; env.target = null; return env.tod; },
+    // the fireworks over the bay (world/fireworks.js): start a show now; which nights get one; the day number
+    fireworks: () => { if (fireworks.on) fireworks.stop(); fireworks.start('debug'); return fireworks.state(); },
+    fwState: () => fireworks.state(),
+    fwSeek: (t) => fireworks.seek(t),
+    fwSchedule: (from = 1, days = 9) => fireworks.schedule(from, days),
+    day: (d) => { if (d !== undefined) env.day = d; return env.day; },
     counts: () => ({ cars: traffic.count(), carTarget: traffic.target, peds: peds.active, pedTarget: peds.target, animals: animals.count(), ...animals.stats, dog: { ...animals.dog } }),
     interact: () => interact(),
     // ---- the sea (automated checks): everything is placed directly, software GL is slow
@@ -432,6 +441,28 @@ async function boot() {
     fish: () => homes.fishState(), biteNow: () => homes.biteNow(), fishM: (m) => homes.fishSetM(m),
     useKind: (kind) => { const r = game.inside && game.inside.room; if (!r) return null; const u = (r.uses || [r.use]).find((q) => q.kind === kind); if (!u) return 'no ' + kind; places.setLy(u.fy || 0); player.pos.set(r.ox + u.x, OY + (u.fy || 0), r.oz + u.z); places.use(); return game.busy || (homes.act && homes.act.kind) || 'used'; },
     sitAt: (i) => { const r = game.inside && game.inside.room; const s = r.seats[i]; places.setLy(s.fy || 0); player.pos.set(r.ox + s.x, OY + (s.fy || 0), r.oz + s.z); return act.toggle() && act.mode; },
+    // walk the courier indoors to each point in turn with the real walking rules (places.update: blocks, stairs,
+    // levels), in fixed 1/30 s steps; stops at a point when she is there or has made no progress for a second
+    walkPath: (pts, maxT = 40) => {
+      const r = game.inside && game.inside.room; if (!r) return null;
+      const c = { move: 0, strafe: 0, sprint: false, jump: false }, out = [];
+      for (const [tx, tz, tag] of pts) {
+        let t = 0, best = 1e9, still = 0, ok = false, lyMin = 1e9, lyMax = -1e9;
+        while (t < maxT) {
+          const lx = player.pos.x - r.ox, lz = player.pos.z - r.oz, dx = tx - lx, dz = tz - lz, d = Math.hypot(dx, dz);
+          if (d < 0.3) { ok = true; break; }
+          c.strafe = dx / d; c.move = -dz / d;
+          places.update(1 / 30, c); t += 1 / 30;
+          if (!game.inside) break;
+          lyMin = Math.min(lyMin, places.ly); lyMax = Math.max(lyMax, places.ly);
+          if (d < best - 0.02) { best = d; still = 0; } else if ((still += 1 / 30) > 1) break;
+        }
+        out.push({ tag, to: [tx, tz], ok, at: [+(player.pos.x - r.ox).toFixed(2), +(player.pos.z - r.oz).toFixed(2)], ly: +places.ly.toFixed(2), lyMin: +lyMin.toFixed(2), lyMax: +lyMax.toFixed(2), t: +t.toFixed(1), inside: !!game.inside });
+        if (!game.inside) break;
+      }
+      player.vel.set(0, 0, 0);
+      return out;
+    },
     roomAt: (x, z, ly = 0) => { const r = game.inside.room; places.setLy(ly); player.pos.set(r.ox + x, OY + ly, r.oz + z); return [x, z, ly]; },
     lum: () => { draw(); const gl = renderer.getContext(), w = gl.drawingBufferWidth, h = gl.drawingBufferHeight, px = new Uint8Array(w * h * 4); gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px); let s2 = 0, n = 0, cr = 0, cg = 0, cb = 0; for (let i = 0; i < px.length; i += 4 * 7) { s2 += 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2]; cr += px[i]; cg += px[i + 1]; cb += px[i + 2]; n++; } return { mean: +(s2 / n).toFixed(1), rgb: [cr / n | 0, cg / n | 0, cb / n | 0], calls: renderer.info.render.calls, tris: renderer.info.render.triangles }; },
     evtGo: (off = 0.6) => { const t = events.target(); if (!t) return null; const v = game.vehicle; if (v) { v.x = t.x + off; v.z = t.z; v.vx = v.vz = 0; } else player.pos.set(t.x + off, 0, t.z); return t; },
@@ -632,6 +663,7 @@ async function boot() {
     if (game.started) { saves.tick(raw); rules.update(dt); pursuit.update(dt); parking.update(raw); heatHint.update(raw); story.update(dt); story.tickStar(dt); places.update(dt, ctl); venues.tick(dt); homes.update(dt); events.update(dt); marine.blips(rules.blips); roofs.update(dt); }
     city.tick(timeU.value); city.beachFx.tick(env.rainAmt);
     fx.update(dt);
+    fireworks.update(dt);
     player.tickFace(dt);
     combat.pose();
     if (game.started) eat.update(dt, ctl);
