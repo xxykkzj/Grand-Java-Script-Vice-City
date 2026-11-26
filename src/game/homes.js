@@ -573,7 +573,7 @@ export function createHomes(game) {
       bays(dt);
       const k = homeKey(), r = room();
       if (game.fronts && game.fronts.boat) game.fronts.boat.visible = k !== 'houseboat';
-      // the penthouse sees further: the Solstice Spire's view boost while inside
+      // the penthouse sees further: a view boost like the Solstice Terrace's while inside
       const boost = !!(r && r.view && r.view.boost);
       if (boost !== S.boost) { S.boost = boost; VIEW.far = boost ? (quality.high ? 2.4 : 1.7) : 1; VIEW.fog = boost ? 1.75 : 1; }
       if (!k || S.touring) { if (S.act && S.act.kind !== 'sleep') S.act = null; S.safeT = 0; if (fishEl && !fishEl.hidden) fishUI(false); S.swim = false; return; }

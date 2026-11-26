@@ -30,7 +30,8 @@ export const TERRACE = {
 // behind bronze fins, art-deco bronze pilasters that step in at the corners, two bronze setback cornices, amber light
 // strips up every face (they glow from dusk), and on the roof's west edge, behind the terrace, a bronze-and-neon
 // sunburst rising like the sun with a slim mast and a sky-blue beacon on top (the tallest point on the skyline).
-// Same footprint and roof height as before, so the terrace, the lobby and every check stay as they were.
+// Same footprint and lobby as before; at 113 m (world/key.js) it is the tallest building downtown, and everything here
+// follows b.h / b.roofY / b.deckY, so the terrace, the crown and the mast rose with it.
 export const SPIRE_GOLD = '#c9a86e';
 export function addSpireBody({ b, S, N, glows, bx, cy }) {
   const { cx, cz, w, d, h } = b, BRONZE = '#8a6236', BRZ2 = '#a87a44', CHAMP = '#efe2c4';

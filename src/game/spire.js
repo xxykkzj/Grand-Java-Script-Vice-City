@@ -19,7 +19,8 @@ import { newPose, sitPose } from '../actors/moves.js';
 import { quality } from '../core/quality.js';
 import { setDeckLight } from '../world/lamplight.js';
 
-const FLOORS = 23;
+// the roof is floor 33 (the tower is 113 m, world/key.js; the deck 113.7 m up)
+export const FLOORS = 33;
 const SUNSET = 19.5, NIGHT = 22;
 
 // how many guests are up there at hour h (the spots fill best-first); none in rain or a storm
@@ -209,8 +210,10 @@ export function createSpire(game, scene) {
   };
   // the view boost: trees, lamps and the fog reach further while you are up here (eased, restored on the way down)
   function setBoost(on) {
+    // (113 m up the haze goes back a little further than before (1.75x at 78 m); the cut-offs stay as they were, so
+    // the draw calls up here do too)
     VIEW.far = on ? (quality.high ? 2.4 : 1.7) : 1;
-    VIEW.fog = on ? 1.75 : 1;
+    VIEW.fog = on ? 2.0 : 1;
   }
 
   // ---------------------------------------------------------------- the lift
@@ -223,7 +226,7 @@ export function createSpire(game, scene) {
     cam.yaw = PI / 2; cam.pitch = 0.16; cam.snap(player.pos);
     S.on = true; setBoost(true);
     if (done) {
-      setHut(0); hud.toast('THE SOLSTICE TERRACE', 'FLOOR 23 · SIT DOWN TO WAIT FOR THE SUNSET');
+      setHut(0); hud.toast('THE SOLSTICE TERRACE', `FLOOR ${FLOORS} · SIT DOWN TO WAIT FOR THE SUNSET`);
       // walk a few metres out onto the deck towards the view, the camera out in front looking back at her (with it
       // behind her from the start it sat inside the lift hut), then it comes round behind her
       const [x0, z0] = W(TT.lift.x + 0.3, 0), [x1, z1] = W(TT.lift.x + 6.3, 0);
@@ -256,7 +259,7 @@ export function createSpire(game, scene) {
         } },
       { dur: reducedMotion ? 0.5 : 1.0, start() { audio.thud(0.15); },
         tick(k, dt) { r.setDoors(1 - ease(k)); player.pos.set(O.x, OY, O.z + lf.carZ); player.yaw = 0; player.speed = 0; player.animate(dt, 0, null); r.idle(timeU.value, dt, reducedMotion); C(1.2, 1.7, -2.6); Lk(0, 1.3, -HZ - 0.4); } },
-      { dur: reducedMotion ? 0.8 : 1.7, start() { cut.setFov(38); },
+      { dur: reducedMotion ? 0.8 : 2.1, start() { cut.setFov(38); },
         tick(k) { lf.setFloor(Math.min(FLOORS, Math.floor(ease(k) * (FLOORS + 0.99))), 1); C(0.35, LIFT.h + 0.3, -HZ + 1.5); Lk(0, LIFT.h + 0.45, -HZ); if (k > 0.86) cut.fade(true); } },
       { dur: 0.3, start() { cut.fade(true); lf.setFloor(FLOORS, 0); audio.blip(true); } },
       { dur: reducedMotion ? 0.9 : 2.3,
@@ -290,7 +293,7 @@ export function createSpire(game, scene) {
       { dur: reducedMotion ? 0.5 : 1.0, start() { audio.thud(0.15); },
         tick(k, dt) { setHut(1 - ease(k)); player.pos.set(X + TT.cab.x, Y, Z + TT.cab.z); player.yaw = PI / 2; player.speed = 0; player.animate(dt, 0, null); if (k > 0.8) cut.fade(true); } },
       { dur: 0.3, start() { cut.fade(true); setHut(0); } },
-      { dur: reducedMotion ? 0.8 : 1.7,
+      { dur: reducedMotion ? 0.8 : 2.1,
         start() { toLobby(false); const r = lobbyRoom(); r.setDoors(0); r.lift.setFloor(FLOORS, -1); cut.fade(false); cut.setFov(38); },
         tick(k, dt) {
           const r = lobbyRoom(); r.lift.setFloor(Math.max(0, FLOORS - Math.floor(ease(k) * (FLOORS + 0.99))), -1);
@@ -346,6 +349,13 @@ export function createSpire(game, scene) {
     if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = fov; camera.updateProjectionMatrix(); }
   }
 
+  function edge() {
+    if (!(S.on && !cut.active && !game.busy)) return;
+    const w = TT.walk, lx = player.pos.x - X, lz = player.pos.z - Z;
+    const cx = clamp(lx, w.x0, w.x1), cz = clamp(lz, w.z0, w.z1);
+    if (cx !== lx || cz !== lz) { player.pos.x = X + cx; player.pos.z = Z + cz; stats.clamps++; }
+    if (player.pos.y < Y - 0.02) { player.pos.y = Y; player.vy = Math.max(0, player.vy); player.onGround = true; }
+  }
   const api = {
     stats, guests, june, building: b,
     get on() { return S.on; },
@@ -398,17 +408,12 @@ export function createSpire(game, scene) {
       if (!cut.active) S.on = onDeck();
       if (S.on !== was) setBoost(S.on);
       // a fixed, solid edge: whatever happens, a courier on the deck stays inside the glass and on the deck
-      if (S.on && !cut.active && !game.busy) {
-        const w = TT.walk, lx = player.pos.x - X, lz = player.pos.z - Z;
-        const cx = clamp(lx, w.x0, w.x1), cz = clamp(lz, w.z0, w.z1);
-        if (cx !== lx || cz !== lz) { player.pos.x = X + cx; player.pos.z = Z + cz; stats.clamps++; }
-        if (player.pos.y < Y - 0.02) { player.pos.y = Y; player.vy = Math.max(0, player.vy); player.onGround = true; }
-      }
+      edge();
       // seated: show the choice once; getting up stops a wait
       const st = seated();
       if (st && S.sitToast !== game.act.seat.ref) {
         S.sitToast = game.act.seat.ref;
-        hud.toast('THE VIEW FROM FLOOR 23', game.input.touchMode ? 'SUNSET or NIGHT to wait · GET UP any time' : '1: WAIT FOR SUNSET · 2: WAIT FOR NIGHT · F: GET UP');
+        hud.toast(`THE VIEW FROM FLOOR ${FLOORS}`, game.input.touchMode ? 'SUNSET or NIGHT to wait · GET UP any time' : '1: WAIT FOR SUNSET · 2: WAIT FOR NIGHT · F: GET UP');
       }
       if (!st) { S.sitToast = null; camWas = false; if (S.wait) endWait(false); }
       else if (S.wait && env.target === null) endWait(true);
@@ -428,6 +433,8 @@ export function createSpire(game, scene) {
         june.tickFace(dt);
       }
       guestsTick(dt, near && !game.inside);
+      // (again after the guests have pushed her about: a guest leaning on the glass must not push her past it)
+      edge();
     },
     // ---- automated checks
     state: () => ({ on: S.on, y: +player.pos.y.toFixed(3), x: +(player.pos.x - X).toFixed(2), z: +(player.pos.z - Z).toFixed(2), deck: Y, inside: game.inside && game.inside.key, busy: game.busy,

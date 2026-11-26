@@ -451,7 +451,8 @@ async function boot() {
         while (t < maxT) {
           const lx = player.pos.x - r.ox, lz = player.pos.z - r.oz, dx = tx - lx, dz = tz - lz, d = Math.hypot(dx, dz);
           if (d < 0.3) { ok = true; break; }
-          c.strafe = dx / d; c.move = -dz / d;
+          // (indoors W/S/A/D go the way the camera looks, first or third person: turn the world direction into keys)
+          { const fx = Math.sin(cam.yaw), fz = Math.cos(cam.yaw), ux = dx / d, uz = dz / d; c.move = fx * ux + fz * uz; c.strafe = -fz * ux + fx * uz; }
           places.update(1 / 30, c); t += 1 / 30;
           if (!game.inside) break;
           lyMin = Math.min(lyMin, places.ly); lyMax = Math.max(lyMax, places.ly);
@@ -689,7 +690,7 @@ async function boot() {
     if (player.model.root.visible === hideBody && !player.hidden) player.model.root.visible = !hideBody;
     // high up (the Solstice Terrace, the Starlight Wheel: the view boost is on) the near plane moves out, so the
     // depth buffer has the precision for the ground, the roads and their markings hundreds of metres away
-    { const nr = VIEW.far > 1.05 ? (game.inside ? 0.25 : 0.5) : 0.12; if (camera.near !== nr) { camera.near = nr; camera.updateProjectionMatrix(); } }
+    { const nr = VIEW.far > 1.05 ? (game.inside ? 0.25 : camera.position.y > 95 ? 0.7 : 0.5) : 0.12; if (camera.near !== nr) { camera.near = nr; camera.updateProjectionMatrix(); } }
     pointScaleU.value = renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360));
     lampU.uLampOn.value = game.inside && !env.roomLit ? 0 : 1;
     env.update(dt);

@@ -12,7 +12,7 @@ export const lampU = {
   uLampOld: { value: null }, uLampKey: { value: null },
   uLampROld: { value: new THREE.Vector4(0, 0, 1, 1) }, uLampRKey: { value: new THREE.Vector4(0, 0, 1, 1) },
   uLampOn: { value: 1 }, uNight: nightU, uGlare: glareU,
-  // raised decks with their own lights (the Solstice Terrace's string lights 79 m up, Starlight Pier's bulbs and
+  // raised decks with their own lights (the Solstice Terrace's string lights 114 m up, Starlight Pier's bulbs and
   // lamps out over the sea): x0, z0, x1, z1 of the deck, its floor height and a warm light colour * strength.
   // Characters on a deck pick it up relative to the floor they stand on (not to the street), plus a soft fill.
   uDeck: { value: [new THREE.Vector4(0, 0, -1, -1), new THREE.Vector4(0, 0, -1, -1)] }, uDeckY: { value: [0, 0] },

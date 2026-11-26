@@ -108,7 +108,7 @@ export function buildSpire(room) {
   counter.position.set(0, LIFT.h + 0.45, -HZ + 0.06);
   let shown = null;
   const setFloor = (f, dir = 0) => {
-    const s = (f === 0 ? 'L' : f >= 23 ? 'T' : String(f)) + (dir > 0 ? ' ▲' : dir < 0 ? ' ▼' : '');
+    const s = (f === 0 ? 'L' : f >= 33 ? 'T' : String(f)) + (dir > 0 ? ' ▲' : dir < 0 ? ' ▼' : '');
     if (s === shown) return; shown = s;
     const c = cv.getContext('2d'); c.fillStyle = '#120a18'; c.fillRect(0, 0, 128, 40);
     c.font = 'bold 30px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.shadowColor = '#ffb35a'; c.shadowBlur = 8; c.fillStyle = '#ffc070'; c.fillText(s, 64, 21);
@@ -120,7 +120,7 @@ export function buildSpire(room) {
   B.add(1.5, 1.0, -6.0, 1.75, -HZ + 0.13, 0, (c, W, Hh) => {
     P.fill(c, W, Hh, '#1b1a2a'); P.frame(c, W, Hh, BRASS, 5);
     P.text(c, 'DIRECTORY', W / 2, Hh * 0.13, Hh * 0.09, GOLD);
-    [['SOLSTICE TERRACE', '23'], ['AFTERGLOW BAR', '23'], ['HALCYON LAW', '18'], ['TIDEWATER CAPITAL', '12'], ['BLUEWAVE RADIO', '7'], ['LOBBY · CONCIERGE', 'L']].forEach(([a, n], i) => {
+    [['SOLSTICE TERRACE', '33'], ['AFTERGLOW BAR', '33'], ['HALCYON LAW', '24'], ['TIDEWATER CAPITAL', '12'], ['BLUEWAVE RADIO', '7'], ['LOBBY · CONCIERGE', 'L']].forEach(([a, n], i) => {
       P.text(c, a, W * 0.08, Hh * (0.3 + i * 0.11), Hh * 0.065, '#f6f1e7', { align: 'left' }); P.text(c, n, W * 0.92, Hh * (0.3 + i * 0.11), Hh * 0.065, '#ffc070', { align: 'right' });
     });
   });

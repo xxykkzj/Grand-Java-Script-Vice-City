@@ -1,5 +1,6 @@
 // Places you can walk into: the glowing ring at each door, the entry scene, walking around
 // inside, the way back out, and the two shops (outfits at Zigzag Threads, snacks at Pelican Pantry 24).
+import { createRoomCam } from './roomcam.js';
 import * as THREE from 'three';
 import { clamp, lerp, damp, angleDelta, pushOut, timeU, PI, reducedMotion } from '../core/util.js';
 import { makeMarker, ease } from './cutscene.js';
@@ -83,6 +84,8 @@ export function createPlaces(game, scene, camera) {
     exitMark.visible = useMark.visible = false;
   }
   let camRoom = null, fpWas = false;
+  // third person walking about indoors: the orbit camera (drag / swipe turns it round Skye, it pulls in at walls)
+  const orbit = createRoomCam(camera, cam, OY);
   // first person indoors: the eyes at Skye's height, a hand's width in front, kept inside the room's walls and under
   // its ceiling (the near plane is 0.12 m indoors, so the clamp keeps it from clipping through)
   function firstPersonCam(r) {
@@ -334,7 +337,7 @@ export function createPlaces(game, scene, camera) {
     update(dt, ctl) {
       const p = game.inside;
       api.fpOn = false;
-      if (!p) { fpWas = false;
+      if (!p) { fpWas = false; orbit.reset();
         // door rings on the street
         const show = game.busy !== 'cut' && game.busy !== 'door';
         for (const q of list) {
@@ -349,7 +352,7 @@ export function createPlaces(game, scene, camera) {
       }
       for (const q of list) q.mark.visible = false;
       const r = p.room;
-      if (game.busy === 'cut') { exitMark.visible = useMark.visible = false; return; }
+      if (game.busy === 'cut') { exitMark.visible = useMark.visible = false; orbit.reset(); return; }
       r.idle(timeU.value, dt, reducedMotion);
       const lock = game.story.lockInside();
       exitMark.visible = !lock; useMark.visible = usesOf(r).length > 0 && !shop && !lock && game.busy !== 'arcade';
@@ -359,8 +362,9 @@ export function createPlaces(game, scene, camera) {
         for (const u of usesOf(r)) { const d = Math.hypot(player.pos.x - r.ox - u.x, player.pos.z - r.oz - u.z) + (onLevel(u) ? 0 : 50); if (d < bd) { bd = d; best = u; } }
         useMark.position.set(r.ox + best.x, OY + (best.fy || 0), r.oz + best.z);
       }
-      if (game.busy === 'arcade' && game.venues) { game.venues.arcadeUpdate(dt); return; }
+      if (game.busy === 'arcade' && game.venues) { orbit.reset(); game.venues.arcadeUpdate(dt); return; }
       if (shop) {
+        orbit.reset();
         const u = shopUse || r.use;
         const pv = prov();
         if (pv && pv.fit) {
@@ -383,26 +387,30 @@ export function createPlaces(game, scene, camera) {
         player.speed = 0; player.animate(dt, 0, null);
         return;
       }
-      if (!game.busy && game.homes && game.homes.drive(dt, ctl, r)) return;
+      if (!game.busy && game.homes && game.homes.drive(dt, ctl, r)) { orbit.reset(); return; }
       // sitting on a stool / sofa, or dancing (the dance owns the camera)
       if (!game.busy && game.act.mode) {
         game.act.update(dt, ctl, game.input);
-        if (game.act.dancing) return;
+        if (game.act.dancing) { orbit.reset(); return; }
         if (game.act.mode) {
           const sc = game.act.seat && game.act.seat.ref && game.act.seat.ref.cam;
+          orbit.reset();
           if (sc && game.homes) { game.homes.seatCam(r, sc, dt); return; }
           cut.setFov(60); roamCam(r, player.pos.x - r.ox, player.pos.z - r.oz); return;
         }
       }
-      // walking around indoors: camera sits above the door looking in, so W is "further in". In FIRST PERSON (V) the
-      // camera is Skye's eyes instead: mouse / swipe looks round, W walks where you look, the body is hidden (main.js)
+      // walking around indoors in THIRD PERSON: the orbit camera (game/roomcam.js): drag / swipe turns it round Skye,
+      // it pulls in when a wall, a ceiling, the mezzanine or big furniture is in the way, and W walks the way it looks
+      // (like the street). In FIRST PERSON (V) the camera is Skye's eyes instead: mouse / swipe looks round, W walks
+      // where you look, the body is hidden (main.js)
       const fp = cam.first && !game.busy && !lock;
       if (fp && !fpWas) { cam.yaw = player.yaw; cam.pitch = 0.2; }
       fpWas = fp; api.fpOn = fp;
+      if (fp) orbit.reset(); else orbit.begin(r);
       if (fp) { const inp = game.input; if (inp.dragDX || inp.dragDY) { cam.yaw -= inp.dragDX * 0.0055; cam.pitch = clamp(cam.pitch + inp.dragDY * 0.004, -0.7, 1.1); } }
       if (!game.busy) {
         let dx = ctl.strafe, dz = -ctl.move;
-        if (fp) { const fx = Math.sin(cam.yaw), fz = Math.cos(cam.yaw); dx = fx * ctl.move - fz * ctl.strafe; dz = fz * ctl.move + fx * ctl.strafe; }
+        { const fx = Math.sin(cam.yaw), fz = Math.cos(cam.yaw); dx = fx * ctl.move - fz * ctl.strafe; dz = fz * ctl.move + fx * ctl.strafe; }
         const len = Math.hypot(dx, dz), top = (ctl.sprint ? 7 : 4.6) * (player.boost || 1) * (r.swimming ? 0.45 : 1);
         if (len > 0) { const k = top * Math.min(1, len) / len; dx *= k; dz *= k; }
         player.vel.x = damp(player.vel.x, dx, len > 0 ? 7 : 4, dt); player.vel.z = damp(player.vel.z, dz, len > 0 ? 7 : 4, dt);
@@ -430,8 +438,9 @@ export function createPlaces(game, scene, camera) {
       } else { player.speed = 0; player.animate(dt, 0, null); }
       if (fp) { firstPersonCam(r); return; }
       cut.setFov(60);
-      roamCam(r, player.pos.x - r.ox, player.pos.z - r.oz);
+      orbit.update(dt, r, game.input, bnd(r), ceilAt, ly);
     },
+    orbit,
     blips(out) {
       if (game.inside) return;
       for (const q of list) {

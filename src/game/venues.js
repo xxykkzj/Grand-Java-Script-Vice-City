@@ -59,7 +59,7 @@ export function createVenues(game) {
       pick: (o) => feed(o),
     },
     skybar: {
-      title: 'THE AFTERGLOW BAR · FLOOR 23', label: 'ORDER',
+      title: 'THE AFTERGLOW BAR · FLOOR 33', label: 'ORDER',
       items: () => SKYBAR_MENU, greet: () => (game.spire ? game.spire.greet() : ''),
       pick: (o) => feed(o),
     },

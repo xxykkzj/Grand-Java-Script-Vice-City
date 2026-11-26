@@ -63,7 +63,7 @@ export function makeKey(props, solids, surf) {
     // [cx, cz, w, d, h, style]
     [-519, -118, 50, 38, 92, 'tower'], [-519, -74, 44, 26, 54, 'office'],
     [-650, -118, 64, 36, 112, 'tower'], [-600, -116, 32, 40, 64, 'office'], [-630, -72, 92, 22, 34, 'apart'],
-    [-519, -12, 50, 38, 78, 'tower'], [-519, 26, 50, 22, 26, 'apart'],
+    [-519, -12, 50, 38, 113, 'tower'], [-519, 26, 50, 22, 26, 'apart'],
     [-604, -10, 50, 40, 58, 'office'], [-664, -10, 36, 40, 96, 'tower'], [-630, 27, 100, 18, 22, 'apart'],
   ];
   towers.forEach(([cx, cz, w, d, h, style], i) => {
@@ -72,7 +72,9 @@ export function makeKey(props, solids, surf) {
   });
   buildings.find((b) => b.cx === -650 && b.cz === -118).name = 'Glasswater Tower';
   // the Solstice Spire: the waterfront tower facing the old town, the causeway and the sunset. Its roof is the
-  // Solstice Terrace (world/spire.js, game/spire.js), not a helipad: a timber deck behind a glass balustrade
+  // Solstice Terrace (world/spire.js, game/spire.js), not a helipad: a timber deck behind a glass balustrade.
+  // At 113 m (deck 113.7 m) it is the tallest building downtown (Glasswater Tower 112 m, the penthouse tower 92 m
+  // just north of it), so the terrace looks over the penthouse tower to the bay, the mainland and the fireworks
   { const sp = buildings.find((b) => b.cx === -519 && b.cz === -12); Object.assign(sp, { name: 'The Solstice Spire', spire: true, helipad: false, color: '#c9a86e' }); }
   buildings.find((b) => b.cx === -630 && b.cz === 27).name = 'Pelican Point Lofts';
 
