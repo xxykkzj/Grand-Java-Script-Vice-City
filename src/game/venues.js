@@ -254,7 +254,7 @@ export function createVenues(game) {
   const api = {
     stats, arcade: A, canvas: cv, salon,
     get vest() { return !!save.vest; },
-    menu: (kind) => MENUS[kind] || (game.homes ? game.homes.menu(kind) : null),
+    menu: (kind) => MENUS[kind] || (game.boats && game.boats.menu(kind)) || (game.homes ? game.homes.menu(kind) : null),
     closeMenu: () => game.places.closeShop(),
     // the arcade cabinet's screen in the room shows the same canvas
     screen(tex) { screenTex = tex; },
@@ -290,6 +290,7 @@ export function createVenues(game) {
     use(p, u) {
       const k = u.kind || p.key;
       if (k === 'escalator') return api.escalator(true);
+      if (k === 'boatsales') { game.places.openShop('boatsales'); return true; }
       if (k === 'fitting') { game.places.openShop('boutique'); return true; }
       if (k === 'jukebox') {
         jukeI++; stats.songs++; audio.blip(true);

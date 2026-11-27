@@ -9,7 +9,8 @@
 // applyPose() to the pivots the character model exposes (body, head, armL, armR, legL, legR + legX.shin).
 // Nothing else touches the courier's joints while swimming, so porting to another character model means
 // mapping these names, nothing more.
-import { clamp, damp, angleDelta, PI, reducedMotion } from '../core/util.js';
+import { clamp, damp, angleDelta, PI, reducedMotion, timeU } from '../core/util.js';
+import { waveAt } from '../world/waves.js';
 import { HZ, HX, PIER } from '../world/layout.js';
 import { WL, FLOAT_Y, WADE_MAX, SAFE_D, LIMIT_D, bedAt, depthAt, islandDist, onDeck, pushFromSolids, nearLadder, nearestLand } from '../world/sea.js';
 
@@ -218,9 +219,9 @@ export function createSwim(game) {
       if (wantSprint && S.mode === 'swim') S.stamina = Math.max(0, S.stamina - dt * 0.22 * (game.eat && game.eat.refreshed ? 0.6 : 1)); else S.stamina = Math.min(1, S.stamina + dt * (len > 0 ? 0.12 : 0.28));
 
       // ---- the strong current beyond the safe radius: a drift towards the island, never a wall
-      const d = islandDist(x, z);
+      const d = islandDist(x, z), shelter = !!(game.boats && game.boats.sheltered(x, z));      // by the boat you dived off: no current
       let pushX = 0, pushZ = 0;
-      if (d > SAFE_D) {
+      if (d > SAFE_D && !shelter) {
         const over = d - SAFE_D, [cx, cz] = nearestLand(x, z);
         let nx = cx - x, nz = cz - z; const nl = Math.hypot(nx, nz) || 1; nx /= nl; nz /= nl;
         const s = Math.min(1.2 + over * 0.12, 6.5);
@@ -232,7 +233,7 @@ export function createSwim(game) {
       P.vel.x = damp(P.vel.x, tvx, rate, dt); P.vel.z = damp(P.vel.z, tvz, rate, dt);
       pos.x += P.vel.x * dt; pos.z += P.vel.z * dt;
       pushFromSolids(pos, 0.5, S.sy);
-      if (islandDist(pos.x, pos.z) > LIMIT_D) {      // the hard limit: held where the current is strongest
+      if (islandDist(pos.x, pos.z) > LIMIT_D && !shelter) {      // the hard limit: held where the current is strongest
         const [cx, cz] = nearestLand(pos.x, pos.z), ddx = pos.x - cx, ddz = pos.z - cz, dl = Math.hypot(ddx, ddz) || 1;
         pos.x = cx + ddx / dl * LIMIT_D; pos.z = cz + ddz / dl * LIMIT_D;
       }
@@ -262,7 +263,8 @@ export function createSwim(game) {
         S.breath = Math.min(1, S.breath + dt * 0.6);
       } else {
         // ---- vertical: float, dive (C), rise (Space), and in 3D along the camera's pitch underwater
-        const top_ = FLOAT_Y, floor = bed2 - 0.62;
+        // the swell lifts a swimmer out at sea (world/waves.js; flat inshore)
+        const wv = waveAt(pos.x, pos.z, timeU.value), top_ = FLOAT_Y + wv, floor = bed2 - 0.62;
         const airborne = S.sy > top_ + 0.06;
         if (airborne) {
           S.vy -= 23 * dt; S.sy += S.vy * dt;
@@ -284,7 +286,7 @@ export function createSwim(game) {
         // ---- breath
         const rxNow = S.pose.rx === undefined ? 1.4 : S.pose.rx;
         const hip = S.sy + HIP + (S.pose.y || 0), headTop = hip + 0.74 * Math.cos(rxNow) + 0.15;
-        const sub = headTop < WL - 0.03 && !airborne;
+        const sub = headTop < WL + wv - 0.03 && !airborne;
         if (sub !== S.submerged) { S.submerged = sub; if (sub) audio.splash(0.15); }
         if (sub) {
           S.breath = Math.max(0, S.breath - dt / (BREATH_S * (game.save && game.save.vest ? 1.75 : 1)));   // the Buoy-O vest (Starboard Bait & Tackle)

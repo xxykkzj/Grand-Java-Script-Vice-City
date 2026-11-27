@@ -9,6 +9,7 @@ import { buildSpire, SPIRE_LOOKS } from './spireroom.js';
 import { shell, stool, plant, rug, pipe, boards, P, fan, fishTank, pulser, pbox, shadeHex } from './dress.js';
 import { hairPieces, hairStyle, stylePieces, HAIR_COLORS } from '../actors/blocky.js';
 import { barberPole } from '../world/barberpole.js';
+import { BOAT_TYPES } from '../vehicles/boatmodels.js';
 
 const BLK = '#22203a', GOLD = '#ffd166', CHROME = '#d9d6e6', NEON = ['#ff2bd1', '#18f0ff', '#ffe14a', '#8dff5a', '#ff6a3d', '#b388ff'];
 
@@ -74,6 +75,16 @@ export const VENUE_LOOKS = {
         K.B(0.03, 0.12, 0.14, 0.155, 0.24, -0.05, H, 'hair'), K.B(0.03, 0.12, 0.14, -0.155, 0.24, -0.05, H, 'hair'));
     } },
   // Cap'n Rudy: a white captain's hat, a yellow slicker over a navy turtleneck, green boots, a corncob pipe
+  // Marisol, Seaglass Marine's broker: a navy polo with a white collar stripe, white sailing trousers, deck shoes,
+  // a sun visor over a dark wavy bob, gold-rimmed sunglasses pushed up
+  MARISOL: { skin: '#c48a5e', top: '#1b2a5a', topPat: 'knit', legs: '#f6f1e7', sleeve: '#1b2a5a', cuff: '#ffffff', shoe: '#c8945e', shin: '#f6f1e7', belt: '#8a5a3a',
+    wear(K, P) {
+      const HR = '#2a1a14';
+      P.body.push(K.B(0.27, 0.05, 0.23, 0, 1.478, 0, '#ffffff', 'rib'), K.B(0.46, 0.03, 0.27, 0, 1.36, 0, '#27d8cf'), K.B(0.1, 0.06, 0.012, -0.11, 1.3, 0.138, '#ffd166'));
+      P.head.push(K.B(0.33, 0.14, 0.3, 0, 0.36, -0.02, HR, 'hair'), K.B(0.34, 0.22, 0.08, 0, 0.2, -0.13, HR, 'hair'), K.B(0.04, 0.2, 0.18, 0.16, 0.22, -0.03, HR, 'hair'), K.B(0.04, 0.2, 0.18, -0.16, 0.22, -0.03, HR, 'hair'),
+        K.B(0.34, 0.05, 0.31, 0, 0.42, 0, '#f6f1e7'), K.B(0.3, 0.02, 0.16, 0, 0.405, 0.2, '#27d8cf'), K.B(0.22, 0.04, 0.03, 0, 0.47, 0.13, '#ffd166'));
+      P.arms((sx) => [K.B(0.136, 0.04, 0.146, 0, -0.235, 0, '#ffffff', 'rib')]);
+    } },
   RUDY: { skin: '#d9a07a', top: '#ffd23a', topPat: 'leather', legs: '#2a3550', cuff: '#ffd23a', shoe: '#2a6a4a', shin: '#2a6a4a', belt: null,
     wear(K, P) {
       const N = '#2a3550';
@@ -1032,5 +1043,75 @@ function posterAt(B, g, x, y, z, ry, draw, w = 1.1, h = 1.4) {
   B.add(w, h, x + Math.sin(ry) * 0.035, y, z + Math.cos(ry) * 0.035, ry, draw);
 }
 
-export const VENUE_BUILD = { barber: buildSalon, boutique: buildBoutique, diner: buildDiner, arcade: buildArcade, motel: buildMotel, mall: buildMall, bait: buildBait, lounge: buildLounge, spire: buildSpire };
+
+// ---- Seaglass Marine: the boat dealership on the Starboard Marina boardwalk ------------------------------------
+// A bright showroom: a pale deck floor, a wall of glass onto the marina (painted), a Glintwave runabout on a
+// display cradle, Marisol's desk with the listings, brochure racks, life rings, a ship's wheel clock, rope trim.
+function buildBoatShop(room) {
+  const g = [], B = room.boards = boards(1024), HX = 7, HZ = 5, H = 4.2, pools = room.pools, hi = room.hiPools;
+  const NAVY = '#1b2a5a', AQ = '#27d8cf';
+  shell(g, HX, HZ, H, '#e8e0d0', '#ddd2bc', ['#d8eef2', '#d8eef2', '#cfe8ee'], '#f6f1e7', AQ);
+  g.push(box(14, 0.16, 0.06, 0, 1.0, -4.96, NAVY), box(0.06, 0.16, 10, -6.96, 1.0, 0, NAVY), box(0.06, 0.16, 10, 6.96, 1.0, 0, NAVY), box(14, 0.06, 0.06, 0, H - 0.3, -4.95, '#c8945e'));
+  // the glass wall onto the marina: masts, the pier, a sunset
+  B.add(9.6, 2.6, -1.6, 2.2, -4.92, 0, (c, W, Hh) => {
+    P.grad(c, W, Hh, '#ff9a6a', '#ffe0a8'); c.fillStyle = '#ffe14a'; c.beginPath(); c.arc(W * 0.72, Hh * 0.52, Hh * 0.12, 0, 6.3); c.fill();
+    c.fillStyle = '#2a6a8a'; c.fillRect(0, Hh * 0.6, W, Hh); c.fillStyle = 'rgba(255,224,168,.7)'; for (let i = 0; i < 8; i++) c.fillRect(W * (0.62 + i * 0.012), Hh * (0.63 + i * 0.045), W * 0.2 - i * 6, 2);
+    c.fillStyle = '#b98a5e'; c.fillRect(W * 0.05, Hh * 0.6, W * 0.55, Hh * 0.04);
+    for (let i = 0; i < 7; i++) { const x = W * (0.08 + i * 0.075), s = 0.7 + (i % 3) * 0.2; c.fillStyle = '#fff6ec'; c.fillRect(x - 18 * s, Hh * 0.66, 36 * s, 8 * s); c.fillRect(x - 1, Hh * (0.66 - 0.32 * s), 2, Hh * 0.32 * s); }
+    c.fillStyle = 'rgba(255,255,255,.16)'; for (let i = 0; i < 5; i++) c.fillRect(W * (0.1 + i * 0.2), 0, W * 0.035, Hh);
+    c.fillStyle = '#f6f1e7'; for (let i = 1; i < 6; i++) c.fillRect(W * i / 6 - 3, 0, 6, Hh); P.frame(c, W, Hh, '#f6f1e7', 8);
+  });
+  // the name over the glass in neon, a tagline
+  B.add(5.4, 0.7, -1.6, 3.82, -4.9, 0, (c, W, Hh) => P.neon(c, W, Hh, 'SEAGLASS MARINE', AQ, { back: null, size: 0.62 }), 160);
+  // the display boat: a Glintwave 19 on a cradle, roped off
+  { const T = BOAT_TYPES.runabout, src = T.geo(), m = new THREE.Matrix4().makeRotationY(-0.55); m.setPosition(-2.6, 0.95, -0.6); src.applyMatrix4(m); g.push(src); }
+  g.push(box(3.6, 0.5, 0.25, -2.6, 0.25, -1.6, NAVY), box(3.6, 0.5, 0.25, -2.6, 0.25, 0.4, NAVY), box(4.6, 0.06, 2.8, -2.6, 0.03, -0.6, '#c8c4d4'));
+  for (const [x, z] of [[-5.2, -2.6], [0.0, -2.6], [-5.2, 1.4], [0.0, 1.4]]) g.push(cyl(0.06, 0.08, 0.95, 8, x, 0.48, z, '#d8a84a'), cyl(0.1, 0.1, 0.06, 8, x, 0.95, z, '#d8a84a'));
+  for (const [a, b] of [[[-5.2, -2.6], [0.0, -2.6]], [[-5.2, 1.4], [0.0, 1.4]], [[-5.2, -2.6], [-5.2, 1.4]], [[0.0, -2.6], [0.0, 1.4]]]) { const len = Math.hypot(b[0] - a[0], b[1] - a[1]); g.push(box(0.05, 0.05, len, (a[0] + b[0]) / 2, 0.82, (a[1] + b[1]) / 2, '#c41a3a', 0, Math.atan2(b[0] - a[0], b[1] - a[1]))); }
+  B.add(1.1, 0.5, -2.6, 0.7, 1.43, 0, (c, W, Hh) => { P.fill(c, W, Hh, NAVY); P.text(c, 'GLINTWAVE 19 · $12,000', W / 2, Hh / 2, Hh * 0.3, '#fff6ec', { max: W * 0.92 }); });
+  // Marisol's desk: white with a teal top, a monitor with the listings, a brass bell, a model yacht
+  g.push(box(2.6, 0.95, 0.8, 3.6, 0.475, -2.3, '#f6f1e7'), box(2.7, 0.06, 0.9, 3.6, 0.98, -2.3, AQ), box(2.62, 0.08, 0.05, 3.6, 0.5, -1.88, NAVY));
+  g.push(box(0.62, 0.42, 0.06, 3.9, 1.32, -2.5, '#3a3550'), box(0.56, 0.36, 0.02, 3.9, 1.32, -2.465, '#7fe0ff'), box(0.08, 0.2, 0.08, 3.9, 1.06, -2.5, '#3a3550'), cyl(0.06, 0.08, 0.05, 10, 2.7, 1.03, -2.1, '#d8a84a'));
+  { const T = BOAT_TYPES.sport, src = T.geo(), m = new THREE.Matrix4().makeScale(0.06, 0.06, 0.06); m.premultiply(new THREE.Matrix4().makeRotationY(0.6)); m.setPosition(4.7, 1.08, -2.25); src.applyMatrix4(m); g.push(src); }
+  // the wall behind her: three listing posters with painted boats
+  for (const [x, n, pr, col] of [[3.0, 'ZIPFIN JET SKI', '$3,500', '#ff3f9a'], [4.5, 'CORALYNE 34', '$45,000', '#27d8cf'], [6.0, 'HALCYON GRANDE 52', '$120,000', '#ffd166']]) {
+    g.push(box(1.3, 1.6, 0.04, x, 2.4, -4.94, NAVY));
+    B.add(1.2, 1.5, x, 2.4, -4.91, 0, (c, W, Hh) => {
+      P.grad(c, W, Hh, '#7fd0ff', '#fff6ec'); c.fillStyle = '#2a6a8a'; c.fillRect(0, Hh * 0.55, W, Hh * 0.45);
+      c.fillStyle = '#fff6ec'; c.beginPath(); c.moveTo(W * 0.15, Hh * 0.5); c.lineTo(W * 0.88, Hh * 0.5); c.lineTo(W * 0.78, Hh * 0.6); c.lineTo(W * 0.22, Hh * 0.6); c.fill();
+      c.fillStyle = col; c.fillRect(W * 0.2, Hh * 0.55, W * 0.62, Hh * 0.02); c.fillStyle = '#fff6ec'; c.fillRect(W * 0.38, Hh * 0.42, W * 0.3, Hh * 0.08);
+      c.fillStyle = 'rgba(255,255,255,.8)'; for (let i = 0; i < 5; i++) c.fillRect(W * (0.05 + i * 0.03), Hh * (0.58 + i * 0.025), W * 0.1, 2);
+      P.text(c, n, W / 2, Hh * 0.12, Hh * 0.075, NAVY, { max: W * 0.9 }); P.text(c, pr, W / 2, Hh * 0.82, Hh * 0.11, '#c41a3a', { max: W * 0.9 });
+    });
+  }
+  // brochure rack, life rings, a ship's wheel clock, rope trim, plants, a sofa to wait on
+  g.push(box(0.4, 1.4, 1.2, 6.7, 0.7, 1.6, '#c8945e'));
+  for (let i = 0; i < 4; i++) g.push(box(0.05, 0.28, 1.0, 6.48, 0.35 + i * 0.32, 1.6, ['#ff3f9a', '#27d8cf', '#ffd166', '#7fe0ff'][i]));
+  for (const z of [-1.0, 0.2]) { const t = new THREE.TorusGeometry(0.34, 0.08, 8, 20); t.rotateY(PI / 2); t.translate(6.9, 2.5, z); g.push(tint(t, '#fff6ec')); for (let k = 0; k < 4; k++) { const a = k * PI / 2 + PI / 4; g.push(box(0.18, 0.18, 0.18, 6.9, 2.5 + Math.sin(a) * 0.34, z + Math.cos(a) * 0.34, '#ff3f5a', a)); } }
+  { const t = new THREE.TorusGeometry(0.5, 0.05, 6, 24); t.rotateY(PI / 2); t.translate(-6.9, 2.6, -1.5); g.push(tint(t, '#8a5a3a')); for (let k = 0; k < 8; k++) { const a = k * PI / 4; g.push(box(0.04, 0.04, 0.28, -6.9, 2.6 + Math.sin(a) * 0.62, -1.5 + Math.cos(a) * 0.62, '#8a5a3a', a)); } g.push(cyl(0.34, 0.34, 0.04, 16, -6.9, 2.6, -1.5, '#fff6ec', 0, PI / 2)); }
+  g.push(box(2.2, 0.42, 0.8, -4.8, 0.21, 3.6, NAVY), box(2.2, 0.5, 0.16, -4.8, 0.62, 3.95, NAVY), box(2.1, 0.08, 0.7, -4.8, 0.45, 3.55, '#2a3a7a'));
+  plant(g, -6.3, 4.3, 1.1, '#f6f1e7', '#2f9f6a', 0); plant(g, 6.3, 4.3, 1.0, '#f6f1e7', '#3faf6a', 1);
+  rug(g, 3.4, 2.2, 3.4, 0.4, NAVY, '#2a3a7a', AQ, 'stripes');
+  for (const x of [-4, 0, 4]) g.push(cyl(0.3, 0.3, 0.06, 12, x, H - 0.03, -1, '#fff3c4'));
+  pools.push(disc(-2.6, 0.012, -0.6, 3.2, '#ffe9c0', 0.35), disc(3.6, 1.02, -2.3, 1.2, '#ffe9c0', 0.4));
+  hi.push(cone(-2.6, H - 0.1, -0.6, 0.3, 2.2, 3.6, '#fff0d0', 0.18));
+  const f = fan(g, 1.2, 2.2, H, '#1b2a5a', '#f6f1e7');
+  room.extras.push(f);
+  Object.assign(room, {
+    hx: HX, hz: HZ, h: H, geo: g, rim: '#2a4a5a', amb: 0.66, ambCol: '#fff8ee', clerk: 'MARISOL',
+    lights: [{ x: -2.6, y: 3.4, z: -0.6, hex: '#fff0d0', r: 6, k: 0.7 }, { x: 3.6, y: 2.6, z: -2.3, hex: '#ffe9c0', r: 4, k: 0.6 }, { x: -1.6, y: 2.2, z: -4.4, hex: '#ffc890', r: 5, k: 0.5 }, { x: 0, y: 3.4, z: 3, hex: '#fff8ee', r: 7, k: 0.3 }],
+    blocks: [{ x0: -5.25, x1: 0.05, z0: -2.65, z1: 1.45 }, { x0: 2.25, x1: 4.95, z0: -2.75, z1: -1.85 }, { x0: 2.25, x1: 7, z0: -5, z1: -2.75 }, { x0: 6.45, x1: 7, z0: 0.9, z1: 2.3 }, { x0: -6.0, x1: -3.6, z0: 3.15, z1: 5 }],
+    seats: [{ x: -4.8, z: 3.5, y: 0.45, yaw: PI, kind: 'sofa' }],
+    me: [3.3, -1.0], cast: { MARISOL: [3.6, -3.15, 0] },
+    uses: [{ x: 3.4, z: -1.25, r: 1.4, kind: 'boatsales', hint: 'ask Marisol about boats for sale', clerk: 'MARISOL', cam: [-2.0, 1.9, 1.8], lookY: 1.3 }],
+    wide: [-5.6, 2.8, 4.2, 1.5, 1.2, -2.2],
+    idle(t, dt, still) {
+      const n = room.npc.MARISOL, k = still ? 0.3 : 1;
+      n.armR.rotation.set(-0.4, 0, -0.12); n.armL.rotation.set(-0.9 + Math.sin(t * 0.9) * 0.15 * k, 0, 0.2); n.head.rotation.y = Math.sin(t * 0.35) * 0.45 * k;
+      f.rotation.y += dt * (still ? 0.5 : 1.6);
+    },
+  });
+}
+
+export const VENUE_BUILD = { boats: buildBoatShop, barber: buildSalon, boutique: buildBoutique, diner: buildDiner, arcade: buildArcade, motel: buildMotel, mall: buildMall, bait: buildBait, lounge: buildLounge, spire: buildSpire };
 Object.assign(VENUE_LOOKS, SPIRE_LOOKS);

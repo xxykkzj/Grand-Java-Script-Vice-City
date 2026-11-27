@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { timeU, fogU, FOG_PARS } from '../core/util.js';
 import { HX, HZ, KEY } from './layout.js';
+import { WAVE_GLSL, waveU } from './waves.js';
 
 export function createSky(scene) {
   const C = () => ({ value: new THREE.Color() });
@@ -104,14 +105,24 @@ export function createOcean(scene) {
     uIsle: { value: new THREE.Vector2(HX, HZ) },
     uKey: { value: new THREE.Vector4((KEY.x0 + KEY.x1) / 2, 0, (KEY.x1 - KEY.x0) / 2, (KEY.z1 - KEY.z0) / 2) },
     uFoam: { value: 1 },
-    uTime: timeU, ...fogU,
+    uTime: timeU, uWaveA: waveU, ...fogU,
   };
   const mat = new THREE.ShaderMaterial({
     uniforms, fog: false, side: THREE.DoubleSide,
+    // the swell (world/waves.js) lifts the surface near the camera; the same function floats the boats
     vertexShader: /* glsl */`
-      varying vec3 vW;
+      uniform float uTime;
+      ${WAVE_GLSL}
+      varying vec3 vW; varying vec2 vG;
       void main(){
         vec4 w = modelMatrix * vec4(position, 1.0);
+        float fade = 1.0 - smoothstep(320.0, 700.0, length(w.xz - cameraPosition.xz));
+        vG = vec2(0.0);
+        if (fade > 0.0 && uWaveA > 0.0) {
+          float h = seaWave(w.xz, uTime);
+          vG = vec2(seaWave(w.xz + vec2(0.6, 0.0), uTime) - h, seaWave(w.xz + vec2(0.0, 0.6), uTime) - h) / 0.6 * fade;
+          w.y += h * fade;
+        }
         vW = w.xyz;
         gl_Position = projectionMatrix * viewMatrix * w;
       }`,
@@ -121,7 +132,7 @@ export function createOcean(scene) {
       const float HZ_ = ${HZ.toFixed(1)}, HX_ = ${HX.toFixed(1)};
       uniform float uTime, uFoam;
       ${FOG_PARS}
-      varying vec3 vW;
+      varying vec3 vW; varying vec2 vG;
       float hh(vec2 q){ return fract(sin(dot(q, vec2(127.1, 311.7))) * 43758.5453); }
       float vnz(vec2 q){ vec2 i = floor(q), f = fract(q); f = f * f * (3.0 - 2.0 * f);
         return mix(mix(hh(i), hh(i + vec2(1.0, 0.0)), f.x), mix(hh(i + vec2(0.0, 1.0)), hh(i + vec2(1.0, 1.0)), f.x), f.y); }
@@ -141,7 +152,7 @@ export function createOcean(scene) {
         float t = uTime;
         float n = sin(p.x * 0.21 + t * 1.3) * sin(p.y * 0.17 - t * 1.1) + sin((p.x + p.y) * 0.07 + t * 0.6);
         float n2 = sin(p.x * 0.9 + t * 2.1 + n) * sin(p.y * 1.1 - t * 1.7);
-        vec3 N = normalize(vec3(cos(p.x * 0.33 + t * 1.2 + n) * 0.10 + n2 * 0.05, 1.0, sin(p.y * 0.37 - t * 1.4 + n) * 0.10));
+        vec3 N = normalize(vec3(cos(p.x * 0.33 + t * 1.2 + n) * 0.10 + n2 * 0.05 - vG.x * 1.6, 1.0, sin(p.y * 0.37 - t * 1.4 + n) * 0.10 - vG.y * 1.6));
         vec3 V = normalize(cameraPosition - vW);
         vec2 q = abs(p) - uIsle;
         float dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
@@ -149,7 +160,7 @@ export function createOcean(scene) {
         float distK = length(max(qk, 0.0)) + min(max(qk.x, qk.y), 0.0);
         // seen from below (the camera is under the surface): a bright Snell's window of sky straight above,
         // the wavy surface rippling across it, and the murk of total internal reflection beyond its rim
-        if (cameraPosition.y < vW.y) {
+        if (cameraPosition.y < vW.y - 0.02) {
           vec3 Vd = normalize(vW - cameraPosition);
           float cs = dot(Vd, normalize(vec3(-N.x * 1.6, 1.0, -N.z * 1.6)));
           float win = smoothstep(0.62, 0.74, cs);
@@ -204,9 +215,28 @@ export function createOcean(scene) {
         #include <colorspace_fragment>
       }`,
   });
-  // big enough to reach the camera's far plane in every direction; it follows the camera (see update)
-  const geo = new THREE.PlaneGeometry(6000, 6000);
-  geo.rotateX(-Math.PI / 2);
+  // big enough to reach the camera's far plane in every direction; it follows the camera (see update). A polar
+  // grid round the camera: rings every 2 m out to 60 m, then wider and wider out to 3.2 km, so the swell near
+  // you is smooth (10k vertices, one draw call) and the far sea costs nothing
+  const geo = (() => {
+    const rings = [0];
+    for (let r = 1.5; r < 60; r += 1.5) rings.push(r);
+    for (let r = 60; r < 3200; r *= 1.07) rings.push(r);
+    rings.push(3200);
+    const SEG = 112, pos = [], idx = [];
+    pos.push(0, 0, 0);
+    for (let i = 1; i < rings.length; i++) for (let j = 0; j < SEG; j++) { const a = j / SEG * Math.PI * 2; pos.push(Math.cos(a) * rings[i], 0, Math.sin(a) * rings[i]); }
+    for (let j = 0; j < SEG; j++) idx.push(0, 1 + (j + 1) % SEG, 1 + j);
+    for (let i = 1; i < rings.length - 1; i++) for (let j = 0; j < SEG; j++) {
+      const a = 1 + (i - 1) * SEG + j, b = 1 + (i - 1) * SEG + (j + 1) % SEG, c = a + SEG, d = b + SEG;
+      idx.push(a, b, c, b, d, c);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setIndex(idx);
+    g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 3300);
+    return g;
+  })();
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.y = -0.6;
   scene.add(mesh);

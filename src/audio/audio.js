@@ -34,6 +34,11 @@ export const ENGINES = {
   scooter: { t1: 'triangle', t2: 'square', r2: 2, base: 88, span: 130, cut: 700, cutRev: 1100, q: 0.7, grit: 0, gain: 0.55 },
   comet: { t1: 'sawtooth', t2: 'triangle', r2: 0.5, base: 56, span: 120, cut: 250, cutRev: 1000, q: 1, grit: 0, gain: 0.95 },
   tank: { t1: 'sawtooth', t2: 'triangle', r2: 0.5, base: 32, span: 36, cut: 200, cutRev: 600, q: 0.9, grit: 0.05, gain: 1 },
+  // on the water (vehicles/boatmodels.js): the runabout's outboard buzz, the yachts' deep inboards, the jet ski's
+  // high two-stroke; the water rushing past and the slap of the waves are their own layers (update: s.boat)
+  outboard: { t1: 'sawtooth', t2: 'square', r2: 2, base: 66, span: 150, cut: 360, cutRev: 1300, q: 1.1, grit: 0.02, gain: 0.8 },
+  inboard: { t1: 'sawtooth', t2: 'triangle', r2: 0.5, base: 34, span: 54, cut: 170, cutRev: 470, q: 1.5, grit: 0.03, gain: 1.15 },
+  jetski: { t1: 'sawtooth', t2: 'square', r2: 2, base: 92, span: 205, cut: 560, cutRev: 1800, q: 0.8, grit: 0.04, gain: 0.62 },
 };
 
 export function createAudio() {
@@ -44,7 +49,7 @@ export function createAudio() {
   const mus = { on: pref !== 'off', keep: pref === 'on', fired: false, until: AUTO_OFF, slow: false };
   const players = [];                 // themes playing now (two while crossfading)
   const savePref = (v) => { try { localStorage.setItem(MUSIC_KEY, v); } catch (e) { /* private mode */ } };
-  let purr = null, eng, rotor, skate, rain, siren, hum, spray, fire, uw, ufilt, water, waves, heyT = 0, zapT = 0, splashT = 0;
+  let hull = null, purr = null, eng, rotor, skate, rain, siren, hum, spray, fire, uw, ufilt, water, waves, heyT = 0, zapT = 0, splashT = 0;
   const A = {
     muted: false, ready: false,
     start() {
@@ -97,6 +102,8 @@ export function createAudio() {
       spray = loop('bandpass', 1900, 0.5);
       // at home (game/homes.js): a shower or a bath running, and the waves round the houseboat's hull
       water = loop('highpass', 2400, 0.4); waves = loop('lowpass', 420, 0.6);
+      // a boat under way: the hull's rush through the water (a low band) and the hiss of the spray (a high one)
+      hull = { rush: loop('bandpass', 420, 0.6), hiss: loop('highpass', 2800, 0.5) };
       // a burning car: low crackling noise, its level jittered every frame
       fire = loop('bandpass', 700, 0.45);
       // a cat's purr: low noise pulsed ~24 times a second, breathing in and out (s.purr from actors/cat.js)
@@ -237,6 +244,10 @@ export function createAudio() {
       spray.g.gain.setTargetAtTime((s.spray || 0) * 0.08, t, 0.2);
       water.g.gain.setTargetAtTime((s.water || 0) * (0.05 + 0.012 * Math.sin(t * 9.1)), t, 0.12);
       waves.g.gain.setTargetAtTime((s.waves || 0) * (0.05 + 0.04 * Math.max(0, Math.sin(t * 0.55))), t, 0.4);
+      { const b = clampN(s.boat || 0, 0, 1.2), air = s.boatAir ? 0.25 : 1, duckH = 1 - 0.3 * musicUp;
+        hull.rush.g.gain.setTargetAtTime(b > 0.01 ? (0.012 + b * 0.07) * air * duckH * (0.85 + 0.15 * Math.sin(t * 2.3)) : 0, t, 0.25);
+        hull.rush.f.frequency.setTargetAtTime(260 + b * 700, t, 0.3);
+        hull.hiss.g.gain.setTargetAtTime(b * b * 0.04 * air * duckH, t, 0.25); }
       hum.gain.setTargetAtTime((s.hum || 0) * 0.035, t, 0.3);
       siren.gain.setTargetAtTime((s.siren || 0) * 0.07, t, 0.15);
       fire.g.gain.setTargetAtTime((s.fire || 0) * (0.05 + Math.random() * 0.07), t, 0.05);
@@ -267,6 +278,8 @@ export function createAudio() {
     },
     club: false,
     // ---- the sea: a splash, a stroke, wading steps, bubbles, the shark's tense sting and its chomp (all synthesised)
+    // a hull slapping down on a wave (or a jet ski landing): a dull thump and a short wash
+    slap(k = 1) { if (!ctx) return; hit(0.24 * k, 0.16, 'lowpass', 600, 160); hit(0.1 * k, 0.3, 'bandpass', 1400, 600); tone('sine', 95, 50, 0.14, 0.12 * k); },
     splash(k = 1) {
       if (!ctx || ctx.currentTime < splashT) return;
       splashT = ctx.currentTime + 0.08;

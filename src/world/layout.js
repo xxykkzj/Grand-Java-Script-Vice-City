@@ -70,6 +70,8 @@ export const VENUE_DEFS = {
   penthouse: { name: 'Skyline Penthouse', title: 'THE SKYLINE PENTHOUSE · FLOOR 27', color: '#ffd36a', keyAt: [-519, -118], isle: 'key', face: -Math.PI / 2, along: 6, out: 5.2, home: true },
   // moored off the marina boardwalk east of the pier: the "building" is the boat's own footprint
   houseboat: { name: 'The Driftwood Dory', title: 'THE DRIFTWOOD DORY · HOUSEBOAT', color: '#8dffcf', boat: { cx: -760, cz: 156, w: 14, d: 6 }, isle: 'key', face: Math.PI, along: 5, out: 5.4, home: true },
+  // the boat dealership: the east face of the marina office (vehicles/boats.js sells and berths the boats)
+  boats: { name: 'Seaglass Marine', title: 'SEAGLASS MARINE · BOAT SALES', color: '#27d8cf', at: 'Starboard Marina', isle: 'key', face: Math.PI / 2, along: 0, out: 5.2 },
   bait: { name: 'Starboard Bait & Tackle', title: 'STARBOARD BAIT & TACKLE', color: '#8dff5a', at: 'Starboard Marina', isle: 'key', face: -Math.PI / 2, along: 0, out: 5.2 },
 };
 

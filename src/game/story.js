@@ -32,6 +32,7 @@ export const CAST = {
   HAZEL: { name: 'HAZEL', color: '#d8b8ff', voice: 0.95 },
   KIKI: { name: 'KIKI', color: '#ffd166', voice: 1.4 },
   RUDY: { name: "CAP'N RUDY", color: '#9dffb0', voice: 0.65 },
+  MARISOL: { name: 'MARISOL', color: '#7fe0ff', voice: 1.15 },
   BIRDIE: { name: 'BIRDIE', color: '#8fb8ff', voice: 0.9 },
   LEO: { name: 'LEO', color: '#ffcf7a', voice: 0.8 },
   JUNE: { name: 'JUNE', color: '#ff9f6a', voice: 1.3 },
@@ -219,6 +220,7 @@ export const BARKS = {
   barber: ['DOLLY', ['Sit down, sugar. Nobody leaves Fade & Fringe looking the way they came in.', 'Hats off at the door. I need to see what we are working with.', 'A new cut changes your whole walk. Ask anybody on the boulevard.', 'Hairspray is a lifestyle, not a product.']],
   realty: ['BRENDA', ['Coral Keys Realty, where every key opens a door! Usually the right one.', 'Sit, sit. Mind the fan, it has opinions.', 'Location, location, and a balcony. That is the whole business.']],
   estates: ['VAUGHN', ['Skyline Estates. We do not sell homes. We sell views with walls.', 'Mind the model, it took a man four months and most of his patience.', 'The penthouse? Of course. Everyone asks about the penthouse.']],
+  boats: ['MARISOL', ['Welcome to Seaglass Marine. Everything here floats, I checked this morning.', 'Jet skis to sixteen metres of yacht. Your berth is right outside on the pier.', 'Test rides are free. Scratches are not.']],
   bait: ['RUDY', ['Ahoy. Mind the bait fridge, it bites back.', "Forty years on the water and I still can't swim. Ask me how.", 'Tides are up, prices are down. Mostly.']],
   arms: ['ZIZI', ['Goggles on, fingers off the glowy ones.', 'Everything here is certified toy-grade. Mostly.', 'Bangs are for the road, not the boardwalk.', 'It only zaps cars and bins. People just get a fright.']],
 };

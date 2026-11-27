@@ -300,7 +300,7 @@ export function createRules(game, scene) {
       const bl = rules.blips;
       bl.length = 0;
       for (const p of picks) if (p.t <= 0) bl.push({ x: p.x, z: p.z, color: p.med ? '#ff8ad0' : '#6dffb0', near: true });
-      game.places.blips(bl); game.story.blips(bl); if (game.events) game.events.blips(bl); if (game.pursuit) game.pursuit.blips(bl);
+      game.places.blips(bl); if (game.boats) game.boats.blips(bl); game.story.blips(bl); if (game.events) game.events.blips(bl); if (game.pursuit) game.pursuit.blips(bl);
     },
   };
   return rules;

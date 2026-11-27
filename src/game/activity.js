@@ -238,6 +238,8 @@ export function createActivity(game) {
       // the Coconut Shack on the beach (actors/beachgoers.js knows whether it is open)
       if (!game.inside && game.peds && game.peds.beach.kioskNear(player.pos)) { player.vel.set(0, 0, 0); player.speed = 0; player.yaw = PI; game.places.openShop('kiosk'); return true; }
       if (!game.inside && game.animals && game.animals.canPat(player.pos) && pat()) return true;
+      // on a boat's deck: its own seats, which ride along with it (vehicles/boats.js)
+      if (game.boats && game.boats.aboard) { const bs = game.boats.sitHere(); if (bs) { sit(bs); return true; } return false; }
       const s = candidate();
       if (s) { sit(s); return true; }
       return false;
@@ -272,6 +274,7 @@ export function createActivity(game) {
       if (!game.inside && game.loose && game.loose.vendNear(player.pos)) return ['F', 'buy'];
       if (!game.inside && game.peds && game.peds.beach.kioskNear(player.pos)) return ['F', 'buy'];
       if (!game.inside && game.animals && game.animals.canPat(player.pos)) return ['F', 'pat'];
+      if (game.boats && game.boats.aboard) return game.boats.seatNear() ? ['F', 'sit'] : null;
       return candidate() ? ['F', 'sit'] : null;
     },
   });

@@ -15,19 +15,21 @@ import { MISSIONS, OUTFITS } from './story.js';
 import { DEFAULT_HAIR, fixHair } from './salon.js';
 import { HOMES, HOME_IDS } from './homes.js';
 import { START_CASH } from './rules.js';
+import { BOAT_IDS } from '../vehicles/boatmodels.js';
 
 export const SAVE_KEY = 'neon-coast-save-2';
 const OLD_KEY = 'neon-coast-save-1';
-// schema 3 adds the homes (owned, the car in each parking bay, the last one slept in); a schema-2 slot or code
-// still loads (the new fields just start empty)
-const VERSION = 3, CODE_TAG = 'NEONCOAST2', OK_V = (v) => v === 2 || v === 3;
+// schema 3 adds the homes (owned, the car in each parking bay, the last one slept in); schema 4 the boats you own
+// (each moored at its private berth) and, in the world snapshot, the boat you are aboard. A schema-2 or -3 slot or
+// code still loads (the new fields just start empty)
+const VERSION = 4, CODE_TAG = 'NEONCOAST2', OK_V = (v) => v === 2 || v === 3 || v === 4;
 const AUTOSAVE_S = 50, MIN_GAP = 3000;
 export const START = { x: -10, z: 67, yaw: Math.PI / 2 };
 const $ = (id) => document.getElementById(id);
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
-export const profileDefaults = () => ({ outfit: 'classic', owned: [], story: 0, gift: {}, arms: {}, armsIntro: 0, vest: 0, motel: null, arcade: 0, hair: { ...DEFAULT_HAIR }, cap: 1, stunts: [], homes: [], garage: {}, lastHome: null, bankroll: 1 });
+export const profileDefaults = () => ({ outfit: 'classic', owned: [], story: 0, gift: {}, arms: {}, armsIntro: 0, vest: 0, motel: null, arcade: 0, hair: { ...DEFAULT_HAIR }, cap: 1, stunts: [], homes: [], garage: {}, lastHome: null, bankroll: 1, boats: [] });
 const PROFILE_KEYS = Object.keys(profileDefaults());
 
 // FNV-1a over the JSON text: catches a code that got cut short or edited
@@ -50,7 +52,7 @@ function cleanWorld(w) {
     weather: typeof w.weather === 'string' && WEATHER[w.weather] ? w.weather : 'clear',
     zone: typeof w.zone === 'string' ? w.zone.slice(0, 40) : '',
     venue: typeof w.venue === 'string' && /^[a-z]{2,16}$/.test(w.venue) ? w.venue : null,
-    pos: null, vehicle: null,
+    pos: null, vehicle: null, boat: null,
   };
   const p = w.pos;
   if (p && fin(p.x) && fin(p.z) && Math.abs(p.x) < 4000 && Math.abs(p.z) < 4000) o.pos = { x: p.x, y: fin(p.y) ? clamp(p.y, 0, 400) : 0, z: p.z, yaw: fin(p.yaw) ? p.yaw : 0 };
@@ -59,6 +61,8 @@ function cleanWorld(w) {
     o.vehicle = { kind: v.kind, type: typeof v.type === 'string' ? v.type.slice(0, 24) : null, color: typeof v.color === 'string' && /^#[0-9a-f]{6}$/i.test(v.color) ? v.color : null,
       x: v.x, z: v.z, yaw: fin(v.yaw) ? v.yaw : 0, y: fin(v.y) ? clamp(v.y, 0, 400) : 0, hi: v.hi === 1 ? 1 : 0 };
   }
+  const bt = w.boat;
+  if (bt && BOAT_IDS.includes(bt.id) && fin(bt.x) && fin(bt.z) && Math.abs(bt.x) < 4000 && Math.abs(bt.z) < 4000) o.boat = { id: bt.id, x: bt.x, z: bt.z, yaw: fin(bt.yaw) ? bt.yaw : 0, helm: !!bt.helm };
   return o;
 }
 export function cleanSlot(raw) {
@@ -86,6 +90,7 @@ export function cleanSlot(raw) {
     if (h.bay && g && typeof g.type === 'string' && /^[a-z]{2,16}$/.test(g.type) && typeof g.color === 'string' && /^#[0-9a-f]{6}$/i.test(g.color)) s.garage[h.id] = { type: g.type, color: g.color };
   }
   s.bankroll = raw.bankroll ? 1 : 0;
+  if (Array.isArray(raw.boats)) s.boats = [...new Set(raw.boats.filter((k) => BOAT_IDS.includes(k)))];
   s.lastHome = HOME_IDS.includes(raw.lastHome) && s.homes.includes(raw.lastHome) ? raw.lastHome : null;
   if (raw.motel && fin(raw.motel.cash) && fin(raw.motel.tod)) s.motel = { cash: raw.motel.cash, tod: raw.motel.tod, at: fin(raw.motel.at) ? raw.motel.at : 0 };
   return {
@@ -157,8 +162,13 @@ export function createSaves(game) {
     if (g.busy && !((g.busy === 'shop' || g.busy === 'arcade') && g.inside)) return 'busy ' + g.busy;
     if (g.cut && g.cut.active) return 'scene';
     if (g.stunts && g.stunts.cam) return 'stunt';
+    // aboard your own boat (at the helm or on deck) and she is not under way: a clean moment (vehicles/boats.js)
+    const ob = g.boats && g.boats.aboardOwned();
+    if (ob) return ob.moving ? 'boat moving' : null;
+    if (g.boats && g.boats.aboard) return 'water';
     const v = g.vehicle;
     if (v) {
+      if (v.boat) return 'water';
       if (v.wreck || v.burn > 0 || v.sink || v.jacking) return 'vehicle';
       if (v.kind === 'heli' ? v.y - (v.floor || 0) > 0.6 : v.air) return 'airborne';
       if (v.kind !== 'heli' && !onLand(v.x, v.z)) return 'water';
@@ -171,11 +181,14 @@ export function createSaves(game) {
   }
   function snapshot() {
     const g = game, { player, env } = g;
-    const w = { cash: Math.floor(g.money), health: Math.round(g.health), tod: +env.tod.toFixed(3), day: env.day || 1, weather: env.weather, zone: '', venue: null, pos: null, vehicle: null };
+    const w = { cash: Math.floor(g.money), health: Math.round(g.health), tod: +env.tod.toFixed(3), day: env.day || 1, weather: env.weather, zone: '', venue: null, pos: null, vehicle: null, boat: null };
     const p = g.inside;
     if (p) { const k = p.up || p.key, q = g.places.byKey(k) || p; w.venue = k; w.zone = String(q.name || '').toUpperCase(); }
     else if (g.spire && g.spire.on) { w.venue = 'spire'; w.zone = 'THE SOLSTICE SPIRE'; }
-    else {
+    else if (g.boats && g.boats.aboardOwned()) {
+      const b = g.boats.snapshot();
+      w.boat = b; w.pos = { x: b.x, y: 0, z: b.z, yaw: b.yaw }; w.zone = zoneName(b.x, b.z);
+    } else {
       const v = g.vehicle;
       if (v && (v.kind === 'car' || v.kind === 'bike' || v.kind === 'heli') && !v.police) {
         w.vehicle = { kind: v.kind, type: v.type || null, color: typeof v.color === 'string' ? v.color : null, x: +v.x.toFixed(2), z: +v.z.toFixed(2), yaw: +v.yaw.toFixed(3), y: +(v.kind === 'heli' ? v.floor || 0 : v.y || 0).toFixed(2), hi: v.hi === 1 ? 1 : 0 };
@@ -262,7 +275,8 @@ export function createSaves(game) {
       places.enterRoom(p.key, sp[0], sp[1]); where = 'home:' + p.key;
     } else if (p && !p.hidden) {
       const [x, z] = places.outside(p); places.putOutside(x, z, places.faceYaw(p)); where = 'door:' + p.key;
-    } else if (w.vehicle && restoreVehicle(w.vehicle)) where = 'vehicle';
+    } else if (w.boat && save.boats.includes(w.boat.id) && g.boats && g.boats.resumeAboard(w.boat)) where = 'boat';
+    else if (w.vehicle && restoreVehicle(w.vehicle)) where = 'vehicle';
     else if (w.pos) {
       const s = safeFoot(w.vehicle ? { x: w.vehicle.x + Math.cos(w.vehicle.yaw) * 3, y: 0, z: w.vehicle.z - Math.sin(w.vehicle.yaw) * 3 } : w.pos);
       places.putOutside(s.x, s.z, w.pos.yaw);
@@ -349,7 +363,7 @@ export function createSaves(game) {
   function tick(dt) {
     if (!game.started || game.paused) return;
     const A = game.story && game.story.active, v = game.vehicle;
-    const key = (game.inside ? game.inside.key : '-') + '|' + (game.busy || '') + '|' + (A ? (A.m.id || A.m.title) + ':' + A.si : '') + '|' + save.story + '|' + (v ? v.kind + (v.idx ?? '') : '') + '|' + (game.spire && game.spire.on ? 1 : 0);
+    const key = (game.inside ? game.inside.key : '-') + '|' + (game.busy || '') + '|' + (A ? (A.m.id || A.m.title) + ':' + A.si : '') + '|' + save.story + '|' + (v ? v.kind + (v.idx ?? '') : '') + '|' + (game.spire && game.spire.on ? 1 : 0) + '|' + (game.boats ? game.boats.saveKey() : '');
     if (key !== lastKey) { lastKey = key; soon = Math.min(soon, 1.2); }
     if (soon < 1e8 && (soon -= dt) <= 0) soon = attempt('event') ? 1e9 : 4;
     if ((autoT -= dt) <= 0) autoT = attempt('auto') ? AUTOSAVE_S : 5;

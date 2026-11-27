@@ -66,6 +66,7 @@ export function createDamage(game) {
   }
 
   function ignite(v) {
+    if (v.boat) return;                 // a boat takes on water and sinks instead (vehicles/boats.js)
     if (v.burn > 0 || v.wreck) return;
     if (v.kind === 'heli' && !v.dead) {
       // no lift: it drops and lands hard first (vehicles.js), then burns
@@ -240,7 +241,7 @@ export function createDamage(game) {
       // HUD: the condition of whatever you are in, and a flashing GET OUT! while it burns
       const v = game.vehicle;
       if (v && !v.wreck) {
-        const f = frac(v), st = stageOf(v), key = (v.police ? 'PATROL CAR' : NAME[v.kind] || 'CAR') + '|' + Math.round(f * 100) + '|' + st;
+        const f = frac(v), st = stageOf(v), key = (v.police ? 'PATROL CAR' : v.boat ? (v.spec.kind === 'jetski' ? 'JET SKI' : 'BOAT') : NAME[v.kind] || 'CAR') + '|' + Math.round(f * 100) + '|' + st;
         if (key !== shown) {
           shown = key;
           el.cond.hidden = false;

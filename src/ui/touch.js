@@ -125,6 +125,7 @@ export function createTouch(game) {
     if (b) return [];
     // weapons (game/combat.js): FIRE, a firework BANG (DROP behind a vehicle) and SWAP, all with auto-aim
     const wb = game.combat ? game.combat.touchButtons() : [];
+    { const bb = game.boats && game.boats.touchButtons(); if (bb) return bb; }
     if (v) {
       if (v.kind === 'car') return [['Space', 'DRIFT'], ['KeyE', 'EXIT'], ['KeyS', 'BRAKE'], ...wb];
       if (v.kind === 'bike') return [['KeyS', 'BRAKE'], ['KeyE', 'GET OFF'], ...wb];

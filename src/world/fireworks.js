@@ -238,7 +238,7 @@ export function createFireworks(game, scene) {
         const crossed = (prev < FW.start && tod >= FW.start) || (tod >= FW.start && tod < FW.start + FW.window);
         if (S.played !== n && crossed) { S.played = n; start('scheduled'); }
         // in the penthouse or up on the terrace on a show night, and you have not seen it: one goes up for you
-        else if (S.seen !== n && S.guaranteed !== n && inNight(tod) && ((game.inside && game.inside.key === 'penthouse') || (game.spire && game.spire.on))) { S.played = n; S.guaranteed = n; start('guaranteed'); }
+        else if (S.seen !== n && S.guaranteed !== n && inNight(tod) && ((game.inside && game.inside.key === 'penthouse') || (game.spire && game.spire.on) || (game.boats && game.boats.inBay()))) { S.played = n; S.guaranteed = n; start('guaranteed'); }
       }
       if (!S.on) return;
       S.t += dt;

@@ -575,4 +575,4 @@ export const THEMES = {
 };
 // which theme plays in which place (places and venues by key)
 export const THEME_OF = { bar: 'bar', club: 'club', lounge: 'lounge', diner: 'diner', arcade: 'arcade', wear: 'wear', mart: 'mart', arms: 'arms', motel: 'motel', mall: 'mall', bait: 'bait', spire: 'rooftop', terrace: 'rooftop', pier: 'pier', barber: 'salon',
-  realty: 'realty', estates: 'estates', studio: 'studio', villa: 'villa', penthouse: 'penthouse', houseboat: 'houseboat' };
+  realty: 'realty', estates: 'estates', boats: 'estates', studio: 'studio', villa: 'villa', penthouse: 'penthouse', houseboat: 'houseboat' };

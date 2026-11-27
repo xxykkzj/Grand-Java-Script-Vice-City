@@ -50,6 +50,7 @@ import { createSwim } from './player/swim.js';
 import { createUnderwater } from './world/underwater.js';
 import { createMarine } from './actors/marine.js';
 import { createSinking } from './vehicles/sinking.js';
+import { createBoats } from './vehicles/boats.js';
 import { WL, bedAt, depthAt, islandDist } from './world/sea.js';
 import { quality } from './core/quality.js';
 import { createAdaptive } from './core/adaptive.js';
@@ -174,7 +175,7 @@ async function boot() {
 
   game = {
     mode: 'foot', paused: false, vehicle: null, started: false,
-    input, hud, audio, music, env, vehicles, player, L, cam, camera, renderer, scene, fx, R, grid, wanted: 0, busy: null, districts, adaptive, bloom, motes, quality,
+    input, hud, audio, music, env, vehicles, player, L, cam, camera, renderer, scene, fx, R, grid, wanted: 0, busy: null, districts, adaptive, bloom, motes, quality, ocean,
     city, focus: () => (game.vehicle ? game.vehicle : player.pos),
     heading: () => (game.vehicle ? game.vehicle.yaw : player.yaw),
   };
@@ -225,6 +226,8 @@ async function boot() {
   const swim = game.swim = createSwim(game);
   const marine = game.marine = createMarine(scene, game, sea);
   const sinking = game.sinking = createSinking(game);
+  // boats and jet skis: the dealer's craft, your berths, the rentals, the bay's traffic, the wakes and spray
+  const boats = game.boats = createBoats(game, scene);
   // indoors the camera renders layer 1 only: the room, the courier, the rings and the lights
   scene.traverse((o) => { if (o.isLight) o.layers.enable(1); });
   sky.mesh.layers.enable(2);                  // the villa's courtyard: only the sky behind the room
@@ -466,6 +469,7 @@ async function boot() {
     },
     roomAt: (x, z, ly = 0) => { const r = game.inside.room; places.setLy(ly); player.pos.set(r.ox + x, OY + ly, r.oz + z); return [x, z, ly]; },
     lum: () => { draw(); const gl = renderer.getContext(), w = gl.drawingBufferWidth, h = gl.drawingBufferHeight, px = new Uint8Array(w * h * 4); gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px); let s2 = 0, n = 0, cr = 0, cg = 0, cb = 0; for (let i = 0; i < px.length; i += 4 * 7) { s2 += 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2]; cr += px[i]; cg += px[i + 1]; cb += px[i + 2]; n++; } return { mean: +(s2 / n).toFixed(1), rgb: [cr / n | 0, cg / n | 0, cb / n | 0], calls: renderer.info.render.calls, tris: renderer.info.render.triangles }; },
+    boats: boats.debug,
     evtGo: (off = 0.6) => { const t = events.target(); if (!t) return null; const v = game.vehicle; if (v) { v.x = t.x + off; v.z = t.z; v.vx = v.vz = 0; } else player.pos.set(t.x + off, 0, t.z); return t; },
   };
   game.signalAt = (n, h) => signal(n, h, timeU.value);
@@ -480,6 +484,7 @@ async function boot() {
   function interact() {
     const v = game.vehicle;
     if (game.busy) return;
+    if (boats.interact()) return;          // boats: the helm, boarding, the rentals, climbing aboard, stepping ashore
     if (!v && swim.wet) { swim.interact(); return; }
     if (act.mode) { act.toggle(); return; }
     if (game.inside) { places.use(); return; }
@@ -533,6 +538,7 @@ async function boot() {
     // seated on the Solstice Terrace: 1 waits for the sunset, 2 for the night
     if (wd && spire.seated && !game.busy && !cheats.open && (wd[2] === '1' || wd[2] === '2')) { spire.wait(wd[2] === '1' ? 'sunset' : 'night'); return; }
     if (wd && homes.seatedView() && !game.busy && !cheats.open && (wd[2] === '1' || wd[2] === '2')) { homes.wait(wd[2] === '1' ? 'sunset' : 'night'); return; }
+    if (wd && boats.seatedView() && !game.busy && !cheats.open && (wd[2] === '1' || wd[2] === '2')) { boats.wait(wd[2] === '1' ? 'sunset' : 'night'); return; }
     if (wd && !act.dancing && game.started && !game.busy && !cheats.open) { combat.select(+wd[2]); return; }
     // dancing: 1-8 pick a move and hit the beat, arrows step through the moves
     if (act.dancing && !game.busy) {
@@ -639,6 +645,8 @@ async function boot() {
 
     if (game.busy || game.inside || game.vehicle) swim.sleep(cam);
     if (game.mode === 'bike' && game.vehicle) { /* posed after the bike has moved */ }
+    else if (game.vehicle && game.vehicle.boat) { /* at the helm: vehicles/boats.js poses the rider after the boat has moved */ }
+    else if (!game.busy && !game.inside && boats.deck(dt, ctl, cam)) { /* on a deck: the boat carries her */ }
     else if (!game.busy && !game.inside && act.mode && !game.vehicle) act.update(dt, ctl, input);
     else if (!game.busy && !game.inside && swim.update(dt, ctl, cam)) { /* in the water: player/swim.js drives the courier */ }
     else if (!game.busy && !game.inside) player.update(dt, ctl, cam.yaw, vehicles, audio);
@@ -646,10 +654,12 @@ async function boot() {
     traffic.update(dt, timeU.value);
     sinking.update(dt);
     vehicles.update(dt, ctl, cam, player);
+    boats.update(dt, ctl);
     loose.update(dt);
     damage.update(dt);
     combat.update(dt);
     if (game.mode === 'bike' && game.vehicle) player.ride(game.vehicle);
+    else if (game.vehicle && game.vehicle.boat) boats.pose(ctl.steer);
     // an open car (the convertible): Skye herself sits at the wheel; closed cars show the driver figure through the
     // glass (actors/peds.js); in first person the body would be inside the camera
     else if (game.vehicle && game.vehicle.kind === 'car') {
@@ -680,7 +690,7 @@ async function boot() {
     else if (stunts.cam) stunts.camUpdate(dt);
     else if (cine.active) cine.update(dt);
     else if (spire.camOn) spire.camUpdate(dt);     // seated on the terrace: the wide view
-    else { cam.spec = v && v.spec || null; cam.update(dt, input, game.mode, game.focus(), game.heading(), speed, fx, player.phase); }
+    else { cam.spec = v && v.spec || null; cam.update(dt, input, game.mode, game.focus(), game.heading(), speed, fx, player.phase); boats.camLate(); }
     if (game.started && game.inside) homes.camLate(dt);
     // in first person on foot the courier's own body would sit inside the camera
     cockpit.update(dt, v, cam.first && !cut.active && !game.inside && !!v, ctl.steer);
@@ -710,6 +720,7 @@ async function boot() {
       else if (game.busy === 'ride') hud.setHint(pier.hint());
       else if (game.busy) hud.setHint(game.busy === 'cut' ? [['Space / Enter', 'next line'], ['X', 'skip scene']] : game.busy === 'fail' ? [['Enter', 'retry from checkpoint'], ['Esc', 'walk away']] : []);
       else if (game.inside) hud.setHint(places.hint());
+      else if (boats.hint()) hud.setHint(boats.hint());
       else if (!v && swim.wet) hud.setHint(swim.hint());
       else if (!v && act.mode) hud.setHint(act.hint());
       else if (!v && spire.on) hud.setHint(spire.hint());
@@ -731,24 +742,27 @@ async function boot() {
       touch.update();
     }
 
-    sound.engine = v && v.kind !== 'heli' ? 1 : 0;
+    sound.engine = v && v.kind !== 'heli' && !(v.boat && v.down) ? 1 : 0;
+    // on the water: the hull rushing through it, the slap and lap of the waves (vehicles/boats.js)
+    { const bs = boats.sound; sound.boat = bs.rush; sound.boatAir = bs.air; sound.roadSpeed = v && v.boat ? 0 : null; }
     sound.heavy = !!v && v.kind === 'tank';
     // each type has its own engine (audio/audio.js ENGINES); the revs run up to its own top speed
     sound.engineProfile = !v ? null : v.kind === 'tank' ? 'tank' : (v.spec && v.spec.sound) || (v.kind === 'bike' ? 'comet' : 'sedan');
     sound.engineRev = v ? Math.min(Math.abs(speed) / (v.kind === 'tank' ? 13 : v.spec ? v.spec.top * (v.kind === 'bike' ? 0.69 : 1) : v.kind === 'bike' ? 40 : 44), 1) * (v.kind === 'bike' ? 1.5 : 1) : 0;
+    if (v && v.boat) sound.engineRev = Math.min(1, sound.engineRev * 0.85 + Math.max(0, ctl.throttle) * 0.2 + (v.air ? 0.3 : 0));
     sound.under = sea.under;
     sound.skate = !v && player.onGround && !player.swimming && !cut.active && !act.mode ? Math.min(player.speed / 13.5, 1) : 0;
     sound.rotor = vehicles.heli ? vehicles.heli.spool * (v === vehicles.heli ? 1 : 0.35) : 0;
     // the rain you hear: the outdoor amount even indoors (muffled at the windows), and where you are
     sound.rain = env.w.rain; sound.storm = env.weather === 'storm' ? env.w.bolt : 0;
-    sound.rainWhere = game.inside ? 'indoor' : v && v.kind !== 'bike' ? 'car' : !v && underCover(player.pos) ? 'awning' : 'out';
+    sound.rainWhere = game.inside ? 'indoor' : v && v.kind !== 'bike' && !v.boat ? 'car' : !v && underCover(player.pos) ? 'awning' : 'out';
     sound.siren = game.siren || 0; sound.duck = cut.active; sound.purr = cat.purring && !game.inside ? cat.S.purr * Math.max(0, 1 - Math.hypot(camera.position.x - cat.sill.x, camera.position.z - cat.sill.z) / 12) : 0;
     // up on the Solstice Terrace its own theme plays, like an indoor place (it ignores the street music's auto-off)
     sound.room = !game.inside ? (spire.on ? 1 : 0) : game.inside.key === 'club' ? 2 : game.inside.key === 'lounge' ? 3 : 1;
     sound.themeK = !game.inside && !spire.on && pier.music > 0.01 ? pier.music : 1;
     { const ho = game.inside ? homes.themeFor(game.inside.key) : undefined;
       sound.theme = !game.inside ? (spire.on ? THEME_OF.terrace : pier.music > 0.01 ? 'pier' : 'street') : game.busy === 'arcade' ? 'arcadeGame' : ho !== undefined ? ho : THEME_OF[game.inside.key] || null; }
-    sound.water = homes.water; sound.waves = homes.waves;
+    sound.water = homes.water; sound.waves = Math.max(homes.waves, game.inside ? 0 : boats.sound.lap);
     sound.night = nightU.value; sound.wanted = game.wanted;
     music.update(dt, !!game.inside && game.inside.key === 'lounge' && game.busy !== 'door' && audio.musicOn, game.paused);
     sound.rec = music.rec;
@@ -807,7 +821,7 @@ async function boot() {
     hud.show();
     if (how === 'continue') {
       const r = saves.resume();
-      hud.toast('PROGRESS RESTORED', r.where === 'vehicle' ? 'RIGHT WHERE YOU PARKED IT' : r.where.startsWith('door') ? 'OUTSIDE WHERE YOU LEFT OFF' : saves.summary());
+      hud.toast('PROGRESS RESTORED', r.where === 'vehicle' ? 'RIGHT WHERE YOU PARKED IT' : r.where === 'boat' ? 'ABOARD YOUR BOAT' : r.where.startsWith('door') ? 'OUTSIDE WHERE YOU LEFT OFF' : saves.summary());
       if (!saves.storage) setTimeout(() => saves.warnOnce(), 3200);
     } else {
       hud.toast('HELICOPTER PARKED NEARBY', input.touchMode ? 'WALK UP AND TAP E · CODES: TAP CODES' : 'WALK UP AND PRESS E · CODES: PRESS T');

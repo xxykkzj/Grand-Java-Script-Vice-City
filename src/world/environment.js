@@ -288,7 +288,7 @@ export function createEnvironment(scene, sky, ocean, city, camera, audio) {
         su.uBow.value = B.k * clamp((alt - 2) / 4, 0, 1) * clamp((41 - alt) / 3, 0, 1); B.alt = +alt.toFixed(1); }
       su.uStars.value = cur.stars; su.uFlash.value = fl * 0.5; su.uCloud.value = w.cloud * (1 - w.fog * 0.7); su.uVeil.value = veil;
       sky.mesh.position.copy(camera.position);
-      ocean.mesh.position.set(Math.round(camera.position.x / 40) * 40, ocean.mesh.position.y, Math.round(camera.position.z / 40) * 40);
+      ocean.mesh.position.set(Math.round(camera.position.x / 1.5) * 1.5, ocean.mesh.position.y, Math.round(camera.position.z / 1.5) * 1.5);
       const sunUp = sunDir.y > 0.03, lightDir = sunUp ? sunDir : moonDir;
       ou.uDeep.value.copy(cur.deep).lerp(STORM, cover * 0.6); ou.uShallow.value.copy(cur.shallow).lerp(STORM, cover * 0.5);
       ou.uSky.value.copy(cur.hor); ou.uSunCol.value.copy(cur.glow).multiplyScalar((sunUp ? 1 : 0.25) * (1 - veil));

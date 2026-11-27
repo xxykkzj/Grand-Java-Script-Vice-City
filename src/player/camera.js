@@ -2,10 +2,10 @@
 import * as THREE from 'three';
 import { damp, clamp, angleDelta, reducedMotion } from '../core/util.js';
 
-const DIST = { foot: 7.5, car: 10.5, bike: 8.2, tank: 14, heli: 17 };
-const LIFT = { foot: 1.5, car: 1.6, bike: 1.6, tank: 3, heli: 2.4 };
+const DIST = { foot: 7.5, car: 10.5, bike: 8.2, tank: 14, heli: 17, boat: 10.5 };
+const LIFT = { foot: 1.5, car: 1.6, bike: 1.6, tank: 3, heli: 2.4, boat: 1.9 };
 // first-person eye: height above the vehicle/feet and how far forward of its centre
-export const EYE = { foot: [1.62, 0.25], car: [1.25, 0.35], bike: [1.7, 0.2], tank: [3.5, 0.4], heli: [1.9, 1.3] };
+export const EYE = { foot: [1.62, 0.25], car: [1.25, 0.35], bike: [1.7, 0.2], tank: [3.5, 0.4], heli: [1.9, 1.3], boat: [1.6, 0] };
 export const VIEWS = [
   { id: 'third', name: 'THIRD PERSON', dist: 1 },
   { id: 'close', name: 'CLOSE THIRD PERSON', dist: 0.52 },
@@ -37,14 +37,15 @@ export function createFollowCamera(camera, solids) {
       const idle = performance.now() / 1000 - input.lastDrag;
       if (cam.first && mode !== 'foot' && idle > 0.8) {
         cam.yaw += angleDelta(cam.yaw, heading) * (1 - Math.exp(-6 * dt));
-      } else if ((mode === 'car' || mode === 'bike' || mode === 'heli') && idle > 1.2 && Math.abs(speed) > 3) {
-        cam.yaw += angleDelta(cam.yaw, heading) * (1 - Math.exp(-(mode === 'heli' ? 1.2 : mode === 'bike' ? 3 : 2.2) * dt));
+      } else if ((mode === 'car' || mode === 'bike' || mode === 'heli' || mode === 'boat') && idle > 1.2 && Math.abs(speed) > 3) {
+        cam.yaw += angleDelta(cam.yaw, heading) * (1 - Math.exp(-(mode === 'heli' ? 1.2 : mode === 'bike' ? 3 : mode === 'boat' ? 1.8 : 2.2) * dt));
       }
       target.x = damp(target.x, focus.x, 12, dt);
       target.z = damp(target.z, focus.z, 12, dt);
-      // a vehicle type can set its own eye ([height, ahead]) and chase distance (vehicles/types.js)
-      const vs = mode === 'car' || mode === 'bike' ? cam.spec : null, dk = (vs && vs.cam) || 1;
-      target.y = damp(target.y, focus.y + LIFT[mode] * (dk > 1.2 ? dk * 0.85 : 1), 8, dt);
+      // a vehicle type can set its own eye ([height, ahead]) and chase distance (vehicles/types.js); a boat's
+      // swell is smoothed out of the chase camera (it rides the waves, the camera floats over them)
+      const vs = mode === 'car' || mode === 'bike' || mode === 'boat' ? cam.spec : null, dk = (vs && vs.cam) || 1;
+      target.y = damp(target.y, focus.y + LIFT[mode] * (dk > 1.2 ? dk * 0.85 : 1), mode === 'boat' ? 2.5 : 8, dt);
       if (cam.first) {
         // eyes in the head (or the driver's seat), looking where the mouse points
         const [eh, ef] = (vs && vs.eye) || EYE[mode], fy = Math.sin(heading), fz = Math.cos(heading);
@@ -59,7 +60,7 @@ export function createFollowCamera(camera, solids) {
         if (Math.abs(camera.fov - fovF) > 0.05) { camera.fov = damp(camera.fov, fovF, 4, dt); camera.updateProjectionMatrix(); }
         return;
       }
-      let want = DIST[mode] * dk * cam.view.dist + (mode === 'car' || mode === 'bike' ? Math.min(Math.abs(speed) * 0.06, 3) * cam.view.dist : 0);
+      let want = DIST[mode] * dk * cam.view.dist + (mode === 'car' || mode === 'bike' || mode === 'boat' ? Math.min(Math.abs(speed) * 0.06, 3) * cam.view.dist : 0);
       const sh = mode === 'foot' ? cam.shoulder : 0;
       want *= 1 - 0.3 * sh;
       // aiming: the camera slides over the right shoulder so the crosshair sits beside the courier

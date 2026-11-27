@@ -6,6 +6,7 @@
 // see-through), the palms and one set of glow sprites. All of it lives in one group that
 // world/districts.js swaps for a silhouette when the camera is far away.
 import * as THREE from 'three';
+import { BERTHS, RENTAL_SITES } from '../vehicles/boatmodels.js';
 import { box, cyl, tint, merge, rng, PI, nightU, reflU, VIEW } from '../core/util.js';
 import { KEY, KH, KV, KV_W, KEY_JUNCTIONS, MPIER, KEY_ADS } from './key.js';
 import { VENUE_DEFS, DOORS } from './layout.js';
@@ -446,7 +447,8 @@ export function buildKey(scene, L, renderer, adSigns) {
     S.push(bx(12, 0.5, plen, px, -0.25, MP.z0 + plen / 2, '#b98a5e'));
     for (let z = MP.z0 + 2; z < MP.z1; z += 4) S.push(bx(11.6, 0.02, 0.18, px, 0.012, z, '#93683f'));
     for (const sx of [MP.x0 + 0.15, MP.x1 - 0.15]) {
-      const gaps = LADDERS.filter((l) => l.pier === 'k' && (l.s < 0) === (sx < px)).map((l) => l.z);
+      // (the rail also opens at the private berths and the jet-ski rental on the west side: vehicles/boatmodels.js)
+      const gaps = [...LADDERS.filter((l) => l.pier === 'k' && (l.s < 0) === (sx < px)).map((l) => l.z), ...(sx < px ? [...Object.values(BERTHS).map((b) => b.z), RENTAL_SITES[0].ring.z] : [])].sort((a, b) => a - b);
       let a0 = MP.z0;
       for (const gz of [...gaps, MP.z1 + LADDER_GAP]) {
         const a1 = Math.min(gz - LADDER_GAP, MP.z1);
@@ -463,6 +465,7 @@ export function buildKey(scene, L, renderer, adSigns) {
     // pontoons and moored boats either side of the pier
     for (const sx of [-1, 1]) S.push(bx(2, 0.3, 76, px + sx * 9.5, -0.35, 196, '#c99a68'), bx(4, 0.3, 2, px + sx * 7.5, -0.35, 158, '#c99a68'));
     for (const bt of K.marina.boats) {
+      if (bt.x < MP.x0 && bt.z < 220) continue;      // the west side's inner berths are the private ones now (vehicles/boats.js)
       const len = 7 * bt.s, g = new THREE.BoxGeometry(2.6 * bt.s, 1.2, len), a = g.attributes.position;
       for (let i = 0; i < a.count; i++) { const zz = a.getZ(i), y = a.getY(i); a.setX(i, a.getX(i) * (zz > 0 ? 0.25 : 0.85) * (y < 0 ? 0.6 : 1)); }
       g.computeVertexNormals(); g.rotateY(bt.yaw); g.translate(bt.x, -0.2, bt.z);

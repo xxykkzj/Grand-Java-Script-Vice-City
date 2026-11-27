@@ -291,7 +291,7 @@ export function createEvents(game, scene) {
 
   const START = { bag: startBag, getaway: startGetaway, suspect: startSuspect };
   const STEP = { bag: stepBag, getaway: stepGetaway, suspect: stepSuspect };
-  const canStart = () => game.started && !game.busy && !game.inside && !(game.story && game.story.active) && !game.wanted && !cut.active && !(game.act && game.act.dancing) && game.mode !== 'heli' && game.mode !== 'tank' && !game.paused;
+  const canStart = () => game.started && !game.busy && !game.inside && !(game.story && game.story.active) && !game.wanted && !cut.active && !(game.act && game.act.dancing) && game.mode !== 'heli' && game.mode !== 'tank' && game.mode !== 'boat' && !(game.boats && game.boats.aboard) && !game.paused;
 
   const api = {
     stats,

@@ -75,6 +75,7 @@ export function createPlaces(game, scene, camera) {
     if (game.venues) game.venues.entered(p);
   }
   function putOutside(x, z, yaw = 0) {
+    if (game.boats) game.boats.drop();
     if (game.inside) game.inside.room.group.visible = false;
     if (game.act) game.act.reset();
     game.inside = null; env.indoor = false; env.roomLit = false; audio.club = false; camera.layers.set(0); rimU.value.set(0); ly = 0;
