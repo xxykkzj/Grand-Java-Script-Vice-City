@@ -207,7 +207,7 @@ export function buildPenthouse(room, place) {
   // ---------------------------------------------------------------- upstairs: the primary suite
   // the bed facing the bay, an upholstered headboard wall, nightstands with lamps, a bench at the foot, a rug
   { const t = [];
-    bed(t, 2.1, 2.2, -6.8, -4.55, PI, '#3a3a48', '#d8d0c4', CREAM);
+    bed(t, 2.1, 2.2, -6.8, -4.62, PI, '#3a3a48', '#d8d0c4', CREAM);   // headboard 5 cm proud of the wall panels (it shared their face and flickered)
     t.push(box(4.35, 2.4, 0.16, -7.125, 1.2, -3.32, '#c8b8a8'));
     for (let i = 0; i < 5; i++) t.push(box(0.78, 1.3, 0.06, -8.7 + i * 0.78, 1.15, -3.42, i % 2 ? '#d8c8b8' : '#cfbfae'));
     for (const x of [-8.35, -5.25]) t.push(box(0.55, 0.5, 0.42, x, 0.25, -3.7, WAL), box(0.57, 0.03, 0.44, x, 0.51, -3.7, GOLD));
