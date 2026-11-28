@@ -55,7 +55,50 @@ export function createPlaces(game, scene, camera) {
   player.model.setOutfit(worn());
   player.model.setHair(fixHair(save.hair), !!save.cap);       // the cut from Fade & Fringe (game/salon.js)
 
-  const room = (p) => rooms[p.key] || (rooms[p.key] = buildRoom(p, scene, game));
+  // Rooms are built on first entry and kept in a small LRU: the current room plus the two most recently visited.
+  // An evicted room is taken out of the scene and its own geometry, materials and textures are freed (anything the
+  // rest of the scene still uses is left alone). Going back in simply builds it again, so nothing that has to
+  // outlive a visit may live on the room object (homes.js keeps the TV channel, the radio and the garage car itself).
+  const KEEP_ROOMS = 3, lru = [];
+  function disposeRoom(r) {
+    const g = r.group; if (!g) return;
+    scene.remove(g);
+    const live = { geo: new Set(), mat: new Set(), tex: new Set() };
+    const texOf = (m, f) => {
+      for (const k in m) { const v = m[k]; if (v && v.isTexture) f(v); }
+      if (m.uniforms) for (const k in m.uniforms) { const v = m.uniforms[k] && m.uniforms[k].value; if (v && v.isTexture) f(v); }
+    };
+    const eachMat = (o, f) => { if (o.material) for (const m of Array.isArray(o.material) ? o.material : [o.material]) f(m); };
+    const walk = (o, f) => { if (o === g) return; f(o); for (const c of o.children) walk(c, f); };
+    walk(scene, (o) => { if (o.geometry) live.geo.add(o.geometry); eachMat(o, (m) => { live.mat.add(m); texOf(m, (t) => live.tex.add(t)); }); });
+    const gone = { geo: new Set(), mat: new Set(), tex: new Set(), skel: new Set() };
+    g.traverse((o) => {
+      if (o.isSkinnedMesh && o.skeleton) gone.skel.add(o.skeleton);       // its bone texture is not freed by the mesh
+      if (o.geometry && !live.geo.has(o.geometry)) gone.geo.add(o.geometry);
+      eachMat(o, (m) => { if (!live.mat.has(m)) gone.mat.add(m); texOf(m, (t) => { if (!live.tex.has(t) && !t.userData.keep) gone.tex.add(t); }); });
+    });
+    for (const k of gone.skel) k.dispose();
+    for (const t of gone.tex) t.dispose();
+    for (const m of gone.mat) m.dispose();
+    for (const o of gone.geo) o.dispose();
+    r.disposed = true;
+  }
+  function evict(key) {
+    const r = rooms[key]; delete rooms[key];
+    const p = byKey(key); if (p && p.room === r) p.room = null;
+    if (r) disposeRoom(r);
+  }
+  const room = (p) => {
+    const i = lru.indexOf(p.key); if (i >= 0) lru.splice(i, 1);
+    lru.push(p.key);
+    if (!rooms[p.key]) rooms[p.key] = buildRoom(p, scene, game);
+    for (let k = 0; lru.length > KEEP_ROOMS && k < lru.length;) {
+      const old = lru[k];
+      if (old === p.key || (game.inside && game.inside.key === old)) { k++; continue; }
+      lru.splice(k, 1); evict(old);
+    }
+    return rooms[p.key];
+  };
   const bark = (key) => { const b = BARKS[key]; if (!b) return game.homes ? game.homes.bark(key) : ''; return `${key === 'boutique' ? 'LAURENT' : CAST[b[0]].name}: “${b[1][barkN++ % b[1].length]}”`; };
 
   function setInside(p, x, z) {
@@ -88,7 +131,7 @@ export function createPlaces(game, scene, camera) {
   // third person walking about indoors: the orbit camera (drag / swipe turns it round Skye, it pulls in at walls)
   const orbit = createRoomCam(camera, cam, OY);
   // first person indoors: the eyes at Skye's height, a hand's width in front, kept inside the room's walls and under
-  // its ceiling (the near plane is 0.12 m indoors, so the clamp keeps it from clipping through)
+  // its ceiling (the near plane is 0.25 m, the eyes sit at least 0.3 m inside the walls, so the clamp keeps it from clipping through)
   function firstPersonCam(r) {
     const c = camera.position, yaw = cam.yaw, lp = clamp(cam.pitch - 0.2, -0.9, 0.9), cp = Math.cos(lp);
     let lx = player.pos.x - r.ox + Math.sin(yaw) * 0.12, lz = player.pos.z - r.oz + Math.cos(yaw) * 0.12;

@@ -119,6 +119,7 @@ export function pickSpecies(mix, r) {
 export function createStreetTrees(scene, trees) {
   const r = rng(8181), meshes = [], counts = {};
   const mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+  mat.customProgramCacheKey = () => 'streettrees';
   mat.onBeforeCompile = (sh) => {
     sh.uniforms.uTime = timeU;
     sh.vertexShader = 'attribute float aLeaf; attribute vec3 aTint; uniform float uTime;\n' + sh.vertexShader

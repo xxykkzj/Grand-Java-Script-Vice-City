@@ -51,7 +51,7 @@ export const HOME_LOOKS = {
 
 // ---- shared pieces ----------------------------------------------------------------------------------------
 // one TV picture for whichever home you are in (game/homes.js paints it)
-export const TV = (() => { const cv = document.createElement('canvas'); cv.width = 256; cv.height = 176; const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; return { cv, ctx: cv.getContext('2d'), tex }; })();
+export const TV = (() => { const cv = document.createElement('canvas'); cv.width = 256; cv.height = 176; const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.userData.keep = true; return { cv, ctx: cv.getContext('2d'), tex }; })();
 export function screen(w, h, x, y, z, ry = 0) {
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: '#1a1826', fog: false, toneMapped: false }));
   m.position.set(x, y, z); m.rotation.y = ry; m.renderOrder = 2;

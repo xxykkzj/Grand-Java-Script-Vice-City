@@ -610,6 +610,8 @@ A forced weather holds for about four game hours before the sky starts making it
 
 The pause / settings panel (gear button, top right) has a **Graphics** choice, **Low** or **High**, remembered on the device. It defaults to High on desktop and Low on phones and tablets.
 
+On Low (and on touch devices) the big painted textures (both grounds, the sign, ad and shopfront atlases) are made at half size when the game loads, to save memory; the minimap keeps a small copy instead of the big ground canvases. Interiors are built on first entry and kept for the current room plus the two most recently visited; older ones are freed and rebuilt when you go back. If the browser takes the graphics away (a lost WebGL context) the game stops drawing, autosaves where allowed, shows a short notice and carries on when the browser gives the graphics back. While the pause panel is open the frozen scene is drawn once, not every frame.
+
 | Effect | High | Low |
 | --- | --- | --- |
 | **Night bloom** | A half-resolution bloom (bright pixels, a two-pass blur, added over the frame): neon signs, lamps, headlights and lasers glow. It is strong at night and a faint sheen by day. Three full-screen passes, only while it is on. | off |
@@ -679,11 +681,9 @@ then open `dist/index.html`. `npm run dev` rebuilds (unminified) whenever a file
 
 | Part | Files | Source size |
 | --- | --- | --- |
-| JavaScript (game logic, world, actors, UI) | 72 | about 1.2 MB, ~18,700 lines |
+| JavaScript (game logic, world, actors, UI) | 71 | about 1.2 MB, ~18,700 lines |
 | HTML + CSS (`src/index.html`: HUD, menus, styles) | 1 | about 47 KB |
-| **Core game source** | **73** | **about 1.25 MB, ~19,400 lines** |
-
-Not counted above: `src/actors/figure.js` (about 133 KB), an experimental character generator that the game no longer uses.
+| **Core game source** | **72** | **about 1.25 MB, ~19,400 lines** |
 
 **What ships** (`dist/index.html`, one minified file):
 

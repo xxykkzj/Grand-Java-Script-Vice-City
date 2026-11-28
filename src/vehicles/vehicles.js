@@ -58,6 +58,7 @@ export function createVehicles(scene, L, fx, audio) {
   const solids = L.solids, surf = L.surf;
   const glowU = { value: 0 };
   const carMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  carMat.customProgramCacheKey = () => 'vehicle-car';
   carMat.onBeforeCompile = (sh) => {
     sh.uniforms.uGlow = glowU;
     // dents: a damaged car's bonnet sags and crumples, the nose pushes in and the bumpers hang askew
@@ -104,6 +105,7 @@ export function createVehicles(scene, L, fx, audio) {
     if (T.kind === 'car') { loGeo[id] = proxyGeometry(id, kitGeo[id]); kv += loGeo[id].attributes.position.count; }
   }
   const kitMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  kitMat.customProgramCacheKey = () => 'vehicle-kit';
   kitMat.onBeforeCompile = (sh) => {
     sh.vertexShader = 'attribute float aFlag;\n' + sh.vertexShader.replace('#include <color_vertex>', `#include <color_vertex>
       #ifdef USE_BATCHING_COLOR

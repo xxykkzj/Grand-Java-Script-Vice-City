@@ -83,12 +83,32 @@ async function boot() {
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   } catch (e) { noWebGL(); return; }
+  // the browser can take the GPU away (a driver reset, too many contexts, a sleeping laptop): pause politely, then resume
+  const ctxHooks = { lost: null, restored: null };
+  let ctxLost = false, ctxOverlay = null;
+  const ctxNote = (on) => {
+    if (!ctxOverlay) {
+      ctxOverlay = document.createElement('div'); ctxOverlay.id = 'ctxlost';
+      ctxOverlay.setAttribute('role', 'status');
+      ctxOverlay.style.cssText = 'position:fixed;inset:0;z-index:99;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:rgba(16,6,32,.82);color:#ffe9fb;font:700 clamp(15px,3.4vw,24px)/1.5 system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase';
+      ctxOverlay.innerHTML = '<div>Graphics paused by the browser<br><small style="font-weight:400;letter-spacing:.04em;text-transform:none;opacity:.85">Your progress is saved. Restoring the picture...</small></div>';
+      document.body.appendChild(ctxOverlay);
+    }
+    ctxOverlay.style.display = on ? 'flex' : 'none';
+  };
+  canvas.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault(); ctxLost = true; ctxNote(true);
+    if (ctxHooks.lost) ctxHooks.lost();
+  }, false);
+  canvas.addEventListener('webglcontextrestored', () => {
+    if (ctxHooks.restored) ctxHooks.restored(); else location.reload();   // still loading: start over
+  }, false);
   renderer.info.autoReset = false;            // reset once per frame (draw()), so the count includes the bloom passes
   // adaptive resolution (core/adaptive.js): the pixel ratio follows the frame time
   const adaptive = createAdaptive(() => fit(), 0.6);
   const bloom = createBloom(renderer);
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(62, 1, 0.12, 2600);
+  const camera = new THREE.PerspectiveCamera(62, 1, 0.25, 2600);
   const cockpit = createCockpit(scene);     // first-person dashboards, fixed to the vehicle
   // Follow the window live: size, orientation, the phone's visual viewport and the device pixel
   // ratio (browser zoom, moving to another monitor) are all re-read on every change, not once at load.
@@ -104,12 +124,13 @@ async function boot() {
     fitKey = key;
     renderer.setPixelRatio(pr);
     renderer.setSize(w, h, false);
+    redraw = true;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     if (game && game.hud) game.hud.resize();
   };
   const refit = () => { if (!fitQueued) fitQueued = requestAnimationFrame(fit); };
-  let game = null;
+  let game = null, redraw = false;
   fit();
   addEventListener('resize', refit);
   addEventListener('orientationchange', () => { refit(); setTimeout(refit, 250); setTimeout(refit, 700); });
@@ -164,6 +185,7 @@ async function boot() {
     bloom.set(quality.high);
     ocean.uniforms.uFoam.value = quality.high ? 1 : 0;
     L.lampMap.repaint(); L.key.lampMap.repaint();
+    redraw = true;
   };
   quality.on(applyQuality); applyQuality();
   const R = makeRoads();
@@ -573,7 +595,7 @@ async function boot() {
   audio.onAutoOff = () => { syncMusicBtn(); hud.toast('MUSIC OFF', 'PRESS M (TOUCH: ♪) TO TURN IT BACK ON'); };
   syncMusicBtn();
   const sound = { engine: 0, engineRev: 0, heavy: false, skate: 0, rotor: 0, rain: 0, siren: 0, duck: false, room: 0 };
-  let last = performance.now(), raf = 0, frameN = 0, turnT = 0;
+  let last = performance.now(), raf = 0, frameN = 0, turnT = 0, pausedDrawn = false;
 
   const hudState = { env, game, vehicles, counts: [0, peds.count], blips: [], focus: null, heading: 0, camYaw: 0, inVehicle: null };
   // one frame's drawing: the scene, then (High) the bloom over it. A home with a view: first the town (or only the
@@ -600,7 +622,9 @@ async function boot() {
   }
   function frame(now) {
     raf = requestAnimationFrame(frame);
-    if (game.paused) { last = now; music.update(0, true, true); draw(); input.endFrame(); return; }
+    // paused: draw the frozen scene once (and again after a resize or a quality change), not every frame
+    if (game.paused) { last = now; music.update(0, true, true); if (!pausedDrawn || redraw) { pausedDrawn = true; redraw = false; draw(); } input.endFrame(); return; }
+    pausedDrawn = false;
     adaptive.tick(now - last);
     const raw = Math.min(Math.max((now - last) / 1000, 0), 0.5);
     last = now;
@@ -700,7 +724,7 @@ async function boot() {
     if (player.model.root.visible === hideBody && !player.hidden) player.model.root.visible = !hideBody;
     // high up (the Solstice Terrace, the Starlight Wheel: the view boost is on) the near plane moves out, so the
     // depth buffer has the precision for the ground, the roads and their markings hundreds of metres away
-    { const nr = VIEW.far > 1.05 ? (game.inside ? 0.25 : camera.position.y > 95 ? 0.7 : 0.5) : 0.12; if (camera.near !== nr) { camera.near = nr; camera.updateProjectionMatrix(); } }
+    { const nr = VIEW.far > 1.05 ? (game.inside ? 0.25 : camera.position.y > 95 ? 0.7 : 0.5) : 0.25; if (camera.near !== nr) { camera.near = nr; camera.updateProjectionMatrix(); } }
     pointScaleU.value = renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360));
     lampU.uLampOn.value = game.inside && !env.roomLit ? 0 : 1;
     env.update(dt);
@@ -786,7 +810,9 @@ async function boot() {
   sea.warm(true); marine.warm(true);
   // compile both districts and both silhouettes up front (no shader hitch on the causeway)
   city.group.visible = keyCity.group.visible = districts.silA.visible = districts.silB.visible = true;
-  renderer.compile(scene, camera);
+  await progress(0.96, 'COMPILING THE NEON…');
+  try { if (renderer.compileAsync && renderer.extensions.has('KHR_parallel_shader_compile')) await renderer.compileAsync(scene, camera); else renderer.compile(scene, camera); }
+  catch (e) { renderer.compile(scene, camera); }
   sea.warm(false); marine.warm(false);
   districts.update(camera);
   draw();                                   // warms the bloom shaders too
@@ -794,9 +820,25 @@ async function boot() {
   await progress(1, 'READY');
   raf = requestAnimationFrame(frame);
 
+  ctxHooks.lost = () => {
+    cancelAnimationFrame(raf); raf = 0; input.clearKeys();
+    try { game.persist(); } catch (e) { /* saves.js decides whether this is a clean moment */ }
+    audio.suspend();
+  };
+  ctxHooks.restored = () => {
+    // three.js re-creates its GL state and re-uploads buffers and textures on its own; draw one frame to prove it
+    try {
+      ctxLost = false; adaptive.reset(); fitKey = ''; fit();
+      draw(); ctxNote(false);
+      last = performance.now(); redraw = true;
+      if (!document.hidden && !raf) raf = requestAnimationFrame(frame);
+      if (game.started && !game.paused) audio.resume();
+    } catch (err) { console.error(err); location.reload(); }   // the autosave brings you back through CONTINUE
+  };
+
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { cancelAnimationFrame(raf); raf = 0; audio.suspend(); music.update(0, true, true); input.clearKeys(); }
-    else if (!raf) { last = performance.now(); adaptive.reset(); raf = requestAnimationFrame(frame); if (game.started && !game.paused) audio.resume(); }
+    else if (!raf && !ctxLost) { last = performance.now(); adaptive.reset(); raf = requestAnimationFrame(frame); if (game.started && !game.paused) audio.resume(); }
   });
 
   const title = $('title'), go = $('go'), newg = $('newg'), conf = $('newconf'), sumry = $('sumry');

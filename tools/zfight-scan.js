@@ -1,5 +1,5 @@
 // Z-fighting scanner: run inside the game page (playwright evaluate) with a room already entered.
-// Finds pairs of triangles that lie in the same plane (within 2 mm), face the same way, overlap,
+// Finds pairs of triangles that lie in the same plane (within 0.8 mm), face the same way, overlap,
 // and have visibly different colours, i.e. surfaces that will flicker. Returns clusters (0.4 m grid)
 // in room-local coordinates, largest overlap first.
 window.__zscan = function (root, ox, oy, oz) {
@@ -31,7 +31,7 @@ window.__zscan = function (root, ox, oy, oz) {
   // bucket by plane
   const B = new Map();
   for (let i = 0; i < T.length; i++) {
-    const t = T[i], k = [Math.round(t.n.x * 200), Math.round(t.n.y * 200), Math.round(t.n.z * 200), Math.round(t.d * 250)].join(',');
+    const t = T[i], k = [Math.round(t.n.x * 200), Math.round(t.n.y * 200), Math.round(t.n.z * 200), Math.round(t.d * 1250)].join(',');
     (B.get(k) || B.set(k, []).get(k)).push(i);
   }
   // a grid of triangles (1 m cells) for the "is this face actually visible" test below
@@ -61,7 +61,7 @@ window.__zscan = function (root, ox, oy, oz) {
       const sm = p.area < q.area ? p : q, cen = sm.a.clone().add(sm.b).add(sm.c).multiplyScalar(1 / 3);
       if (buried(cen, sm.n)) continue;
       // pressed flat against another solid (a box standing on the floor: its bottom touches the floor's top)
-      const ok2 = [Math.round(-sm.n.x * 200), Math.round(-sm.n.y * 200), Math.round(-sm.n.z * 200), Math.round(-sm.d * 250)].join(',');
+      const ok2 = [Math.round(-sm.n.x * 200), Math.round(-sm.n.y * 200), Math.round(-sm.n.z * 200), Math.round(-sm.d * 1250)].join(',');
       const opp = B.get(ok2); if (opp && opp.some((k) => sat(proj(sm), proj(T[k])))) continue;
       const cx = (p.a.x + p.b.x + p.c.x) / 3 - ox, cy = (p.a.y + p.b.y + p.c.y) / 3 - oy, cz = (p.a.z + p.b.z + p.c.z) / 3 - oz;
       const key = [Math.round(cx / 0.4), Math.round(cy / 0.4), Math.round(cz / 0.4)].join(',');

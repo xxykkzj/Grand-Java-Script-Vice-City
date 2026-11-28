@@ -3,6 +3,7 @@
 // built into each district's own solid mesh by whoever places them.
 import * as THREE from 'three';
 import { merge } from '../core/util.js';
+import { texScale } from '../core/quality.js';
 import { KEY_SIGNS, KEY_ADS, TEAMS } from './key.js';
 
 export const AD_NAMES = [...KEY_SIGNS, ...KEY_ADS, 'SCOREBOARD', 'VACANCY'];
@@ -21,8 +22,10 @@ const AD_STYLE = [
 
 function paintAtlas() {
   const cv = document.createElement('canvas');
-  cv.width = 1024; cv.height = ROWS * 128;
+  const k = texScale();
+  cv.width = 1024 * k; cv.height = ROWS * 128 * k;
   const g = cv.getContext('2d');
+  g.scale(k, k);
   g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
   AD_NAMES.forEach((name, i) => {
     const ox = (i % 2) * 512, oy = Math.floor(i / 2) * 128;

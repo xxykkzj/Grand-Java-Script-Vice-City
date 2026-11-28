@@ -135,6 +135,7 @@ export function createLoose(scene, game, city, fx, audio) {
   geo.setAttribute('position', pA); geo.setAttribute('normal', nA);
   geo.setAttribute('color', new THREE.BufferAttribute(colr, 3)); geo.setAttribute('aGlow', new THREE.BufferAttribute(glw, 1));
   const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  mat.customProgramCacheKey = () => 'loose';
   mat.onBeforeCompile = (sh) => {
     sh.uniforms.uNight = nightU;
     sh.vertexShader = 'attribute float aGlow; varying float vGlow;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vGlow = aGlow;');

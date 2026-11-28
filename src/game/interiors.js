@@ -120,6 +120,10 @@ const shade = (hex, k) => '#' + new THREE.Color(hex).multiplyScalar(k).getHexStr
 export const rimU = { value: new THREE.Color('#000000') };
 export function addRim(mat) {
   const prev = mat.onBeforeCompile;
+  // three keys its program cache on customProgramCacheKey (default: the onBeforeCompile source), and every wrapper
+  // below has the same source: compose the previous key (taken now, before the swap) with ':rim'
+  const prevKey = mat.customProgramCacheKey();
+  mat.customProgramCacheKey = () => prevKey + ':rim';
   mat.onBeforeCompile = (sh, r) => {
     if (prev) prev(sh, r);
     sh.uniforms.uRim = rimU;
@@ -834,12 +838,66 @@ const BUILD = { bar: buildBar, club: buildClub, wear: buildWear, mart: buildMart
 // Build a room for a place. `place` is { key, b: building } from the layout.
 // A room may also carry (see dress.js): lights (baked into the vertex colours), boards (one painted canvas
 // atlas), pools (additive light pools and shafts; shafts only on High graphics), ticks (animated pieces).
+// Z-fighting: every part of a room is merged into one mesh, so two parts with faces in the same plane facing the
+// same way (a rug on a floor slab, a panel flush with a wall) flicker. For every such overlapping pair the part
+// added later is pushed out by 1 mm more than the earlier one (layers, at most 8), so later decor wins over walls and
+// floors without a visible change. A part is grown by moving each vertex along the sum of the distinct face normals
+// that meet there, so a box swells evenly and its edges stay closed.
+const LAYER_MM = 0.001, MAX_LAYER = 8;
+export function inflateParts(list) {
+  // axis-aligned triangles, by (axis, side): { i: part, d: plane height, rect on the other two axes }
+  const groups = Array.from({ length: 6 }, () => []);
+  list.forEach((g, i) => {
+    const P = g.attributes.position, N = g.attributes.normal, I = g.index;
+    if (!P || !N) return;
+    const n = I ? I.count : P.count;
+    for (let t = 0; t < n; t += 3) {
+      const a = I ? I.getX(t) : t, b = I ? I.getX(t + 1) : t + 1, c = I ? I.getX(t + 2) : t + 2;
+      const nx = N.getX(a), ny = N.getY(a), nz = N.getZ(a), ax = Math.abs(nx), ay = Math.abs(ny), az = Math.abs(nz);
+      const axis = ax > 0.9999 ? 0 : ay > 0.9999 ? 1 : az > 0.9999 ? 2 : -1;
+      if (axis < 0) continue;
+      const side = (axis === 0 ? nx : axis === 1 ? ny : nz) > 0 ? 1 : 0, u = (axis + 1) % 3, v = (axis + 2) % 3;
+      const co = (k, j) => (j === 0 ? P.getX(k) : j === 1 ? P.getY(k) : P.getZ(k));
+      groups[axis * 2 + side].push({ i, d: co(a, axis), u0: Math.min(co(a, u), co(b, u), co(c, u)), u1: Math.max(co(a, u), co(b, u), co(c, u)), v0: Math.min(co(a, v), co(b, v), co(c, v)), v1: Math.max(co(a, v), co(b, v), co(c, v)) });
+    }
+  });
+  const need = new Set();                                // 'lo,hi': the part with index hi must sit in front of lo
+  for (const fl of groups) {
+    fl.sort((p, q) => p.d - q.d);
+    for (let p = 0; p < fl.length; p++) for (let q = p + 1; q < fl.length && fl[q].d - fl[p].d < 0.002; q++) {
+      const A = fl[p], B = fl[q];
+      if (A.i === B.i || A.u0 > B.u1 - 0.001 || B.u0 > A.u1 - 0.001 || A.v0 > B.v1 - 0.001 || B.v0 > A.v1 - 0.001) continue;
+      need.add(A.i < B.i ? A.i + ',' + B.i : B.i + ',' + A.i);
+    }
+  }
+  if (!need.size) return;
+  const pairs = [...need].map((k) => k.split(',').map(Number)).sort((p, q) => p[1] - q[1] || p[0] - q[0]);
+  const layer = new Map();
+  for (const [lo, hi] of pairs) layer.set(hi, Math.min(MAX_LAYER, Math.max(layer.get(hi) || 0, (layer.get(lo) || 0) + 1)));
+  for (const [i, L] of layer) {
+    const g = list[i], P = g.attributes.position, N = g.attributes.normal, e = L * LAYER_MM, at = new Map();
+    for (let k = 0; k < P.count; k++) {
+      const key = Math.round(P.getX(k) * 2000) + ',' + Math.round(P.getY(k) * 2000) + ',' + Math.round(P.getZ(k) * 2000);
+      let m = at.get(key); if (!m) at.set(key, m = new Map());
+      m.set(Math.round(N.getX(k) * 100) + ',' + Math.round(N.getY(k) * 100) + ',' + Math.round(N.getZ(k) * 100), [N.getX(k), N.getY(k), N.getZ(k)]);
+    }
+    const out = new Float32Array(P.count * 3);
+    for (let k = 0; k < P.count; k++) {
+      const m = at.get(Math.round(P.getX(k) * 2000) + ',' + Math.round(P.getY(k) * 2000) + ',' + Math.round(P.getZ(k) * 2000));
+      let sx = 0, sy = 0, sz = 0; for (const [x, y, z] of m.values()) { sx += x; sy += y; sz += z; }
+      out[k * 3] = P.getX(k) + sx * e; out[k * 3 + 1] = P.getY(k) + sy * e; out[k * 3 + 2] = P.getZ(k) + sz * e;
+    }
+    P.array.set(out); P.needsUpdate = true;
+  }
+}
+
 export function buildRoom(place, scene, game) {
   const mat = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false });
   const room = { key: place.key, mat, npc: {}, extras: [], ox: place.b.cx, oz: place.b.cz, game, idle() {}, lights: null, pools: [], hiPools: [], ticks: [] };
   if (HOME_BUILD[place.key]) HOME_BUILD[place.key](room, place); else BUILD[place.key](room, scene);
   if (REDRESS[place.key]) REDRESS[place.key](room);
   const group = room.group = new THREE.Group();
+  inflateParts(room.geo);
   const body = merge(room.geo);
   if (room.lights) bake(body, room.lights, room.amb ?? 0.62, room.ambCol);
   group.add(new THREE.Mesh(body, mat), ...room.extras);

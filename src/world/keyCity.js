@@ -11,7 +11,7 @@ import { box, cyl, tint, merge, rng, PI, nightU, reflU, VIEW } from '../core/uti
 import { KEY, KH, KV, KV_W, KEY_JUNCTIONS, MPIER, KEY_ADS } from './key.js';
 import { VENUE_DEFS, DOORS } from './layout.js';
 import { kitGeometry } from './kits.js';
-import { groundMaterial, palmMesh } from './city.js';
+import { groundMaterial, palmMesh, smallCopy } from './city.js';
 import { setLampMap } from './lamplight.js';
 import { addSpire, addSpireBody } from './spire.js';
 import { addKeyscape, KEY_SHOPS } from './keyscape.js';
@@ -20,7 +20,7 @@ import { createStreetTrees } from './streettrees.js';
 import { createGlow } from './glow.js';
 import { rampParts } from './rampGeo.js';
 import { neonPools } from './neonpools.js';
-import { quality } from '../core/quality.js';
+import { quality, texScale } from '../core/quality.js';
 import { LADDERS, LADDER_GAP } from './sea.js';
 import { footprint, footBox } from './layout.js';
 
@@ -33,8 +33,9 @@ const withWin = (g, k = 0) => { g.setAttribute('aWin', new THREE.BufferAttribute
 // ---------------------------------------------------------------- the painted ground
 function paintKeyGround(K) {
   const CW = 2048, CH = 1024, s = CW / W;
-  const cv = document.createElement('canvas'); cv.width = CW; cv.height = CH;
+  const cv = document.createElement('canvas'); const tk = texScale(); cv.width = CW * tk; cv.height = CH * tk;
   const g = cv.getContext('2d'), r = rng(91);
+  g.scale(tk, tk);
   const X = (x) => (x - KEY.x0) * s, Z = (z) => (z - KEY.z0) * s;
   const rect = (x0, z0, x1, z1, c) => { g.fillStyle = c; g.fillRect(X(x0), Z(z0), (x1 - x0) * s, (z1 - z0) * s); };
   const speckle = (x0, z0, x1, z1, n, cols, a) => { g.globalAlpha = a; for (let i = 0; i < n; i++) { g.fillStyle = cols[i % cols.length]; g.fillRect(X(x0 + r() * (x1 - x0)), Z(z0 + r() * (z1 - z0)), 1 + r() * 2, 1 + r() * 2); } g.globalAlpha = 1; };
@@ -547,6 +548,7 @@ export function buildKey(scene, L, renderer, adSigns) {
   // ---------------------------------------------------------------- the solid mesh: one material, windows from the shader
   const litU = { value: 0 }, glassU = { value: new THREE.Color('#2c5f7a') };
   const bodyMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  bodyMat.customProgramCacheKey = () => 'key-body';
   bodyMat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, { uLit: litU, uNight: nightU, uGlass: glassU, uSky: reflU.sky });
     sh.vertexShader = 'attribute float aWin; varying float vWin; varying vec3 vWP; varying vec3 vWN;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
@@ -597,6 +599,7 @@ export function buildKey(scene, L, renderer, adSigns) {
   const lampBody = kitGeometry('lamp1', { scale: LS, only: (f) => !(f & 2) });
   const lampGlass = kitGeometry('lamp1', { scale: LS, only: (f) => !!(f & 2), recolor: () => '#cfe8ff' });
   const lampMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  lampMat.customProgramCacheKey = () => 'key-lamp';
   lampMat.onBeforeCompile = (sh) => {
     // the bulb (lamp-coloured faces) glows at night
     sh.uniforms.uNight = nightU;
@@ -635,7 +638,7 @@ export function buildKey(scene, L, renderer, adSigns) {
   glow.commit();
 
   return {
-    group, groundCanvas: gc, bodyMat,
+    group, groundCanvas: smallCopy(gc), bodyMat,
     update(cam) { if (group.visible) lampLod(cam); if (L.streetTreeMeshes) L.streetTreeMeshes.lod(cam); },
     setLights(neonK, lit, glassC) { neonMat.color.setScalar(0.5 + neonK * 0.9); litU.value = lit; glassU.value.copy(glassC); if (keyShops) keyShops.userData.neonK.value = neonK * 0.9; },
   };

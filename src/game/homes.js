@@ -580,7 +580,7 @@ export function createHomes(game) {
       // the TV: a fresh picture about 12 times a second, a sound now and then
       const ch = S.tv[k];
       if (game.busy === 'arcade' && k === 'villa' && game.venues.canvas) { TV.ctx.drawImage(game.venues.canvas, 0, 0, 256, 176); TV.tex.needsUpdate = true; if (r.tv && !r.tv.material.map) r.tv.userData.on(true); }
-      else if (ch) { S.chT -= dt; if (S.chT <= 0) { S.chT = 1 / 12; drawTv(ch, timeU.value); } S.sndT -= dt; if (S.sndT <= 0) { S.sndT = 0.7 + Math.random() * 0.6; tvSound(ch, timeU.value); } }
+      else if (ch) { if (r.tv && !r.tv.material.map) r.tv.userData.on(true); S.chT -= dt; if (S.chT <= 0) { S.chT = 1 / 12; drawTv(ch, timeU.value); } S.sndT -= dt; if (S.sndT <= 0) { S.sndT = 0.7 + Math.random() * 0.6; tvSound(ch, timeU.value); } }
       else if (r.tv && r.tv.material.map) r.tv.userData.on(false);
       // the stored car shows in the villa's garage
       if (r.garageCar) r.garageCar(owned(k) && save.garage[k] ? save.garage[k].color : null);

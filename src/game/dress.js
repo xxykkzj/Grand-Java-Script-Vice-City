@@ -232,6 +232,7 @@ export function fishTank(bounds, n = 7, seed = 3) {
   geo.setAttribute('aId', new THREE.BufferAttribute(new Float32Array(ids), 1));
   const U = { uT: { value: 0 }, uB: { value: new THREE.Vector4(bounds.x0, bounds.x1, bounds.z0, bounds.z1) }, uY: { value: new THREE.Vector2(bounds.y0, bounds.y1) } };
   const mat = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false });
+  mat.customProgramCacheKey = () => 'fish-school';
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U);
     sh.vertexShader = 'attribute float aId; uniform float uT; uniform vec4 uB; uniform vec2 uY;\n' + sh.vertexShader.replace('#include <begin_vertex>', /* glsl */`

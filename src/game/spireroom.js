@@ -53,7 +53,7 @@ export function buildSpire(room) {
     if ((Math.round(x * 3) + Math.round(z * 7)) % 3 === 0) g.push(box(w * 0.8, 0.004, 0.025, x + w / 2, 0.002, z + d * 0.4, '#cfc4b2', 0, 0.5));
   }
   // a brass border band and a dark inlay round the floor, the sun medallion in the middle
-  for (const [w, d, x, z] of [[HX * 2 - 2, 0.12, 0, -HZ + 1], [HX * 2 - 2, 0.12, 0, HZ - 1], [0.12, HZ * 2 - 2, -HX + 1, 0], [0.12, HZ * 2 - 2, HX - 1, 0]]) g.push(box(w, 0.012, d, x, 0.006, z, BRASS), box(w + (d < 1 ? 0 : 0.3), 0.01, d + (w < 1 ? 0 : 0.3), x, 0.004, z, '#3a4a48'));
+  for (const [w, d, x, z] of [[HX * 2 - 2, 0.12, 0, -HZ + 1], [HX * 2 - 2, 0.12, 0, HZ - 1], [0.12, HZ * 2 - 2, -HX + 1, 0], [0.12, HZ * 2 - 2, HX - 1, 0]]) g.push(box(w, 0.012, d, x, 0.006, z, BRASS), box(w + (d < 1 ? 0 : 0.3), 0.007, d + (w < 1 ? 0 : 0.3), x, 0.0035, z, '#3a4a48'));
   g.push(tint(new THREE.RingGeometry(1.7, 1.85, 32).rotateX(-PI / 2).translate(0, 0.008, 0.8), BRASS), tint(new THREE.CircleGeometry(1.7, 32).rotateX(-PI / 2).translate(0, 0.006, 0.8), '#d8c8a8'));
   for (let i = 0; i < 12; i++) { const a = i * PI / 6; g.push(box(0.12, 0.012, i % 2 ? 0.9 : 1.4, Math.sin(a) * 1.0, 0.01, 0.8 + Math.cos(a) * 1.0, i % 2 ? '#c8a050' : '#3a4a48', 0, a)); }
   const WALL = '#d8c4a8';

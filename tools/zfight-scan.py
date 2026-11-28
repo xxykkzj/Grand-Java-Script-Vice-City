@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Scan every enterable room for z-fighting (coplanar overlapping faces of different colour).
-Usage: python3 tools/zfight-scan.py [dist/index.html] > report.txt"""
+Coplanar means within 0.8 mm. Usage: python3 tools/zfight-scan.py [dist/index.html] > report.txt"""
 import sys, time, json, os
 from playwright.sync_api import sync_playwright
 HERE = os.path.dirname(os.path.abspath(__file__))

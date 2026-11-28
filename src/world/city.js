@@ -42,7 +42,7 @@ function createLampMap(L) {
   const W = HX * 2, H = HZ * 2, c = document.createElement('canvas');
   c.width = W; c.height = H;
   const ctx = c.getContext('2d');
-  let data = null;
+  let data = null;                           // read lazily, only for sample() (a debug probe)
   const pool = (x, z, rad, a, rgb = '255,196,128') => {
     const g = ctx.createRadialGradient(x, z, 0, x, z, rad);
     g.addColorStop(0, `rgba(${rgb},${a})`); g.addColorStop(0.45, `rgba(${rgb},${a * 0.42})`); g.addColorStop(1, `rgba(${rgb},0)`);
@@ -64,7 +64,7 @@ function createLampMap(L) {
     if (L.beach) pool(L.beach.fire.x + HX, L.beach.fire.z + HZ, 6.5, 0.75, '255,150,80');
     // the big neon signs throw a pool of their own colour (High quality)
     if (quality.high && L.neonPools) for (const n of L.neonPools) pool(n.x + HX, n.z + HZ, n.r, n.a, n.rgb);
-    data = ctx.getImageData(0, 0, W, H).data;
+    data = null;
   };
   paint();
   const tex = new THREE.CanvasTexture(c);
@@ -73,7 +73,7 @@ function createLampMap(L) {
     tex,
     repaint() { paint(); tex.needsUpdate = true; },
     // the lamp-light term (0..1+) the ground gets at (x, z) at full night, for checks
-    sample(x, z) { const i = (Math.floor(clampN(z + HZ, 0, H - 1)) * W + Math.floor(clampN(x + HX, 0, W - 1))) * 4; return (data[i] + data[i + 1] + data[i + 2]) / 765; },
+    sample(x, z) { if (!data) data = ctx.getImageData(0, 0, W, H).data; const i = (Math.floor(clampN(z + HZ, 0, H - 1)) * W + Math.floor(clampN(x + HX, 0, W - 1))) * 4; return (data[i] + data[i + 1] + data[i + 2]) / 765; },
   };
 }
 const clampN = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -153,6 +153,13 @@ export function groundMaterial(tex, lampTex, x0, z0, W, H, streaks) {
   return mat;
 }
 
+// a downscaled copy of a big canvas (the HUD minimap keeps this instead of a 2048x1024 one)
+export function smallCopy(cv, w = 512, h = 256) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(cv, 0, 0, w, h);
+  return c;
+}
+
 export function buildGround(scene, L, renderer) {
   const canvas = paintGround(L);
   const lampMap = L.lampMap = createLampMap(L);
@@ -168,7 +175,7 @@ export function buildGround(scene, L, renderer) {
   skirt.position.y = -1.8;                  // top 30 cm under the ground (no depth fight from high up)
   // both belong to the old town's district group (world/districts.js hides them from far away)
   L.groundMeshes = [ground, skirt];
-  return canvas;
+  return smallCopy(canvas);                 // the minimap only needs a small copy; the big canvas stays with its texture
 }
 
 export function buildCity(scene0, L) {
@@ -524,6 +531,7 @@ export function palmMesh(list) {
     palmParts.push(tint(new THREE.SphereGeometry(0.34, 6, 4).translate(1.2, 6.9, 0), '#7a5a3a'));
     palmGeo = merge(palmParts);
     palmMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+    palmMat.customProgramCacheKey = () => 'palm';
     palmMat.onBeforeCompile = (sh) => {
       sh.uniforms.uTime = timeU;
       sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>', /* glsl */`
@@ -573,6 +581,7 @@ function buildPlants(list) {
   const geo = merge(parts);
   geo.setAttribute('aFlower', new THREE.BufferAttribute(af, 1));
   const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  mat.customProgramCacheKey = () => 'flowers';
   mat.onBeforeCompile = (sh) => {
     sh.uniforms.uTime = timeU;
     sh.vertexShader = 'attribute float aFlower; uniform float uTime;\n' + sh.vertexShader

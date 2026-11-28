@@ -9,6 +9,9 @@ const touchDevice = () => {
 let level = 'high';
 try { const s = localStorage.getItem(KEY); level = s === 'low' || s === 'high' ? s : (touchDevice() ? 'low' : 'high'); } catch (e) { level = touchDevice() ? 'low' : 'high'; }
 
+// big CanvasTextures are drawn at half size on Low graphics and touch devices (decided when the world is built)
+export const texScale = () => (level === 'low' || touchDevice() ? 0.5 : 1);
+
 export const quality = {
   get level() { return level; },
   get high() { return level === 'high'; },

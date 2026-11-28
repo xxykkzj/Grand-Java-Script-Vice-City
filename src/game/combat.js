@@ -120,6 +120,7 @@ export function createCombat(game, scene) {
   const holder = new THREE.Group();
   holder.position.set(0, -0.58, 0.03); holder.rotation.x = PI / 2;
   const heldMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  heldMat.customProgramCacheKey = () => 'held-blaster';
   heldMat.onBeforeCompile = (sh) => {
     sh.vertexShader = 'attribute float aGlow; varying float vGlow;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vGlow = aGlow;');
     sh.fragmentShader = 'varying float vGlow;\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n  totalEmissiveRadiance += diffuseColor.rgb * vGlow * 1.2;');

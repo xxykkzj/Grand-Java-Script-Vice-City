@@ -11,6 +11,7 @@
 // ground is registered as a footprint (layout.js FOOTPRINTS) for the road check.
 import * as THREE from 'three';
 import { box, cyl, tint, merge, rng, PI } from '../core/util.js';
+import { texScale } from '../core/quality.js';
 import { onRoad, inJunction, footprint } from './layout.js';
 import { kitGeometry } from './kits.js';
 import { pickSpecies } from './streettrees.js';
@@ -38,8 +39,10 @@ const MURALS = 6;
 const AT = 1024, SW = 256, SH = 42, MW = 512, MH = 256, MY = 256;
 export function paintStreetAtlas(shops = SHOPS) {
   const cv = document.createElement('canvas');
-  cv.width = AT; cv.height = AT;
+  const k = texScale();
+  cv.width = AT * k; cv.height = AT * k;
   const g = cv.getContext('2d');
+  g.scale(k, k);
   g.fillStyle = '#1d1630'; g.fillRect(0, 0, AT, AT);
   g.textAlign = 'center'; g.textBaseline = 'middle';
   const FONT = ['italic 800 %px "Trebuchet MS", Verdana, sans-serif', '800 %px "Arial Narrow", Impact, sans-serif', 'italic 700 %px Georgia, serif'];
@@ -171,6 +174,7 @@ export function streetAtlasMesh(quads, shops = SHOPS) {
   tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
   const neonK = { value: 0.5 };
   const mat = new THREE.MeshLambertMaterial({ map: tex });
+  mat.customProgramCacheKey = () => 'street-atlas';
   mat.onBeforeCompile = (sh) => {
     sh.uniforms.uNeonK = neonK;
     sh.vertexShader = 'attribute float aGlow; varying float vGlow;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vGlow = aGlow;');

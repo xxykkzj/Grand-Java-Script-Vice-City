@@ -8,8 +8,11 @@ import * as THREE from 'three';
 import { nightU, glareU } from '../core/util.js';
 
 export const LAMP_GAIN_CHAR = 1.45;
+// 1x1 black stand-ins until city.js / keyCity.js hand over the real lamp maps, so a material compiled earlier still
+// gets the lamp patch (the uniform objects are shared, so swapping the texture later reaches every program)
+const blackTex = () => { const t = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1); t.needsUpdate = true; return t; };
 export const lampU = {
-  uLampOld: { value: null }, uLampKey: { value: null },
+  uLampOld: { value: blackTex() }, uLampKey: { value: blackTex() },
   uLampROld: { value: new THREE.Vector4(0, 0, 1, 1) }, uLampRKey: { value: new THREE.Vector4(0, 0, 1, 1) },
   uLampOn: { value: 1 }, uNight: nightU, uGlare: glareU,
   // raised decks with their own lights (the Solstice Terrace's string lights 114 m up, Starlight Pier's bulbs and
@@ -27,7 +30,6 @@ export function setLampMap(which, tex, x0, z0, w, h) {
 
 // patch a Lambert material's onBeforeCompile shader (sh): call from inside the material's own hook
 export function lampPatch(sh) {
-  if (!lampU.uLampOld.value || !lampU.uLampKey.value) return;
   Object.assign(sh.uniforms, lampU);
   sh.vertexShader = 'varying vec3 vLWP;\n' + sh.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
     {

@@ -189,3 +189,14 @@ export function section(beat) {
   const pb = Math.floor(beat / 4) % 16;
   return pb >= 14 ? 'build' : pb >= 12 ? 'break' : 'drop';
 }
+
+// ctx.roundRect arrived in Safari 15.4 / Chrome 99: a tiny arcTo fallback so older browsers do not throw
+if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+    const k = Math.max(0, Math.min(Array.isArray(r) ? (r[0] || 0) : (r || 0), Math.abs(w) / 2, Math.abs(h) / 2));
+    this.moveTo(x + k, y);
+    this.arcTo(x + w, y, x + w, y + h, k); this.arcTo(x + w, y + h, x, y + h, k);
+    this.arcTo(x, y + h, x, y, k); this.arcTo(x, y, x + w, y, k);
+    this.closePath();
+  };
+}

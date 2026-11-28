@@ -1,12 +1,15 @@
 // Every texture in the game is painted here on a 2D canvas at load time.
 import { rng } from '../core/util.js';
+import { texScale } from '../core/quality.js';
 import { HX, HZ, ROADS, SIDE_X } from './layout.js';
 
 export function paintGround(L) {
   const W = 2048, H = 1024, S = W / (HX * 2);
   const cv = document.createElement('canvas');
-  cv.width = W; cv.height = H;
+  const k = texScale();                     // half-size canvas on Low / touch; all drawing stays in 2048x1024 units
+  cv.width = W * k; cv.height = H * k;
   const g = cv.getContext('2d');
+  g.scale(k, k);
   const r = rng(77);
   const X = (x) => (x + HX) * S, Z = (z) => (z + HZ) * S;
   const rect = (x0, z0, x1, z1, c) => { g.fillStyle = c; g.fillRect(X(x0), Z(z0), (x1 - x0) * S, (z1 - z0) * S); };
@@ -120,8 +123,10 @@ const FONTS = [
 export const SIGN_ROWS = 14;
 export function paintSigns(signs) {
   const cv = document.createElement('canvas');
-  cv.width = 1024; cv.height = SIGN_ROWS * 128;
+  const k = texScale();
+  cv.width = 1024 * k; cv.height = SIGN_ROWS * 128 * k;
   const g = cv.getContext('2d');
+  g.scale(k, k);
   g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
   signs.forEach((s, i) => {
     const ox = (i % 2) * 512, oy = Math.floor(i / 2) * 128;

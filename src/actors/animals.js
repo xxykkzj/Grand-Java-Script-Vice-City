@@ -16,6 +16,7 @@ function part(g, k) { g.setAttribute('aPart', new THREE.BufferAttribute(new Floa
 function speciesMaterial(o) {
   const U = { uTime: timeU, uRoot: { value: o.root || 0.05 }, uFlap: { value: o.flap || 20 }, uLeg: { value: o.leg || 24 }, uLegAmp: { value: o.legAmp || 0.03 }, uLegTop: { value: o.legTop || 0.1 } };
   const m = new THREE.MeshLambertMaterial({ vertexColors: true });
+  m.customProgramCacheKey = () => 'animal';
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U);
     sh.vertexShader = 'attribute float aPart; attribute vec3 aAct; uniform float uTime, uRoot, uFlap, uLeg, uLegAmp, uLegTop;\n' + sh.vertexShader.replace('#include <begin_vertex>', /* glsl */`
